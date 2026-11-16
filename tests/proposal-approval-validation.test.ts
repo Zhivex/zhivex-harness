@@ -5,8 +5,8 @@ import os from "node:os";
 import path from "node:path";
 import type { JsonValue, StreamEvent } from "@zhivex-ai/core";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { applyEditProposalInputSchema, createEditProposal } from "../src/workspace/edit-contracts.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { applyEditProposalInputSchema, createEditProposal } from "../packages/core/src/workspace/edit-contracts.js";
 
 test("proposal binding schema reports bounded issues without throwing on malformed changes", () => {
   const proposalId = `sha256:${"0".repeat(64)}`;

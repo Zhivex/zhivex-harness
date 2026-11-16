@@ -4,9 +4,9 @@ import os from "node:os";
 import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { serializeJsonValue, type StreamEvent } from "@zhivex-ai/core";
-import * as runtime from "../src/index.js";
+import * as runtime from "../packages/core/src/index.js";
 import { runGovernedTimeToSafeFixProfile } from "../scripts/time-to-safe-fix-governed-profile.js";
-import type { HarnessOciRuntimeAdapter, OciRunRequest } from "../src/execution/execution-environment.js";
+import type { HarnessOciRuntimeAdapter, OciRunRequest } from "../packages/core/src/execution/execution-environment.js";
 
 const call = (id: string, name: string, input: unknown): StreamEvent[] => [
   { type: "tool-call", toolCall: { id, name, input: serializeJsonValue(input) } },

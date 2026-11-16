@@ -5,12 +5,12 @@ import path from "node:path";
 import assert from "node:assert/strict";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
 import { runLiveRoutingSmoke, type RoutingSmokeDependencies } from "../scripts/live-routing-smoke.js";
 import { routingFailure } from "../scripts/live-routing-diagnostics.js";
 import { assertNoForbiddenDiagnosticContent, parseSanitizedOperationalError, restoreSanitizedOperationalError,
   sanitizeOperationalError, summarizeReleaseGates } from "../scripts/release-diagnostics.js";
-import { HarnessProviderError } from "../src/runtime/errors.js";
+import { HarnessProviderError } from "../packages/core/src/runtime/errors.js";
 
 const privateValue = "PRIVATE_PROMPT_KEY_PATH_MODEL_RUN_ID";
 const env = { ZHIVEX_HARNESS_LIVE: "1", ZHIVEX_HARNESS_LIVE_PARENT_PROVIDER: "openai",

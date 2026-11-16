@@ -8,7 +8,7 @@ import {
   TIME_TO_SAFE_FIX_PROFILES,
   timeToSafeFixDriverResultSchema,
   timeToSafeFixTaskSchema
-} from "../src/runtime/time-to-safe-fix.js";
+} from "../packages/core/src/runtime/time-to-safe-fix.js";
 
 export const MAX_TIME_TO_SAFE_FIX_DRIVER_INPUT_BYTES = 1_000_000;
 

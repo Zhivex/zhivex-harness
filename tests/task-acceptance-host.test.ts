@@ -1,10 +1,10 @@
 import { expect,test } from 'bun:test';
 import { mkdtemp,writeFile,rm } from 'node:fs/promises';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { createHarness,runHarness } from '../src/runtime/harness.js';
-import { reviseHarnessTaskAcceptance } from '../src/runtime/task-acceptance-host.js';
-import { TASK_ACCEPTANCE_KEY,TASK_ACCEPTANCE_EVIDENCE_KEY,readTaskAcceptanceLedger } from '../src/runtime/task-acceptance-record.js';
-import { taskAcceptanceContractSchema } from '../src/runtime/task-acceptance.js';
+import { createHarness,runHarness } from '../packages/core/src/runtime/harness.js';
+import { reviseHarnessTaskAcceptance } from '../packages/core/src/runtime/task-acceptance-host.js';
+import { TASK_ACCEPTANCE_KEY,TASK_ACCEPTANCE_EVIDENCE_KEY,readTaskAcceptanceLedger } from '../packages/core/src/runtime/task-acceptance-record.js';
+import { taskAcceptanceContractSchema } from '../packages/core/src/runtime/task-acceptance.js';
 import { createTextMessage } from '@zhivex-ai/core';
 const contract=(requirement='Review change')=>taskAcceptanceContractSchema.parse({schemaVersion:1,taskId:'edit',allowedWritePaths:['result.txt'],protectedFiles:[],
   requiredChecks:[{id:'test',kind:'package-script',script:'test',expectedScript:'bun test',command:'bun',args:['--no-env-file','run','test'],purpose:'Tests',execution:{backend:'none',approval:'required'}}],humanReview:[{id:'review',requirement,status:'pending'}]});

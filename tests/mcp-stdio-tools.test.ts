@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import type { McpClient, McpListedTool, ToolSet } from '@zhivex-ai/core';
-import { createIsolatedMcpTools } from '../src/integrations/mcp-stdio-tools.js';
-import { McpStdioClientError } from '../src/integrations/mcp-stdio-client.js';
-import type { McpStdioLaunchProposal } from '../src/integrations/mcp-stdio-admission.js';
+import { createIsolatedMcpTools } from '../packages/core/src/integrations/mcp-stdio-tools.js';
+import { McpStdioClientError } from '../packages/core/src/integrations/mcp-stdio-client.js';
+import type { McpStdioLaunchProposal } from '../packages/core/src/integrations/mcp-stdio-admission.js';
 const hash = `sha256:${'a'.repeat(64)}`;
 const proposal: McpStdioLaunchProposal = { schemaVersion: 1, serverId: 'docs', boundary: 'oci', image: `example/server@${hash}`,
   executable: '/app/server', args: [], protocolVersion: '2025-11-25', workingDirectory: '.', snapshotDigest: hash,

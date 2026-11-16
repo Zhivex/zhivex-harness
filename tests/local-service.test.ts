@@ -3,11 +3,11 @@ import { request } from "node:http";
 import { mkdtemp, mkdir, lstat, rm, readFile, writeFile } from "node:fs/promises";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import type { LanguageModel } from "@zhivex-ai/agents";
-import { inspectHarnessPolicy } from "../src/runtime/policy-inspection.js";
-import { createHarness } from "../src/runtime/harness.js";
-import { startHarnessLocalService, readHarnessLocalCredentials, requestHarnessLocalService } from "../src/client/local-service.js";
+import { inspectHarnessPolicy } from "../packages/core/src/runtime/policy-inspection.js";
+import { createHarness } from "../packages/core/src/runtime/harness.js";
+import { startHarnessLocalService, readHarnessLocalCredentials, requestHarnessLocalService } from "../packages/core/src/client/local-service.js";
 
-const setup = async (modelInstance?: LanguageModel, toolPolicy?: import("../src/runtime/tool-policy.js").HarnessToolPolicy) => {
+const setup = async (modelInstance?: LanguageModel, toolPolicy?: import("../packages/core/src/runtime/tool-policy.js").HarnessToolPolicy) => {
   const root = await mkdtemp("/tmp/har-service-"); const workspace=root+"/repo"; await mkdir(workspace);
   const harness=await createHarness({...(toolPolicy?{toolPolicy}:{}),workspace,provider:"openai",modelInstance:modelInstance??createMockLanguageModel({streamEvents:[[{type:"text-delta",textDelta:"hello"},{type:"finish",finishReason:"stop"}]]}),subagentProfiles:[]});
   const service=await startHarnessLocalService(harness,{directory:root+"/socket"});
@@ -103,7 +103,7 @@ test("disconnect during streaming retains activity and drains accepted work on s
   const again=await f.call({method:"session.get",sessionId});if(during.ok&&again.ok)expect(again.data).toEqual(during.data);
   const firstCursor=page.nextCursor;release();
   await f.service.close();
-  const {openHarnessActivityStore}=await import("../src/client/service-events.js");const activity=await openHarnessActivityStore(f.harness.config);
+  const {openHarnessActivityStore}=await import("../packages/core/src/client/service-events.js");const activity=await openHarnessActivityStore(f.harness.config);
   try{const missing=activity.replay(sessionId,firstCursor);expect(missing.events.some(e=>e.activity.status==="completed")).toBe(true);expect(missing.events.map(e=>e.activity.textDelta??"").join("")).toContain("after reconnect");}finally{activity.close();}
  }finally{release();await f.close();}
 });

@@ -6,7 +6,7 @@ import path from "node:path";
 import type { AgentRunState } from "@zhivex-ai/agents";
 import { createFileAgentRunStore } from "@zhivex-ai/agents/ops";
 
-import { resolveHarnessConfig } from "../src/runtime/config.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
 import {
   HARNESS_SQLITE_FILE,
   cancelHarnessRun,
@@ -14,7 +14,7 @@ import {
   inspectHarnessRun,
   listHarnessRuns,
   openHarnessPersistence
-} from "../src/persistence/operations.js";
+} from "../packages/core/src/persistence/operations.js";
 
 const temporaryDirectories: string[] = [];
 
@@ -243,7 +243,7 @@ test("file and sqlite persistence isolate coordinator ledgers while supporting d
 
 test("budget ledger owners keep the source namespace instead of collapsing to one bucket", async () => {
   const { createAgentBudgetCoordinator, fingerprintAgentHarness } = await import("@zhivex-ai/core");
-  const { budgetLedgerNamespace, budgetLedgerScope } = await import("../src/runtime/budget-ledger-scope.js");
+  const { budgetLedgerNamespace, budgetLedgerScope } = await import("../packages/core/src/runtime/budget-ledger-scope.js");
   for (const storeBackend of ["file", "sqlite"] as const) {
     const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-budget-owner-workspace-"));
     const stateDirectory = await mkdtemp(path.join(os.tmpdir(), "zhivex-budget-owner-state-"));

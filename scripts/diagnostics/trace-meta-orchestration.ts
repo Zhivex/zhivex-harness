@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { createMeta } from "@zhivex-ai/meta";
 import { wrapLanguageModel } from "@zhivex-ai/core";
-import { createHarness, runHarness } from "../../src/runtime/harness.js";
+import { createHarness, runHarness } from "../../packages/core/src/runtime/harness.js";
 import { prepareReviewFixture, orchestrationPrompt, reviewDelegationContract } from "../live-orchestration-smoke.js";
 import { sanitizeOperationalError } from "../release-diagnostics.js";
 

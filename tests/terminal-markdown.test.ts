@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { TerminalMarkdown } from "../src/cli/terminal/terminal-markdown.js";
-import { terminalCellWidth } from "../src/cli/terminal/terminal-table.js";
+import { TerminalMarkdown } from "../packages/core/src/cli/terminal/terminal-markdown.js";
+import { terminalCellWidth } from "../packages/core/src/cli/terminal/terminal-table.js";
 
 const withoutStyles = (text: string) => text.replace(/\x1b\[[0-9;]*m/g, "");
 const table = "| Check | Result |\n| --- | --- |\n| `bun test` | 30 pass / 0 fail |\n";

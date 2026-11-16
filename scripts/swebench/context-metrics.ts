@@ -1,1 +1,1 @@
-export { measureContext } from "../../src/context/context-metrics.js";
+export { measureContext } from "../../packages/core/src/context/context-metrics.js";

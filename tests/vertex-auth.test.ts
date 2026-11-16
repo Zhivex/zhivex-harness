@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { createVertexModel, vertexRoute, vertexTokenSource, VertexAuthenticationError } from "../src/providers/vertex-auth.js";
+import { createVertexModel, vertexRoute, vertexTokenSource, VertexAuthenticationError } from "../packages/core/src/providers/vertex-auth.js";
 
 const env = { GOOGLE_CLOUD_PROJECT: "fixture-project", VERTEX_LOCATION: "us-central1" };
 

@@ -4,7 +4,7 @@ import { open, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { runPortableProcess } from '../src/execution/process-runtime.js';
+import { runPortableProcess } from '../packages/core/src/execution/process-runtime.js';
 import { digest, loadMinimumCohort, plannedPaidMatrix, SYNTHETIC_MODEL_SETTINGS, TASK_BUDGET } from './minimum-evals/protocol.js';
 import { blindMinimumReview, runMinimumAttempt, validateMinimumFixture, type MinimumAttempt } from './minimum-evals/runner.js';
 
@@ -26,7 +26,7 @@ if (args.includes('--validate')) {
   const output = value('report'); assert(output, 'Supply --report=<new-private-file.json> (or --validate / --plan)');
   const variant = value('variant') ?? 'candidate'; assert(/^[a-z0-9-]{1,40}$/.test(variant), 'Invalid variant');
   const mode = value('mode') ?? 'reference'; assert(mode === 'reference' || mode === 'empty', 'Only synthetic reference/empty modes supported');
-  const enginePath = path.resolve(value('engine') ?? fileURLToPath(new URL('../src/engine/index.ts', import.meta.url)));
+  const enginePath = path.resolve(value('engine') ?? fileURLToPath(new URL('../packages/core/src/engine/index.ts', import.meta.url)));
   const reportPath = path.resolve(output), journalPath = reportPath + '.jsonl';
   const artifactFileDigest = digest(await readFile(enginePath));
   const engineRoot = path.dirname(path.dirname(path.dirname(enginePath)));
@@ -45,7 +45,7 @@ if (args.includes('--validate')) {
   const rows: MinimumAttempt[] = [];
   const blindReviews: ReturnType<typeof blindMinimumReview>[] = [];
   try {
-    const api: typeof import('../src/engine/index.js') = await import(pathToFileURL(enginePath).href);
+    const api: typeof import('../packages/core/src/engine/index.js') = await import(pathToFileURL(enginePath).href);
     for (const fixture of fixtures) {
       const row = await runMinimumAttempt(api, fixture, variant, mode);
       rows.push(row); blindReviews.push(blindMinimumReview(fixture, row)); await journal.writeFile(JSON.stringify({ cohortSha256: cohort.sha256, engine: manifest.engine, ...row }) + '\n'); await journal.sync();

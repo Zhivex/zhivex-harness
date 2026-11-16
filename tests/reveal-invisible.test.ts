@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "bun:test";
-import { revealInvisible, revealInvisibleText } from "../src/review/reveal-invisible.js";
+import { revealInvisible, revealInvisibleText } from "../packages/core/src/review/reveal-invisible.js";
 
 test("hidden diff characters stay visible and a second pass does not escape them again", () => {
   const line = "  if (command.includes(\"\0\"))\u200b\u202e\t ";
@@ -31,7 +31,7 @@ test("literal escape sequences stay as written and only real control bytes are e
   expect(revealInvisible(realNul)).not.toContain("^@");
   expect(revealInvisible(realNul)).not.toContain("\\u0000");
   expect(revealInvisibleText("context\r\nbefore\r\nlast")).toBe("context\r\nbefore\r\nlast");
-  const desktop = await readFile(new URL("../desktop/src/reveal-invisible.ts", import.meta.url), "utf8");
-  const shared = await readFile(new URL("../src/review/reveal-invisible.ts", import.meta.url), "utf8");
+  const desktop = await readFile(new URL("../packages/desktop/src/reveal-invisible.ts", import.meta.url), "utf8");
+  const shared = await readFile(new URL("../packages/core/src/review/reveal-invisible.ts", import.meta.url), "utf8");
   expect(desktop).toBe(shared);
 });

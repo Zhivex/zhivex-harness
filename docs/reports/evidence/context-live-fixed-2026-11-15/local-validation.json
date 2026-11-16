@@ -1,0 +1,23 @@
+{
+  "bun": "1.4.3",
+  "fullSuite": {
+    "pass": 2720,
+    "skip": 1,
+    "fail": 0,
+    "files": 364,
+    "seconds": 267.6
+  },
+  "subsequentFocused": {
+    "pass": 30,
+    "fail": 0,
+    "files": 5
+  },
+  "checks": [
+    "typecheck",
+    "typecheck:tooling",
+    "architecture:check",
+    "docs:check",
+    "git diff --check"
+  ],
+  "productionBundlesUnchangedDuringCampaign": true
+}

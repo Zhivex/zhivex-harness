@@ -3,11 +3,11 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { wrapLanguageModel, fingerprintAgentHarness, serializeJsonValue } from '@zhivex-ai/core';
 import { ProviderToolCallError } from '@zhivex-ai/core/provider';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { resolveHarnessConfig } from '../src/runtime/config.js';
-import { openHarnessPersistence } from '../src/persistence/operations.js';
-import { TaskBudget } from '../src/runtime/task-budget.js';
-import { budgetLedgerNamespace } from '../src/runtime/budget-ledger-scope.js';
-import { UsageLedger, inspectTaskMonetaryUsage } from '../src/runtime/usage-ledger.js';
+import { resolveHarnessConfig } from '../packages/core/src/runtime/config.js';
+import { openHarnessPersistence } from '../packages/core/src/persistence/operations.js';
+import { TaskBudget } from '../packages/core/src/runtime/task-budget.js';
+import { budgetLedgerNamespace } from '../packages/core/src/runtime/budget-ledger-scope.js';
+import { UsageLedger, inspectTaskMonetaryUsage } from '../packages/core/src/runtime/usage-ledger.js';
 
 const pricing = { schemaVersion: 1 as const, prices: [{ provider: 'mock', model: 'accounting', inputUsdPerMillion: 0,
   outputUsdPerMillion: 1_000_000, source: 'synthetic dollars per token, not market pricing',

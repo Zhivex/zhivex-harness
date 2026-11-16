@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { builtinToolPolicyPathResolver, validateBuiltinToolPolicy } from '../src/runtime/tool-policy-paths.js';
-import { createHarnessToolPolicy, type HarnessToolPolicy } from '../src/runtime/tool-policy.js';
+import { builtinToolPolicyPathResolver, validateBuiltinToolPolicy } from '../packages/core/src/runtime/tool-policy-paths.js';
+import { createHarnessToolPolicy, type HarnessToolPolicy } from '../packages/core/src/runtime/tool-policy.js';
 
 const rule = (tools: string[]): HarnessToolPolicy => ({ schemaVersion: 1, rules: [{ id: 'protected', tools, paths: ['private.txt'], decision: 'deny', reason: 'Protected' }] });
 

@@ -90,8 +90,7 @@ jobs:
         run: |
           bun install --frozen-lockfile --ignore-scripts
           bun run build
-          bun run packages/code/scripts/link-local-engine.ts
-          bun install --cwd packages/web --frozen-lockfile --ignore-scripts
+          bun run packages/cli/scripts/link-local-engine.ts --replace
           bun run build:code
           bun run typecheck:code
           bun run test:code
@@ -100,20 +99,14 @@ jobs:
         run: |
           mkdir -p release-code-artifacts
           bun run scripts/code-release.ts engine release-code-artifacts/harness.tgz
-          (cd packages/code && bun pm pack --ignore-scripts --filename "$GITHUB_WORKSPACE/release-code-artifacts/code.tgz")
+          (cd packages/cli && bun pm pack --ignore-scripts --filename "$GITHUB_WORKSPACE/release-code-artifacts/code.tgz")
           bun run scripts/code-release.ts inspect release-code-artifacts/code.tgz
       - name: Test actual registry resolution without engine overrides
         run: bun run scripts/code-release.ts smoke-registry release-code-artifacts/code.tgz
       - name: Test the retained Code artifact with offline installed PTY journeys
-        run: node packages/code/scripts/installed-journey.mjs release-code-artifacts/code.tgz
+        run: node packages/cli/scripts/installed-journey.mjs release-code-artifacts/code.tgz
         env:
           CODE_JOURNEY_OUTPUT: ${{ github.workspace }}/release-code-artifacts
-      - name: Test the retained Code web artifact with the published engine
-        run: |
-          node packages/web/scripts/installed-smoke.mjs
-          cp packages/web/.test-output/installed-report.json release-code-artifacts/installed-web-report.json
-        env:
-          CODE_WEB_ARTIFACT: ${{ github.workspace }}/release-code-artifacts/code.tgz
       - name: Test installed products across package managers
         run: |
           npm install --prefix "$RUNNER_TEMP/code-package-managers" --ignore-scripts --no-audit --no-fund pnpm@11.25.0 yarn@1.22.22
@@ -136,7 +129,6 @@ jobs:
             release-code-artifacts/code.sigstore.json
             release-code-artifacts/SHA512SUMS
             release-code-artifacts/acceptance.json
-            release-code-artifacts/installed-web-report.json
             release-code-artifacts/installed-journey-report.json
             release-code-artifacts/installed-journey-transcript.txt
           if-no-files-found: error

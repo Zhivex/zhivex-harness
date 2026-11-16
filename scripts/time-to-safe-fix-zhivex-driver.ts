@@ -1,5 +1,5 @@
 import { channel } from "node:diagnostics_channel";
-import { benchmarkOperationSchema } from "../src/runtime/error-diagnostics.js";
+import { benchmarkOperationSchema } from "../packages/core/src/runtime/error-diagnostics.js";
 import { observeBenchmarkFetch, observeBenchmarkModel } from "./time-to-safe-fix-model-observer.js";
 import { startBenchmarkExitObservation, reportBenchmarkResources, markBenchmarkTimeout, beginBenchmarkSpan, updateBenchmarkSpan, configureBenchmarkBudget, reportBenchmarkProgress } from "./time-to-safe-fix-progress.js";
 import { mkdtemp, realpath, rm } from "node:fs/promises";
@@ -9,8 +9,8 @@ import path from "node:path";
 import {
   parseProvider,
   type HarnessProvider
-} from "../src/runtime/config.js";
-import type { HarnessExecutionConfig } from "../src/runtime/config.js";
+} from "../packages/core/src/runtime/config.js";
+import type { HarnessExecutionConfig } from "../packages/core/src/runtime/config.js";
 import { runDirectProfile } from "./time-to-safe-fix-direct-profile.js";
 import {
   readTimeToSafeFixDriverRequest,

@@ -3,10 +3,10 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { AgentRunStore } from '@zhivex-ai/core';
-import { resolveHarnessConfig } from '../src/runtime/config.js';
-import { openHarnessPersistence } from '../src/persistence/operations.js';
-import { reserveMcpResources } from '../src/persistence/mcp-resource-journal.js';
-import type { McpStdioLaunchProposal } from '../src/integrations/mcp-stdio-admission.js';
+import { resolveHarnessConfig } from '../packages/core/src/runtime/config.js';
+import { openHarnessPersistence } from '../packages/core/src/persistence/operations.js';
+import { reserveMcpResources } from '../packages/core/src/persistence/mcp-resource-journal.js';
+import type { McpStdioLaunchProposal } from '../packages/core/src/integrations/mcp-stdio-admission.js';
 const digest = `sha256:${'a'.repeat(64)}`;
 const proposal: McpStdioLaunchProposal = { schemaVersion: 1, serverId: 'docs', boundary: 'oci', image: `example/server@${digest}`,
   executable: '/server', args: [], protocolVersion: '2025-11-25', workingDirectory: '.', snapshotDigest: digest,

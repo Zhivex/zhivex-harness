@@ -6,10 +6,10 @@ import path from "node:path";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
-import { createEditProposal } from "../src/workspace/edit-contracts.js";
-import { readRegularFileNoFollow } from "../src/workspace/file-security.js";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { Workspace } from "../src/workspace/workspace.js";
+import { createEditProposal } from "../packages/core/src/workspace/edit-contracts.js";
+import { readRegularFileNoFollow } from "../packages/core/src/workspace/file-security.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { Workspace } from "../packages/core/src/workspace/workspace.js";
 
 const temporaryDirectories: string[] = [];
 

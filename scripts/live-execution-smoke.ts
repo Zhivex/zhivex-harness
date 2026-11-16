@@ -6,7 +6,7 @@ import path from "node:path";
 
 import { createAgentExecutionEnvironmentBinding } from "@zhivex-ai/agents/beta";
 
-import type { HarnessProvider } from "../src/runtime/config.js";
+import type { HarnessProvider } from "../packages/core/src/runtime/config.js";
 import { liveProviderSmokeInternals } from "./live-provider-smoke.js";
 
 const { PROVIDERS, providerDescriptor, createHarness, runHarness, HarnessExecutionError } = await loadLiveSmokeRuntime();

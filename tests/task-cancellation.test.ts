@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
-import { resolveHarnessConfig } from '../src/runtime/config.js';
-import { cancelHarnessRun, openHarnessPersistence } from '../src/persistence/operations.js';
-import { TaskBudget, TASK_BUDGET_ACCOUNT_KEY } from '../src/runtime/task-budget.js';
+import { resolveHarnessConfig } from '../packages/core/src/runtime/config.js';
+import { cancelHarnessRun, openHarnessPersistence } from '../packages/core/src/persistence/operations.js';
+import { TaskBudget, TASK_BUDGET_ACCOUNT_KEY } from '../packages/core/src/runtime/task-budget.js';
 import type { AgentRunState } from '@zhivex-ai/core';
 
 async function fixture(work: (p: Awaited<ReturnType<typeof openHarnessPersistence>>, config: ReturnType<typeof resolveHarnessConfig>) => Promise<void>) {
@@ -179,7 +179,7 @@ test('a separate SQLite worker completing during cancellation save preserves ter
   } });
   const pending = cancelHarnessRun(delayed, config, before.runId); await paused.promise;
   const child = Bun.spawn([process.execPath, '--eval', `
-    import { openHarnessPersistence } from ${JSON.stringify(new URL('../src/persistence/operations.ts', import.meta.url).pathname)};
+    import { openHarnessPersistence } from ${JSON.stringify(new URL('../packages/core/src/persistence/operations.ts', import.meta.url).pathname)};
     const config = ${JSON.stringify(config)};
     const p = await openHarnessPersistence(config);
     if (!await p.store.acquireLease('terminal', {ownerId:'child-worker',ttlMs:30000},config.scope)) throw new Error('no lease');
@@ -196,8 +196,8 @@ test('a separate SQLite worker completing during cancellation save preserves ter
 
 test('SIGKILL after acknowledged intent retains cancellation and admitted exposure on restart', () => fixture(async ({ store }, config) => {
   const child = Bun.spawn([process.execPath, '--eval', `
-    import { TaskBudget } from ${JSON.stringify(new URL('../src/runtime/task-budget.ts', import.meta.url).pathname)};
-    import { openHarnessPersistence } from ${JSON.stringify(new URL('../src/persistence/operations.ts', import.meta.url).pathname)};
+    import { TaskBudget } from ${JSON.stringify(new URL('../packages/core/src/runtime/task-budget.ts', import.meta.url).pathname)};
+    import { openHarnessPersistence } from ${JSON.stringify(new URL('../packages/core/src/persistence/operations.ts', import.meta.url).pathname)};
     import { wrapLanguageModel } from '@zhivex-ai/core';
     const config=${JSON.stringify(config)}; const p=await openHarnessPersistence(config);
     const a=await TaskBudget.open({store:p.store,scope:config.scope,taskId:'killed',policy:{limits:${JSON.stringify(limits)}}});
@@ -220,7 +220,7 @@ test('SIGKILL after acknowledged intent retains cancellation and admitted exposu
 }));
 
 test('complete logical import preserves cancellation evidence and closes late admissions', () => fixture(async ({ store }, config) => {
-  const { createHarnessStateBackup, importHarnessStateBackup } = await import('../src/persistence/state-backup.js');
+  const { createHarnessStateBackup, importHarnessStateBackup } = await import('../packages/core/src/persistence/state-backup.js');
   const account = await TaskBudget.open({ store, scope: config.scope, taskId: 'imported', policy: { limits } });
   const entered = barrier(), finish = barrier();
   const pending = account.run('r', async () => { entered.release(); await finish.promise; }); pending.catch(() => {});

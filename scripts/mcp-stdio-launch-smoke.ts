@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Workspace } from '../src/workspace/workspace.js';
-import { prepareMcpWorkspaceSnapshot, discardMcpWorkspaceSnapshot } from '../src/execution/mcp-workspace-snapshot.js';
-import { launchDockerMcpServer } from '../src/execution/mcp-oci-server.js';
-import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../src/integrations/mcp-stdio-admission.js';
-import { runPortableProcess } from '../src/execution/process-runtime.js';
+import { Workspace } from '../packages/core/src/workspace/workspace.js';
+import { prepareMcpWorkspaceSnapshot, discardMcpWorkspaceSnapshot } from '../packages/core/src/execution/mcp-workspace-snapshot.js';
+import { launchDockerMcpServer } from '../packages/core/src/execution/mcp-oci-server.js';
+import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../packages/core/src/integrations/mcp-stdio-admission.js';
+import { runPortableProcess } from '../packages/core/src/execution/process-runtime.js';
 
 const env = Object.fromEntries(['HOME', 'PATH', 'DOCKER_CONFIG', 'DOCKER_CONTEXT', 'DOCKER_HOST', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH', 'XDG_RUNTIME_DIR']
   .flatMap(key => process.env[key] ? [[key, process.env[key]!]] : []));

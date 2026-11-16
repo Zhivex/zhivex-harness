@@ -2,8 +2,8 @@ import { test, expect } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness, createProfiledHarness, runHarness, HARNESS_INSTRUCTIONS } from "../src/runtime/harness.js";
-import { GENERAL_ASSISTANT_PROFILE } from "../src/runtime/agent-profile.js";
+import { createHarness, createProfiledHarness, runHarness, HARNESS_INSTRUCTIONS } from "../packages/core/src/runtime/harness.js";
+import { GENERAL_ASSISTANT_PROFILE } from "../packages/core/src/runtime/agent-profile.js";
 
 test("default coding behavior stays intact; general profile has no coding tools or instructions", async () => {
   const workspace = await mkdtemp("/tmp/profile-");

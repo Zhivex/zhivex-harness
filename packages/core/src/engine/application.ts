@@ -1,0 +1,45 @@
+/** Experimental application layer shared by terminal and native clients. */
+export { connectApplication } from "../application/client.js";
+export type { ApplicationClient, ApplicationCommand } from "../application/client.js";
+export { projectApprovalReview } from "../application/approval-review.js";
+export type { ApprovalReview, ApprovalReviewItem, ApprovalReviewFile } from "../application/approval-review.js";
+export { ReviewTickets } from "../application/review-tickets.js";
+export type { TicketedApprovalReview } from "../application/review-tickets.js";
+export { startApplicationHost } from "../application/host.js";
+export { startCodeHost } from "../application/code/host.js";
+export { createCodeProjects } from "../application/code/projects.js";
+export type { CodeProject, CodeProjectState } from "../application/code/projects.js";
+export { openTaskWorktrees, taskCreationSchema } from "../application/code/worktrees.js";
+export type { ManagedTask, TaskRemovalReview } from "../application/code/worktrees.js";
+export { createCheckpointReviewHost } from "../application/checkpoint-review.js";
+export type { CheckpointReview } from "../application/checkpoint-review.js";
+export type { DeliveryChanges } from '../application/code/git-delivery.js';
+export type { CommitFile } from '../application/code/git-delivery.js';
+export type { CommitReview } from '../application/code/git-delivery.js';
+export type { CommitOperation } from '../application/code/git-delivery.js';
+export type { CommitReconciliation } from '../application/code/git-delivery.js';
+export { openGitDelivery } from '../application/code/git-delivery.js';
+export { pushDestinationSchema } from '../application/code/remote-delivery.js';
+export { pushSnapshotSchema } from '../application/code/remote-delivery.js';
+export type { PushSnapshot } from '../application/code/remote-delivery.js';
+export type { PushDestination } from '../application/code/remote-delivery.js';
+export type { PushReview } from '../application/code/remote-delivery.js';
+export type { PushOperation } from '../application/code/remote-delivery.js';
+export type { RemoteTransport } from '../application/code/remote-delivery.js';
+export { openRemoteDelivery } from '../application/code/remote-delivery.js';
+export type { PullRequestInput } from '../application/code/pr-delivery.js';
+export { pullRequestRecordSchema } from '../application/code/pr-delivery.js';
+export type { PullRequestRecord } from '../application/code/pr-delivery.js';
+export { PullRequestRejectedError } from '../application/code/pr-delivery.js';
+export type { PullRequestTransport } from '../application/code/pr-delivery.js';
+export type { PullRequestReview } from '../application/code/pr-delivery.js';
+export type { PullRequestOperation } from '../application/code/pr-delivery.js';
+export { openPullRequestDelivery } from '../application/code/pr-delivery.js';
+export type { RemoteTargets } from '../application/code/github-git-transport.js';
+export { openGitHubGitTransport } from '../application/code/github-git-transport.js';
+export { openGitHubPullRequestTransport } from '../application/code/github-pr-transport.js';
+
+export { startApplicationCoordinator } from '../application/coordinator.js';
+export { acquireApplicationCoordinator } from '../application/coordinator.js';
+
+export {createProcessSecretStore, runCredentialWorker} from '../application/credential-process.js';

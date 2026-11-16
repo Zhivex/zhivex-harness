@@ -3,8 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { createHarness, runHarness } from "../../src/runtime/harness.js";
-import { createEditProposal } from "../../src/workspace/edit-contracts.js";
+import { createHarness, runHarness } from "../../packages/core/src/runtime/harness.js";
+import { createEditProposal } from "../../packages/core/src/workspace/edit-contracts.js";
 import { liveProviderSmokeInternals as smoke } from "../live-provider-smoke.js";
 import { sanitizeOperationalError } from "../release-diagnostics.js";
 const main = async () => {

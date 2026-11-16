@@ -5,8 +5,8 @@ import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { serializeJsonValue, wrapLanguageModel, type ModelMessage, type ToolSet, type StreamToolCallEvent, type StreamFinishEvent } from "@zhivex-ai/core";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import type { HarnessExecutionSession, HarnessOciRuntimeAdapter } from "../src/execution/execution-environment.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import type { HarnessExecutionSession, HarnessOciRuntimeAdapter } from "../packages/core/src/execution/execution-environment.js";
 
 const usage = { inputTokens: 10, outputTokens: 2, totalTokens: 12 };
 const turn = (id: string, name: string, input: unknown) => [{ type: "tool-call" as const, toolCall: { id, name, input: serializeJsonValue(input) } }, { type: "finish" as const, finishReason: "tool-calls" as const, usage }] satisfies [StreamToolCallEvent, StreamFinishEvent];
@@ -76,8 +76,8 @@ for (const drift of [false, true]) test(`model import reference is durable befor
 
 test("generate preserves explicit references, isolates requests and respects tool availability", async () => {
   const { z } = await import("zod");
-  const { createModelEditReferences } = await import("../src/runtime/model-edit-references.js");
-  const { fileDigestSchema } = await import("../src/workspace/edit-contracts.js");
+  const { createModelEditReferences } = await import("../packages/core/src/runtime/model-edit-references.js");
+  const { fileDigestSchema } = await import("../packages/core/src/workspace/edit-contracts.js");
   const original = { name: "apply_environment_patch", schema: z.strictObject({ patchId: fileDigestSchema }), execute: async () => null };
   const verified = { name: "verify_and_apply_environment_patch", schema: z.strictObject({ patchId: fileDigestSchema, command: z.literal("bun"), args: z.array(z.string()) }), execute: async () => null };
   const reviewed = `sha256:${"a".repeat(64)}`, explicit = `sha256:${"b".repeat(64)}`;
@@ -137,8 +137,8 @@ for (const drift of [false, true]) test(`delegated implementer binds references 
 
 test("reference refreshes discard stale evidence and consume only matching read results", async () => {
   const { z } = await import("zod");
-  const { createModelEditReferences } = await import("../src/runtime/model-edit-references.js");
-  const { editChangesSchema, fileDigestSchema } = await import("../src/workspace/edit-contracts.js");
+  const { createModelEditReferences } = await import("../packages/core/src/runtime/model-edit-references.js");
+  const { editChangesSchema, fileDigestSchema } = await import("../packages/core/src/workspace/edit-contracts.js");
   const tools = {
     apply_reviewed_edits: { name: "apply_reviewed_edits", schema: z.strictObject({ changes: editChangesSchema }), execute: async () => null },
     apply_environment_patch: { name: "apply_environment_patch", schema: z.strictObject({ patchId: fileDigestSchema }), execute: async () => null }
@@ -217,8 +217,8 @@ test("missing hidden digest guides a real run to reread and obtain an exact appr
 
 test("hidden patch validation receives provider-only inspection guidance, explicit references do not", async () => {
   const { z } = await import("zod");
-  const { createModelEditReferences } = await import("../src/runtime/model-edit-references.js");
-  const { fileDigestSchema } = await import("../src/workspace/edit-contracts.js");
+  const { createModelEditReferences } = await import("../packages/core/src/runtime/model-edit-references.js");
+  const { fileDigestSchema } = await import("../packages/core/src/workspace/edit-contracts.js");
   const tools = { apply_environment_patch: { name: "apply_environment_patch", schema: z.strictObject({ patchId: fileDigestSchema }), execute: async () => null } };
   for (const input of [{}, { patchId: "invalid" }]) {
     const history: ModelMessage[] = [
@@ -292,9 +292,9 @@ for (const drift of [false, true]) test(`rejected multi-file candidate retries w
 });
 
 test("retained candidate survives a new middleware instance and cannot bypass missing reads or hidden tools", async () => {
-  const { createModelEditReferences } = await import("../src/runtime/model-edit-references.js");
+  const { createModelEditReferences } = await import("../packages/core/src/runtime/model-edit-references.js");
   const { z } = await import("zod");
-  const { editProposalInputSchema } = await import("../src/workspace/edit-contracts.js");
+  const { editProposalInputSchema } = await import("../packages/core/src/workspace/edit-contracts.js");
   const definition = {name:"apply_reviewed_edits",schema:editProposalInputSchema,execute:async()=>null};
   const tools={apply_reviewed_edits:definition,read_file:{name:"read_file",schema:z.object({path:z.string()}),execute:async()=>null}};
   const candidate=turn("saved","apply_reviewed_edits",{changes:[{path:"a.txt",content:"retained"}]})[0].toolCall;
@@ -344,7 +344,7 @@ for (const scenario of ["missing-digest", "missing-changes", "invalid-content"] 
 
 
 test("verified edit recovery rejects missing command even alongside missing digests", async () => {
-  const { canRecoverEditReferences } = await import("../src/runtime/model-edit-references.js");
+  const { canRecoverEditReferences } = await import("../packages/core/src/runtime/model-edit-references.js");
   const call = turn("candidate", "verify_and_apply_reviewed_edits", { changes: [{ path: "a.txt", content: "after" }] })[0].toolCall;
   const digest = { code: "invalid_type", path: ["changes", 0, "expectedDigest"] };
   const command = { code: "invalid_type", path: ["command"] };

@@ -1,0 +1,549 @@
+{
+  "reason": "The v1 correction fixture incorrectly expected hold while its own total <= threshold rule requires release. Raw paid campaign and original grades are immutable. This separate deterministic regrade corrects that oracle only; policy failures and missing responses remain failures.",
+  "records": [
+    {
+      "pair": 1,
+      "model": "gpt-6-luna",
+      "variant": "before",
+      "originalQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": false,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "correctedExpected": {
+        "code": "5060e3b90952c24d",
+        "total": 1125,
+        "threshold": 1128,
+        "decision": "release",
+        "policy": "bun-only",
+        "revision": 2
+      },
+      "correctedQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "completed": true,
+      "tokensKnown": 24587,
+      "unknownUsageCalls": 0
+    },
+    {
+      "pair": 1,
+      "model": "gpt-6-luna",
+      "variant": "after",
+      "originalQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": false,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "correctedExpected": {
+        "code": "5060e3b90952c24d",
+        "total": 1125,
+        "threshold": 1128,
+        "decision": "release",
+        "policy": "bun-only",
+        "revision": 2
+      },
+      "correctedQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "completed": true,
+      "tokensKnown": 24109,
+      "unknownUsageCalls": 0
+    },
+    {
+      "pair": 2,
+      "model": "gpt-6-luna",
+      "variant": "after",
+      "originalQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": false,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "correctedExpected": {
+        "code": "ce1b81e246db4a04",
+        "total": 1210,
+        "threshold": 1213,
+        "decision": "release",
+        "policy": "bun-only",
+        "revision": 2
+      },
+      "correctedQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "completed": true,
+      "tokensKnown": 24896,
+      "unknownUsageCalls": 0
+    },
+    {
+      "pair": 2,
+      "model": "gpt-6-luna",
+      "variant": "before",
+      "originalQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": false,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "correctedExpected": {
+        "code": "ce1b81e246db4a04",
+        "total": 1210,
+        "threshold": 1213,
+        "decision": "release",
+        "policy": "bun-only",
+        "revision": 2
+      },
+      "correctedQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "completed": true,
+      "tokensKnown": 23679,
+      "unknownUsageCalls": 0
+    },
+    {
+      "pair": 3,
+      "model": "gpt-6-luna",
+      "variant": "before",
+      "originalQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "correctedExpected": {
+        "code": "e82df9dafec3b61d",
+        "total": 714,
+        "threshold": 714,
+        "decision": "release",
+        "policy": "bun-only",
+        "revision": 2
+      },
+      "correctedQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "completed": true,
+      "tokensKnown": 24928,
+      "unknownUsageCalls": 0
+    },
+    {
+      "pair": 3,
+      "model": "gpt-6-luna",
+      "variant": "after",
+      "originalQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "correctedExpected": {
+        "code": "e82df9dafec3b61d",
+        "total": 714,
+        "threshold": 714,
+        "decision": "release",
+        "policy": "bun-only",
+        "revision": 2
+      },
+      "correctedQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "completed": true,
+      "tokensKnown": 23929,
+      "unknownUsageCalls": 0
+    },
+    {
+      "pair": 4,
+      "model": "gpt-6-luna",
+      "variant": "after",
+      "originalQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "correctedExpected": {
+        "code": "5692a365dfc22ff2",
+        "total": 766,
+        "threshold": 766,
+        "decision": "release",
+        "policy": "bun-only",
+        "revision": 2
+      },
+      "correctedQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "completed": true,
+      "tokensKnown": 31529,
+      "unknownUsageCalls": 0
+    },
+    {
+      "pair": 4,
+      "model": "gpt-6-luna",
+      "variant": "before",
+      "originalQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "correctedExpected": {
+        "code": "5692a365dfc22ff2",
+        "total": 766,
+        "threshold": 766,
+        "decision": "release",
+        "policy": "bun-only",
+        "revision": 2
+      },
+      "correctedQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": false,
+          "revision": true
+        }
+      },
+      "completed": true,
+      "tokensKnown": 23581,
+      "unknownUsageCalls": 0
+    },
+    {
+      "pair": 5,
+      "model": "gpt-6.1-sol",
+      "variant": "before",
+      "originalQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": false,
+          "policy": true,
+          "revision": true
+        }
+      },
+      "correctedExpected": {
+        "code": "5060e3b90952c24d",
+        "total": 1125,
+        "threshold": 1128,
+        "decision": "release",
+        "policy": "bun-only",
+        "revision": 2
+      },
+      "correctedQuality": {
+        "passed": true,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": true,
+          "revision": true
+        }
+      },
+      "completed": true,
+      "tokensKnown": 38666,
+      "unknownUsageCalls": 0
+    },
+    {
+      "pair": 5,
+      "model": "gpt-6.1-sol",
+      "variant": "after",
+      "originalQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": false,
+          "policy": true,
+          "revision": true
+        }
+      },
+      "correctedExpected": {
+        "code": "5060e3b90952c24d",
+        "total": 1125,
+        "threshold": 1128,
+        "decision": "release",
+        "policy": "bun-only",
+        "revision": 2
+      },
+      "correctedQuality": {
+        "passed": true,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": true,
+          "revision": true
+        }
+      },
+      "completed": true,
+      "tokensKnown": 39020,
+      "unknownUsageCalls": 0
+    },
+    {
+      "pair": 6,
+      "model": "gpt-6.1-sol",
+      "variant": "after",
+      "originalQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": false,
+          "policy": true,
+          "revision": true
+        }
+      },
+      "correctedExpected": {
+        "code": "ce1b81e246db4a04",
+        "total": 1210,
+        "threshold": 1213,
+        "decision": "release",
+        "policy": "bun-only",
+        "revision": 2
+      },
+      "correctedQuality": {
+        "passed": true,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": true,
+          "revision": true
+        }
+      },
+      "completed": true,
+      "tokensKnown": 39017,
+      "unknownUsageCalls": 0
+    },
+    {
+      "pair": 6,
+      "model": "gpt-6.1-sol",
+      "variant": "before",
+      "originalQuality": {
+        "passed": false,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": false,
+          "policy": true,
+          "revision": true
+        }
+      },
+      "correctedExpected": {
+        "code": "ce1b81e246db4a04",
+        "total": 1210,
+        "threshold": 1213,
+        "decision": "release",
+        "policy": "bun-only",
+        "revision": 2
+      },
+      "correctedQuality": {
+        "passed": true,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": true,
+          "revision": true
+        }
+      },
+      "completed": true,
+      "tokensKnown": 46467,
+      "unknownUsageCalls": 0
+    },
+    {
+      "pair": 7,
+      "model": "gpt-6.1-sol",
+      "variant": "before",
+      "originalQuality": {
+        "passed": true,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": true,
+          "revision": true
+        }
+      },
+      "correctedExpected": {
+        "code": "e82df9dafec3b61d",
+        "total": 714,
+        "threshold": 714,
+        "decision": "release",
+        "policy": "bun-only",
+        "revision": 2
+      },
+      "correctedQuality": {
+        "passed": true,
+        "exactKeys": true,
+        "fields": {
+          "code": true,
+          "total": true,
+          "threshold": true,
+          "decision": true,
+          "policy": true,
+          "revision": true
+        }
+      },
+      "completed": true,
+      "tokensKnown": 38631,
+      "unknownUsageCalls": 0
+    },
+    {
+      "pair": 7,
+      "model": "gpt-6.1-sol",
+      "variant": "after",
+      "originalQuality": {
+        "passed": false
+      },
+      "correctedExpected": {
+        "code": "e82df9dafec3b61d",
+        "total": 714,
+        "threshold": 714,
+        "decision": "release",
+        "policy": "bun-only",
+        "revision": 2
+      },
+      "correctedQuality": {
+        "passed": false,
+        "exactKeys": false,
+        "fields": {}
+      },
+      "completed": false,
+      "tokensKnown": 31477,
+      "unknownUsageCalls": 1
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import { lstat, realpath } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-type HarnessRuntime = typeof import("../src/index.js");
+type HarnessRuntime = typeof import("../packages/core/src/index.js");
 const functions = ["createHarness", "runHarness", "providerDescriptor", "providerAvailability", "parseProvider",
   "createEditProposal", "inspectHarnessRun", "createHarnessRouteModels", "resolveHarnessModelRoutes",
   "HarnessConfigError", "HarnessExecutionError"] as const;
@@ -13,7 +13,7 @@ export const loadLiveSmokeRuntime = async (env: NodeJS.ProcessEnv = process.env)
   const requested = env.ZHIVEX_HARNESS_LIVE_RUNTIME?.trim();
   if (!requested) {
     assert(env.ZHIVEX_HARNESS_LIVE_REQUIRE_ARTIFACT !== "1", "Live release certification requires an artifact runtime");
-    return import("../src/index.js");
+    return import("../packages/core/src/index.js");
   }
   assert(path.isAbsolute(requested), "Live artifact runtime must be an absolute path");
   const entry = await lstat(requested);

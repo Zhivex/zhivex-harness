@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test";
-import { handleConsoleCompaction, type ConsoleCompactionDependencies } from "../src/cli/console/console-compaction.js";
-import { bundledModelCatalog } from "../src/models/catalog.js";
-import { parseCliArgs, type CliOptions } from "../src/cli/arguments.js";
-import type { HarnessConfig } from "../src/runtime/config.js";
-import { consoleCommands, formatConsoleHelp } from "../src/cli/console/console-commands.js";
+import { handleConsoleCompaction, type ConsoleCompactionDependencies } from "../packages/core/src/cli/console/console-compaction.js";
+import { bundledModelCatalog } from "../packages/core/src/models/catalog.js";
+import { parseCliArgs, type CliOptions } from "../packages/core/src/cli/arguments.js";
+import type { HarnessConfig } from "../packages/core/src/runtime/config.js";
+import { consoleCommands, formatConsoleHelp } from "../packages/core/src/cli/console/console-commands.js";
 
 function fixture(active = false) {
   const updates: CliOptions[] = [];

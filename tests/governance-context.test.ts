@@ -1,7 +1,7 @@
 import { expect,test } from 'bun:test';
-import { governanceReference,projectGovernanceEnvelopes,readGovernanceSession } from '../src/persistence/governance-context.js';
-import { createChangeEnvelope } from '../src/workspace/change-envelope.js';
-import type { CliSession } from '../src/persistence/sessions.js';
+import { governanceReference,projectGovernanceEnvelopes,readGovernanceSession } from '../packages/core/src/persistence/governance-context.js';
+import { createChangeEnvelope } from '../packages/core/src/workspace/change-envelope.js';
+import type { CliSession } from '../packages/core/src/persistence/sessions.js';
 const sha='sha256:'+'a'.repeat(64);
 const now=Date.parse('2026-09-29T12:00:00.000Z');
 const session=()=>({sessionId:'session-private',revision:1,runs:[{runId:'run'}]} as CliSession);

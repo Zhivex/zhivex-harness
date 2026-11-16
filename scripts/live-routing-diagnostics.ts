@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { HARNESS_ERROR_CODES, HarnessError } from "../src/runtime/errors.js";
+import { HARNESS_ERROR_CODES, HarnessError } from "../packages/core/src/runtime/errors.js";
 
 const category = z.enum(["configuration", "usage", "workspace", "state", "provider", "approval", "execution"]);
 const operational = z.object({ code: z.enum(HARNESS_ERROR_CODES), category, retryable: z.boolean() });

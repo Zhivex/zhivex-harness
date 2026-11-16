@@ -1,6 +1,6 @@
 import {test,expect} from "bun:test";
-import {ActivityHistory,formatAppliedFiles} from "../src/cli/terminal/activity-history.js";
-import {compactToolResult} from "../src/cli/terminal/tool-activity.js";
+import {ActivityHistory,formatAppliedFiles} from "../packages/core/src/cli/terminal/activity-history.js";
+import {compactToolResult} from "../packages/core/src/cli/terminal/tool-activity.js";
 
 test("retrospective history is bounded and excludes model reasoning and raw tool payloads",()=>{
  const history=new ActivityHistory();

@@ -6,10 +6,10 @@ import os from 'node:os';
 import { performance } from 'node:perf_hooks';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import type { JsonValue, StreamEvent } from '@zhivex-ai/core';
-import { runPortableProcess } from '../../src/execution/process-runtime.js';
+import { runPortableProcess } from '../../packages/core/src/execution/process-runtime.js';
 import { agentFixture, digest, TASK_BUDGET, SYNTHETIC_MODEL_SETTINGS, type MinimumFixture } from './protocol.js';
 
-type Engine = typeof import('../../src/engine/index.js');
+type Engine = typeof import('../../packages/core/src/engine/index.js');
 export interface MinimumAttempt {
   fixtureId: string; variant: string; repetition: number; attempt: number; mode: 'reference' | 'empty';
   runCompleted: boolean; initialPublicCheckFailed: boolean; oraclePassed: boolean; publicCheckPassed: boolean; scopePassed: boolean; protectedFilesUnchanged: boolean;

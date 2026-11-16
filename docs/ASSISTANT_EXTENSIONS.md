@@ -6,15 +6,12 @@ plugin installation. Configuration is a local operator decision.
 
 ## OpenAI-compatible providers
 
-Editable example: [compatible-calendar.json](../packages/assistant/examples/compatible-calendar.json).
+Editable example: [compatible-calendar.json](../examples/assistant/compatible-calendar.json).
 Replace endpoint/model and declare only verified model capabilities.
 Store the secret in the variable named by `apiKeyEnv`, never in JSON.
 After preparing the local Harness candidate and building Assistant:
 
-```sh
-bun run --cwd packages/assistant start --directory "$HOME/.zhx-compatible" --owner local-owner --config /path/assistant.json --telegram-owner 123456789 --doctor
-bun run --cwd packages/assistant start --directory "$HOME/.zhx-compatible" --owner local-owner --config /path/assistant.json --telegram-owner 123456789
-```
+Use the shared application through Electron or the commands documented in [CLI](CLI.md). The standalone Assistant launcher has been retired.
 
 Connect OAuth before starting, following the [pilot guide](ASSISTANT_PILOT.md),
 using `--calendar-connect` without `--config`. Calendar configuration still
@@ -53,7 +50,7 @@ if the file does not define a provider.
 
 ## Compose Calendar and other tools
 
-[composed-modules.json](../packages/assistant/examples/composed-modules.json) shows
+[composed-modules.json](../examples/assistant/composed-modules.json) shows
 Calendar and an HTTP MCP module. Replace endpoint, tools and credential reference
 with values from your own integration. Run with `--config` and, if
 JSON does not define a provider, the usual `--provider`/`--model` flags.

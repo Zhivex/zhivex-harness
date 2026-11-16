@@ -16,7 +16,7 @@ updates:
   # Desktop is paused. Keep the directory entry so the pause is explicit,
   # and open no dependency update pull requests for it.
   - package-ecosystem: bun
-    directory: /desktop
+    directory: /packages/desktop
     schedule:
       interval: weekly
       day: monday

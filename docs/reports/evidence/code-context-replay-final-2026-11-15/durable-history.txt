@@ -1,0 +1,16 @@
+bun test v1.4.3 (c6da4a4d3)
+
+tests/durable-history.test.ts:
+Durable history regression: {
+  reads: 200,
+  compactions: 99,
+  hydratedBytes: 10972429,
+  checkpointBytes: 45249,
+}
+(pass) long harness run survives compaction, reopen and a portable backup [34215.06ms]
+(pass) state-limit diagnostic is specific and does not leak arbitrary error text [0.25ms]
+
+ 2 pass
+ 0 fail
+ 15 expect() calls
+Ran 2 tests across 1 file. [34.33s]

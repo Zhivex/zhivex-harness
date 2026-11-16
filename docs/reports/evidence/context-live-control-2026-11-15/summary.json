@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 1,
+  "stateless": true,
+  "stopReason": "planned-completion",
+  "plannedPairs": 2,
+  "attemptedTasks": 4,
+  "reportedTokens": 34110,
+  "groups": [
+    {
+      "model": "gpt-6-luna",
+      "variants": [
+        {
+          "variant": "before",
+          "tasks": 1,
+          "correct": 0,
+          "completed": 1,
+          "knownUsage": 1,
+          "usageMatches": 1,
+          "inputTokens": 8055,
+          "outputTokens": 263,
+          "totalTokens": 8318,
+          "cachedInputTokens": 0,
+          "uncachedInputTokens": 8055,
+          "reasoningTokens": 163,
+          "projectedRequests": 0,
+          "calls": 3,
+          "compactions": 0,
+          "recoveryCalls": 0,
+          "totalTaskMs": 5569.224875,
+          "contextMs": 1.6081239999998616,
+          "qualityFields": [
+            {
+              "fixture": "leading-context-control",
+              "repetition": 0,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": false,
+                "decision": false,
+                "policy": true,
+                "revision": false
+              }
+            }
+          ]
+        },
+        {
+          "variant": "after",
+          "tasks": 1,
+          "correct": 0,
+          "completed": 1,
+          "knownUsage": 1,
+          "usageMatches": 1,
+          "inputTokens": 7503,
+          "outputTokens": 305,
+          "totalTokens": 7808,
+          "cachedInputTokens": 0,
+          "uncachedInputTokens": 7503,
+          "reasoningTokens": 170,
+          "projectedRequests": 1,
+          "calls": 4,
+          "compactions": 0,
+          "recoveryCalls": 0,
+          "totalTaskMs": 6785.068042000001,
+          "contextMs": 1.650792000000365,
+          "qualityFields": [
+            {
+              "fixture": "leading-context-control",
+              "repetition": 0,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": false,
+                "decision": false,
+                "policy": true,
+                "revision": false
+              }
+            }
+          ]
+        }
+      ],
+      "pairedTasks": 1,
+      "inputReductionPercent": 6.852886405959035,
+      "totalTokenReductionPercent": 6.131281558066847,
+      "latency": {
+        "pairs": 1,
+        "beforeMeanMs": 5569.224875,
+        "afterMeanMs": 6785.068042000001,
+        "beforeMedianMs": 5569.224875,
+        "afterMedianMs": 6785.068042000001,
+        "meanReductionMs": -1215.843167000001,
+        "medianReductionMs": -1215.843167000001,
+        "meanReduction95CI": [
+          -1215.843167000001,
+          -1215.843167000001
+        ],
+        "geometricAfterBeforeRatio": 1.2183146118695738,
+        "ratio95CI": [
+          1.2183146118695738,
+          1.2183146118695738
+        ],
+        "fasterPairs": 0
+      },
+      "qualityRegressions": [],
+      "pairs": [
+        {
+          "pair": 1,
+          "beforeCorrect": false,
+          "afterCorrect": false,
+          "beforeTokens": 8318,
+          "afterTokens": 7808,
+          "beforeMs": 5569.224875,
+          "afterMs": 6785.068042000001
+        }
+      ]
+    },
+    {
+      "model": "gpt-6.1-sol",
+      "variants": [
+        {
+          "variant": "before",
+          "tasks": 1,
+          "correct": 0,
+          "completed": 1,
+          "knownUsage": 1,
+          "usageMatches": 1,
+          "inputTokens": 7935,
+          "outputTokens": 138,
+          "totalTokens": 8073,
+          "cachedInputTokens": 0,
+          "uncachedInputTokens": 7935,
+          "reasoningTokens": 21,
+          "projectedRequests": 0,
+          "calls": 3,
+          "compactions": 0,
+          "recoveryCalls": 0,
+          "totalTaskMs": 6249.602708000002,
+          "contextMs": 1.2709589999976743,
+          "qualityFields": [
+            {
+              "fixture": "leading-context-control",
+              "repetition": 0,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": false,
+                "decision": false,
+                "policy": true,
+                "revision": false
+              }
+            }
+          ]
+        },
+        {
+          "variant": "after",
+          "tasks": 1,
+          "correct": 0,
+          "completed": 1,
+          "knownUsage": 1,
+          "usageMatches": 1,
+          "inputTokens": 9695,
+          "outputTokens": 216,
+          "totalTokens": 9911,
+          "cachedInputTokens": 0,
+          "uncachedInputTokens": 9695,
+          "reasoningTokens": 40,
+          "projectedRequests": 2,
+          "calls": 4,
+          "compactions": 0,
+          "recoveryCalls": 1,
+          "totalTaskMs": 8990.306666999999,
+          "contextMs": 2.283583999998882,
+          "qualityFields": [
+            {
+              "fixture": "leading-context-control",
+              "repetition": 0,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": false,
+                "decision": false,
+                "policy": true,
+                "revision": false
+              }
+            }
+          ]
+        }
+      ],
+      "pairedTasks": 1,
+      "inputReductionPercent": -22.18021424070573,
+      "totalTokenReductionPercent": -22.76724885420538,
+      "latency": {
+        "pairs": 1,
+        "beforeMeanMs": 6249.602708000002,
+        "afterMeanMs": 8990.306666999999,
+        "beforeMedianMs": 6249.602708000002,
+        "afterMedianMs": 8990.306666999999,
+        "meanReductionMs": -2740.7039589999968,
+        "medianReductionMs": -2740.7039589999968,
+        "meanReduction95CI": [
+          -2740.7039589999968,
+          -2740.7039589999968
+        ],
+        "geometricAfterBeforeRatio": 1.4385405100218085,
+        "ratio95CI": [
+          1.4385405100218085,
+          1.4385405100218085
+        ],
+        "fasterPairs": 0
+      },
+      "qualityRegressions": [],
+      "pairs": [
+        {
+          "pair": 2,
+          "beforeCorrect": false,
+          "afterCorrect": false,
+          "beforeTokens": 8073,
+          "afterTokens": 9911,
+          "beforeMs": 6249.602708000002,
+          "afterMs": 8990.306666999999
+        }
+      ]
+    }
+  ],
+  "caveats": [
+    "Small paired sample; latency confidence intervals are descriptive, not production certification.",
+    "Fresh cache routing keys do not guarantee zero cache hits: reported cached usage is retained.",
+    "Failed tasks and extra recovery calls remain in all-attempt totals; no retries.",
+    "Task latency includes context/tool/persistence work; network/provider variance dominates millisecond local changes.",
+    "Exact fixture grading checks selected context, not universal semantic quality."
+  ]
+}

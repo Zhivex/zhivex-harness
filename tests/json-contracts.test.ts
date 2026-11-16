@@ -9,7 +9,7 @@ import {
   harnessErrorDocument,
   parseCliJsonDocument,
   parseCliJsonLineDocument
-} from "../src/index.js";
+} from "../packages/core/src/index.js";
 
 const fixture = async (name: string) => JSON.parse(await readFile(
   path.join(import.meta.dir, "..", "fixtures", "contracts", "v1", name),

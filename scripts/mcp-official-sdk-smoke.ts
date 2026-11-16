@@ -6,7 +6,7 @@ import { z } from "zod";
 import {
   createHarnessMcpTools,
   normalizeHarnessMcpConfiguration
-} from "../src/integrations/mcp.js";
+} from "../packages/core/src/integrations/mcp.js";
 
 const authorization = "Bearer official-sdk-loopback-fixture";
 let calls = 0;

@@ -3,9 +3,9 @@ import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness } from "../src/runtime/harness.js";
-import { runHarnessDurableReviewGroup, inspectHarnessReviewGroup, cancelHarnessReviewGroup } from "../src/runtime/durable-review-group.js";
-import { listHarnessRuns, inspectHarnessRun, cleanupHarnessRuns } from "../src/persistence/operations.js";
+import { createHarness } from "../packages/core/src/runtime/harness.js";
+import { runHarnessDurableReviewGroup, inspectHarnessReviewGroup, cancelHarnessReviewGroup } from "../packages/core/src/runtime/durable-review-group.js";
+import { listHarnessRuns, inspectHarnessRun, cleanupHarnessRuns } from "../packages/core/src/persistence/operations.js";
 const receipt = { text: "evidence", messages: [{ role: "assistant" as const, parts: [{ type: "text" as const, text: "evidence" }] }], finishReason: "stop" as const, usage: { inputTokens: 3, outputTokens: 2, totalTokens: 5 } };
 async function fixture(workspace?: string) {
   workspace ??= await mkdtemp(path.join(os.tmpdir(), "review-retention-"));

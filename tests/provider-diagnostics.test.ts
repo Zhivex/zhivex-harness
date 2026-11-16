@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { providerDiagnostic } from "../src/runtime/provider-diagnostics.js";
-import { sanitizedErrorDetails } from "../src/runtime/error-diagnostics.js";
+import { providerDiagnostic } from "../packages/core/src/runtime/provider-diagnostics.js";
+import { sanitizedErrorDetails } from "../packages/core/src/runtime/error-diagnostics.js";
 import { inspectProviderResponse } from "../scripts/time-to-safe-fix-model-observer.js";
 
 for (const [body, status, reason, parameter] of [

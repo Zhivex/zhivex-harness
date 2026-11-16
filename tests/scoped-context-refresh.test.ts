@@ -3,8 +3,8 @@ import { link, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { discoverHarnessScopedContext, refreshHarnessScopedContext, refreshAndDiscoverHarnessScopedContext, validateHarnessScopedContext,
-  type HarnessScopedContextState } from "../src/context/scoped-context.js";
-import { MAX_HARNESS_CONTEXT_FILE_BYTES } from "../src/context/context-engineering.js";
+  type HarnessScopedContextState } from "../packages/core/src/context/scoped-context.js";
+import { MAX_HARNESS_CONTEXT_FILE_BYTES } from "../packages/core/src/context/context-engineering.js";
 
 const fixture = async (run: (workspace: { root: string }) => Promise<void>) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-scoped-refresh-"));

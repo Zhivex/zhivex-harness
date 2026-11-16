@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { createTextMessage, wrapLanguageModel, type ModelMessage } from "@zhivex-ai/core";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
 
 // Offline replay of scripts/live-continuity-smoke.ts (v1.6.0 live certification,
 // meta phase 5 and qwen phase 2): after compaction the model repeated its

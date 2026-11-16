@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import * as publicApi from "../src/index.js";
+import * as publicApi from "../packages/core/src/index.js";
 import {
   CLI_CHANGES_COMMANDS,
   CLI_COMMANDS,
@@ -9,10 +9,10 @@ import {
   CLI_RUNS_COMMANDS,
   CLI_SESSIONS_COMMANDS,
   CLI_STATE_COMMANDS
-} from "../src/cli.js";
-import { CLI_COMMAND_OPTION_CONTRACTS } from "../src/cli/cli-options.js";
-import { CLI_OPTION_NAMES } from "../src/cli/cli-options.js";
-import { readRegularFileNoFollow } from "../src/workspace/file-security.js";
+} from "../packages/core/src/cli.js";
+import { CLI_COMMAND_OPTION_CONTRACTS } from "../packages/core/src/cli/cli-options.js";
+import { CLI_OPTION_NAMES } from "../packages/core/src/cli/cli-options.js";
+import { readRegularFileNoFollow } from "../packages/core/src/workspace/file-security.js";
 import {
   assertStableApiSignatureSnapshot,
   buildStableApiSignatureSnapshot,
@@ -61,7 +61,7 @@ const evidenceIsCurrent = (value: unknown, maxAgeDays: number) => {
 };
 
 const readJson = async (relativePath: string): Promise<JsonObject> => JSON.parse(
-  (await readRegularFileNoFollow(path.join(workspace, relativePath), {
+  (await readRegularFileNoFollow(path.join(workspace, relativePath.replace(/^src\//, "packages/core/src/").replace(/^desktop\//, "packages/desktop/")), {
     label: `1.0 readiness source ${relativePath}`,
     maxBytes: 4 * 1024 * 1024
   })).contents.toString("utf8")
@@ -73,7 +73,7 @@ const existingPath = async (relativePath: unknown, label: string) => {
     return;
   }
   try {
-    await readRegularFileNoFollow(path.join(workspace, relativePath), {
+    await readRegularFileNoFollow(path.join(workspace, relativePath.replace(/^src\//, "packages/core/src/").replace(/^desktop\//, "packages/desktop/")), {
       label,
       maxBytes: 8 * 1024 * 1024
     });
@@ -184,7 +184,7 @@ if ([...classifiedExports].sort().join("\n") !== expectedExports.join("\n")) {
   );
 }
 const publicIndexSource = (
-  await readRegularFileNoFollow(path.join(workspace, "src/index.ts"), {
+  await readRegularFileNoFollow(path.join(workspace, "packages/core/src/index.ts"), {
     label: "public source index",
     maxBytes: 2 * 1024 * 1024
   })
@@ -193,7 +193,7 @@ const actualTypeExports = [...publicIndexSource.matchAll(/export type\s*\{([^}]*
   .flatMap((match) => match[1]!.split(",").map((entry) => entry.trim()).filter(Boolean))
   .sort();
 if (new Set(actualTypeExports).size !== actualTypeExports.length) {
-  failures.push("src/index.ts contains duplicate public type exports");
+  failures.push("packages/core/src/index.ts contains duplicate public type exports");
 }
 if (expectedTypeExports.join("\n") !== actualTypeExports.join("\n")) {
   const expected = new Set(expectedTypeExports);

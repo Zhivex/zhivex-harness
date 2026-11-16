@@ -2,8 +2,8 @@ import { expect, test } from 'bun:test';
 import { tool } from '@zhivex-ai/core';
 import { z } from 'zod';
 import { createInMemoryAgentRunStore } from '@zhivex-ai/agents/ops';
-import { issueMcpHostSession, combineMcpHostSessions, resolveMcpHostSession, closeMcpHostSession } from '../src/integrations/mcp-host-session.js';
-import type { McpStdioLaunchProposal } from '../src/integrations/mcp-stdio-admission.js';
+import { issueMcpHostSession, combineMcpHostSessions, resolveMcpHostSession, closeMcpHostSession } from '../packages/core/src/integrations/mcp-host-session.js';
+import type { McpStdioLaunchProposal } from '../packages/core/src/integrations/mcp-stdio-admission.js';
 const digest = `sha256:${'a'.repeat(64)}`;
 const proposal: McpStdioLaunchProposal = { schemaVersion: 1, serverId: 'docs', boundary: 'oci', image: `example/server@${digest}`,
   executable: '/server', args: [], protocolVersion: '2025-11-25', workingDirectory: '.', snapshotDigest: digest,

@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { createHarness } from '../src/runtime/harness.js';
-import { createHarnessClientAdapter } from '../src/client/adapter.js';
-import { parseCliArgs } from '../src/cli/arguments.js';
+import { createHarness } from '../packages/core/src/runtime/harness.js';
+import { createHarnessClientAdapter } from '../packages/core/src/client/adapter.js';
+import { parseCliArgs } from '../packages/core/src/cli/arguments.js';
 
 test('checkpoint CLI requires explicit restore identity and rejects unrelated authority options', () => {
   expect(parseCliArgs(['checkpoints', 'apply', 'operation', 'sha256:digest']).checkpointArguments).toEqual(['operation', 'sha256:digest']);
@@ -34,7 +34,7 @@ test('real CLI processes review and restore a persisted checkpoint without a pro
     if (!result.ok) throw new Error(result.error.code); return result.data;
   };
   const cli = async (args: string[], expectedCode = 0) => {
-    const process = Bun.spawn([Bun.which('bun')!, fileURLToPath(new URL('../src/cli.ts', import.meta.url)), 'checkpoints', ...args,
+    const process = Bun.spawn([Bun.which('bun')!, fileURLToPath(new URL('../packages/core/src/cli.ts', import.meta.url)), 'checkpoints', ...args,
       '--workspace', root, '--state-dir', stateDirectory, '--json'], { cwd: root, env: {}, stdout: 'pipe', stderr: 'pipe' });
     const [stdout, stderr, code] = await Promise.all([new Response(process.stdout).text(), new Response(process.stderr).text(), process.exited]);
     if (expectedCode === 0) { expect(stderr).toBe(''); expect(code).toBe(0); return JSON.parse(stdout); }

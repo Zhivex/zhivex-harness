@@ -3,7 +3,7 @@ import { mkdtemp, writeFile, readFile, rm, mkdir } from 'node:fs/promises';
 import { agentFixture, loadMinimumCohort, plannedPaidMatrix, digest } from '../scripts/minimum-evals/protocol.js';
 import { blindMinimumReview, validateMinimumFixture, runMinimumAttempt, gradeMinimumSubmission } from '../scripts/minimum-evals/runner.js';
 import { writePublicRegressionCohort } from '../scripts/minimum-evals/public-regression-fixtures.js';
-import * as engine from '../src/engine/index.js';
+import * as engine from '../packages/core/src/engine/index.js';
 
 let publicDirectory: string;
 beforeAll(async () => { publicDirectory = await mkdtemp('/tmp/har-public-eval-contract-'); await writePublicRegressionCohort(publicDirectory); });

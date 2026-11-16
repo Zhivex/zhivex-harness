@@ -3,10 +3,10 @@ import { chmod, mkdtemp, mkdir, readFile, readdir, rm, stat, symlink, writeFile 
 import os from "node:os";
 import path from "node:path";
 
-import { createEditProposal } from "../src/workspace/edit-contracts.js";
-import { runPortableProcess } from "../src/execution/process-runtime.js";
-import { textGuards } from "../src/workspace/text-integrity.js";
-import { Workspace } from "../src/workspace/workspace.js";
+import { createEditProposal } from "../packages/core/src/workspace/edit-contracts.js";
+import { runPortableProcess } from "../packages/core/src/execution/process-runtime.js";
+import { textGuards } from "../packages/core/src/workspace/text-integrity.js";
+import { Workspace } from "../packages/core/src/workspace/workspace.js";
 
 const temporaryDirectories: string[] = [];
 

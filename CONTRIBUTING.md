@@ -10,7 +10,7 @@ bun run dev
 
 `dev` builds and starts the console under Node, loading `.env` when present.
 `bun run start` opens the existing build without rebuilding or loading `.env`.
-See [Desktop development](desktop/DEVELOPMENT.md) for the separate app.
+See [Desktop development](packages/desktop/DEVELOPMENT.md) for the separate app.
 See [Source architecture](docs/ARCHITECTURE.md) for module ownership, Desktop
 integration surfaces and the enforced dependency rules.
 
@@ -22,8 +22,8 @@ Run the complete local gate with:
 bun install --frozen-lockfile --ignore-scripts
 # macOS: the full test suite also exercises the native Desktop worker.
 if [ "$(uname -s)" = Darwin ]; then
-  bun install --cwd desktop --frozen-lockfile --ignore-scripts
-  node desktop/node_modules/electron/install.js
+  bun install --cwd packages/desktop --frozen-lockfile --ignore-scripts
+  node packages/desktop/node_modules/electron/install.js
 fi
 bun run check
 bun audit

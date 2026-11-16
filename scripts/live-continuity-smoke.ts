@@ -1,5 +1,5 @@
 import { CONTINUITY_PROVIDER_ATTEMPTS, continuityPhaseShouldRetry, createContinuityEvidence, continuityGateOutcome, continuityRetrySummaryLines, runContinuityProviderWithRetry, selectContinuityProviders } from './live-continuity-contract.js';
-import { transientBackoffMs } from '../src/runtime/provider-transient.js';
+import { transientBackoffMs } from '../packages/core/src/runtime/provider-transient.js';
 /** Opt-in live conversation continuity across process restarts; no repository mutation. */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -8,7 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { createTextMessage, type JsonValue, type ModelMessage } from "@zhivex-ai/core";
 import { loadLiveSmokeRuntime } from "./live-smoke-runtime.js";
-import type { HarnessProvider } from "../src/runtime/config.js";
+import type { HarnessProvider } from "../packages/core/src/runtime/config.js";
 import { sanitizeOperationalError } from "./release-diagnostics.js";
 
 assert.equal(process.env.ZHIVEX_HARNESS_LIVE, "1", "Set ZHIVEX_HARNESS_LIVE=1 to authorize bounded provider requests.");

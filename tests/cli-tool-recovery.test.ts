@@ -3,8 +3,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { cliToolExecution } from "../src/cli/tool-execution.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { cliToolExecution } from "../packages/core/src/cli/tool-execution.js";
 
 for (const scenario of ["recover", "stop", "budget"] as const) {
   test(`CLI unknown tool recovery: ${scenario}`, async () => {

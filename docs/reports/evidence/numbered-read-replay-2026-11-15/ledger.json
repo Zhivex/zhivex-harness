@@ -1,0 +1,276 @@
+{
+  "createdAt": "2026-11-15T23:09:50.132Z",
+  "bun": "1.4.3",
+  "all16AttemptsRetained": true,
+  "priorTaskHashesMatch": true,
+  "bindings": [
+    {
+      "source": "scripts/benchmark-numbered-read-replay.ts",
+      "artifact": "scripts__benchmark-numbered-read-replay.ts.txt",
+      "sha256": "50f4ce576819b7096d5ade4601b1f75c3fe5788e87201f964e0ac8d746af2294"
+    },
+    {
+      "source": "scripts/analyze-code-context-replay.ts",
+      "artifact": "scripts__analyze-code-context-replay.ts.txt",
+      "sha256": "0fcc4b9b08a2eb6b068769469530fcd0a594191a80563d5ba166c3df25e3e875"
+    },
+    {
+      "source": "scripts/benchmarks/code-context/freeze-numbered-replay.ts",
+      "artifact": "scripts__benchmarks__code-context__freeze-numbered-replay.ts.txt",
+      "sha256": "31114bdf54f6c0708f88b57c09699ae72fc07b897b66131357ae06140466d82c"
+    },
+    {
+      "source": "scripts/benchmarks/context-live/meter.ts",
+      "artifact": "scripts__benchmarks__context-live__meter.ts.txt",
+      "sha256": "bf3e563345f44e1bac4da1130eed8298b9fce8eaefa68a053444bc32a79709fa"
+    },
+    {
+      "source": "scripts/benchmarks/code-context/fixtures.ts",
+      "artifact": "scripts__benchmarks__code-context__fixtures.ts.txt",
+      "sha256": "476c8a3aa0133ae5cdd1ae66855822ba82ea176cff1c7b3be9666035535cb81d"
+    },
+    {
+      "source": "scripts/benchmarks/code-context/grade.ts",
+      "artifact": "scripts__benchmarks__code-context__grade.ts.txt",
+      "sha256": "21a43d625f899f682532e89b83e331aa0cb1a90799a4bcd63db199a874c33a99"
+    },
+    {
+      "source": "scripts/benchmarks/code-context/preflight.ts",
+      "artifact": "scripts__benchmarks__code-context__preflight.ts.txt",
+      "sha256": "25141ccb452b2f11eb5445c5d67fb375280632c60ceae56c9a010e261c8cd64f"
+    },
+    {
+      "source": "scripts/benchmarks/code-context/sandbox-probe.ts",
+      "artifact": "scripts__benchmarks__code-context__sandbox-probe.ts.txt",
+      "sha256": "766379e5131b3578125fa2160e4fb1ad6296822c5107fcf461050471d9104848"
+    },
+    {
+      "source": "scripts/benchmarks/paired-statistics.ts",
+      "artifact": "scripts__benchmarks__paired-statistics.ts.txt",
+      "sha256": "8ec915634ac6611d9eaf0163313ebc76bedc40c6aff3e6a2caf5e114e1e96644"
+    },
+    {
+      "source": "packages/core/src/context/numbered-read-lines.ts",
+      "artifact": "packages__core__src__context__numbered-read-lines.ts.txt",
+      "sha256": "e76213e9b4d36d1d9d892eb89b3b3aca3531afa6d5481ca3af9092ab9eb860e3"
+    },
+    {
+      "source": "packages/core/src/context/working-read-replay.ts",
+      "artifact": "packages__core__src__context__working-read-replay.ts.txt",
+      "sha256": "0465df6afab513673d27c7d2bb4b348ea45bdb9a3dbdd93328ecc37a372e73c1"
+    },
+    {
+      "source": "packages/core/src/context/lossless-lines.ts",
+      "artifact": "packages__core__src__context__lossless-lines.ts.txt",
+      "sha256": "9bd575cb2b0ab95f2abde0237f965eb3d23aeae4f1966fd07734ca1bb8d2f072"
+    },
+    {
+      "source": "packages/core/src/context/request-projection.ts",
+      "artifact": "packages__core__src__context__request-projection.ts.txt",
+      "sha256": "c4167e08582a7a9a7953c491c05fe97519a0f43304f0666ab2e62f649ea64fed"
+    },
+    {
+      "source": "packages/core/src/context/read-attempts.ts",
+      "artifact": "packages__core__src__context__read-attempts.ts.txt",
+      "sha256": "0c8521f88b6336bae63c9b7f2e4891d71038cce46d97da3c92a99331880b28b4"
+    },
+    {
+      "source": "packages/core/src/runtime/harness.ts",
+      "artifact": "packages__core__src__runtime__harness.ts.txt",
+      "sha256": "144d1429526d80d5f9bc861038e949bba9bd750c2db74f3dd3310c974c99510d"
+    },
+    {
+      "source": "tests/numbered-read-lines.test.ts",
+      "artifact": "tests__numbered-read-lines.test.ts.txt",
+      "sha256": "b3d478f245ab6e9193943f38f801783bff827d64ee82012bf2293f8620ba571f"
+    },
+    {
+      "source": "tests/working-read-replay.test.ts",
+      "artifact": "tests__working-read-replay.test.ts.txt",
+      "sha256": "f8d5265a9b43199762b2024fcdf9c3a96afe983e34cab6ee556196ca1cb6f611"
+    },
+    {
+      "source": "tests/request-projection.test.ts",
+      "artifact": "tests__request-projection.test.ts.txt",
+      "sha256": "2898cc1e509633bc27984e657dc7a9be761fb8c4039760bcd9b733709375582c"
+    }
+  ],
+  "artifacts": [
+    {
+      "file": "tests__request-projection.test.ts.txt",
+      "sha256": "2898cc1e509633bc27984e657dc7a9be761fb8c4039760bcd9b733709375582c"
+    },
+    {
+      "file": "pair-2-before.json",
+      "sha256": "e0e7ccfa84afb1923fedea5dd41c3f581a6bb0145b183bbdc42c07080bddebf4"
+    },
+    {
+      "file": "campaign.json",
+      "sha256": "ed8e25aeb68f510e7b2cbdd8933d8911307d6172f84dc3f96abc0f50ea162f78"
+    },
+    {
+      "file": "summary.json",
+      "sha256": "ffea77e6539e0f9fa727fad2eebfb91fbb48946af4bd4b67089ffd1f4f561f53"
+    },
+    {
+      "file": "pair-2-after.json",
+      "sha256": "1cda643c460bbeaeb7a979f3acebcf0c9371b4e987fbde53f071fdaa3b4d428e"
+    },
+    {
+      "file": "scripts__benchmarks__code-context__grade.ts.txt",
+      "sha256": "21a43d625f899f682532e89b83e331aa0cb1a90799a4bcd63db199a874c33a99"
+    },
+    {
+      "file": "packages__core__src__runtime__harness.ts.txt",
+      "sha256": "144d1429526d80d5f9bc861038e949bba9bd750c2db74f3dd3310c974c99510d"
+    },
+    {
+      "file": "pair-7-before.json",
+      "sha256": "67d3fcd84ec98d160fa1744e22aa9165f62c9b08635fa0796b8cb40ece8947f8"
+    },
+    {
+      "file": "tests.txt",
+      "sha256": "6a0f479206d7cde3f68fc431b948b66edf31c1e82c69d819889c08cd9868e979"
+    },
+    {
+      "file": "pair-7-after.json",
+      "sha256": "3da4fa4eb0db5b2c9548371645b2ea4e29ac323440687d41b24af717165b3153"
+    },
+    {
+      "file": "scripts__analyze-code-context-replay.ts.txt",
+      "sha256": "0fcc4b9b08a2eb6b068769469530fcd0a594191a80563d5ba166c3df25e3e875"
+    },
+    {
+      "file": "packages__core__src__context__working-read-replay.ts.txt",
+      "sha256": "0465df6afab513673d27c7d2bb4b348ea45bdb9a3dbdd93328ecc37a372e73c1"
+    },
+    {
+      "file": "tooling-final.txt",
+      "sha256": "9a0e773f4eefeb26545999faae76faebca21d2856bbc4ca2248f8427e937cac6"
+    },
+    {
+      "file": "scripts__benchmark-numbered-read-replay.ts.txt",
+      "sha256": "50f4ce576819b7096d5ade4601b1f75c3fe5788e87201f964e0ac8d746af2294"
+    },
+    {
+      "file": "packages__core__src__context__request-projection.ts.txt",
+      "sha256": "c4167e08582a7a9a7953c491c05fe97519a0f43304f0666ab2e62f649ea64fed"
+    },
+    {
+      "file": "scripts__benchmarks__code-context__sandbox-probe.ts.txt",
+      "sha256": "766379e5131b3578125fa2160e4fb1ad6296822c5107fcf461050471d9104848"
+    },
+    {
+      "file": "scripts__benchmarks__context-live__meter.ts.txt",
+      "sha256": "bf3e563345f44e1bac4da1130eed8298b9fce8eaefa68a053444bc32a79709fa"
+    },
+    {
+      "file": "pair-4-before.json",
+      "sha256": "f66265b356563900630b9ec9f0327189bf1d60e85eba5f8bf5117c6d7838a0a8"
+    },
+    {
+      "file": "runtime-before.mjs",
+      "sha256": "f00f820066152df486f0a24078bc6a2395b9996b9e3b2776d9674186a49d5f9c"
+    },
+    {
+      "file": "tests__numbered-read-lines.test.ts.txt",
+      "sha256": "b3d478f245ab6e9193943f38f801783bff827d64ee82012bf2293f8620ba571f"
+    },
+    {
+      "file": "scripts__benchmarks__code-context__freeze-numbered-replay.ts.txt",
+      "sha256": "31114bdf54f6c0708f88b57c09699ae72fc07b897b66131357ae06140466d82c"
+    },
+    {
+      "file": "pair-8-after.json",
+      "sha256": "e05b39f18bab9068615db4d03d21fce6d292fba012bf150fbba0589d54efd557"
+    },
+    {
+      "file": "pair-8-before.json",
+      "sha256": "a3ff067686242f47079b125e76bb83d022b27b59dc80a8c827d036b65f8ec722"
+    },
+    {
+      "file": "packages__core__src__context__numbered-read-lines.ts.txt",
+      "sha256": "e76213e9b4d36d1d9d892eb89b3b3aca3531afa6d5481ca3af9092ab9eb860e3"
+    },
+    {
+      "file": "pair-5-after.json",
+      "sha256": "dd989b00ce1445aff10b57d1094ba0cbbcf3947ba8e5e9040eb1ad10175d9c6b"
+    },
+    {
+      "file": "pair-1-before.json",
+      "sha256": "50daa4bc009a0d8f55ee9ef84b5e906ff73074a841d2cf271fae5aaa33d65c8a"
+    },
+    {
+      "file": "tests__working-read-replay.test.ts.txt",
+      "sha256": "f8d5265a9b43199762b2024fcdf9c3a96afe983e34cab6ee556196ca1cb6f611"
+    },
+    {
+      "file": "pair-6-before.json",
+      "sha256": "0e93d8d4915fb9d52bc3a53870df2b5d3df9afac66cc96c5b92bfbd1bbb524cc"
+    },
+    {
+      "file": "pair-6-after.json",
+      "sha256": "e5445d9d20aa0d8e838e9345870dfc310f5cae914a0915999cc4da85dab384f8"
+    },
+    {
+      "file": "preflight.txt",
+      "sha256": "a854b07938bc492322ebbe84c15c55b38aa2a8e57062463d71d001a2df1befb8"
+    },
+    {
+      "file": "scripts__benchmarks__code-context__preflight.ts.txt",
+      "sha256": "25141ccb452b2f11eb5445c5d67fb375280632c60ceae56c9a010e261c8cd64f"
+    },
+    {
+      "file": "pair-3-after.json",
+      "sha256": "428f9dc7c68a32f474da537c6d6739fc4fd1993c57171bae64516ffb14b15b80"
+    },
+    {
+      "file": "runtime-manifest.json",
+      "sha256": "8540bbe3d76167b7da67069a5ac004b1791dae4b0b64de5cf3a1b90454a3d6e2"
+    },
+    {
+      "file": "packages__core__src__context__lossless-lines.ts.txt",
+      "sha256": "9bd575cb2b0ab95f2abde0237f965eb3d23aeae4f1966fd07734ca1bb8d2f072"
+    },
+    {
+      "file": "runtime-after.mjs",
+      "sha256": "7afcdc77ddfe147529af7e3bf03febde82619e23fa53bd23f3b064e5f416737b"
+    },
+    {
+      "file": "pair-3-before.json",
+      "sha256": "83003c9d2d0407b2cdc77e1916b5c29b7550f6dbed07301ae81a53a521425893"
+    },
+    {
+      "file": "sandbox.txt",
+      "sha256": "65c6d74c8893fe2165a06eef28d885fc9243bec085e1711302319d80a0907b77"
+    },
+    {
+      "file": "pair-4-after.json",
+      "sha256": "482c6e7adc79001037dd9964356ca50768c8640e8f8092004e94d2b15b586205"
+    },
+    {
+      "file": "scripts__benchmarks__paired-statistics.ts.txt",
+      "sha256": "8ec915634ac6611d9eaf0163313ebc76bedc40c6aff3e6a2caf5e114e1e96644"
+    },
+    {
+      "file": "typecheck.txt",
+      "sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+    },
+    {
+      "file": "scripts__benchmarks__code-context__fixtures.ts.txt",
+      "sha256": "476c8a3aa0133ae5cdd1ae66855822ba82ea176cff1c7b3be9666035535cb81d"
+    },
+    {
+      "file": "pair-1-after.json",
+      "sha256": "8548db436b37f5104ee5718721d40ac507354079258ad83ab6d3d1c868b950fc"
+    },
+    {
+      "file": "packages__core__src__context__read-attempts.ts.txt",
+      "sha256": "0c8521f88b6336bae63c9b7f2e4891d71038cce46d97da3c92a99331880b28b4"
+    },
+    {
+      "file": "pair-5-before.json",
+      "sha256": "0e8921a8f2877e05dfcddbd12734769696d4de9ed802700475e1ef0e8595c2d5"
+    }
+  ]
+}

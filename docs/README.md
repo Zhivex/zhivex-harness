@@ -16,7 +16,7 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 - [Project memory](PROJECT_MEMORY.md): explicit notes, retrieval budgets and deletion semantics.
 - [Optional Web limits](WEB_LIMITS.md): interactive defaults and observed thresholds.
 - [Execution environments](EXECUTION_ENVIRONMENTS.md): isolated command execution.
-- [Desktop](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/README.md): separate macOS alpha application.
+- [Desktop](https://github.com/Zhivex/zhivex-harness/blob/main/packages/desktop/README.md): separate macOS alpha application.
 - [Support](../SUPPORT.md), [support matrix](SUPPORT_MATRIX.md), [security policy](../SECURITY.md).
 
 ## Integrate Harness
@@ -28,7 +28,7 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 - [Extensibility](EXTENSIBILITY.md): providers, MCP, routing and subagents.
 - [API stability](STABILITY.md) and [deprecations](DEPRECATIONS.md).
 - [Local service](LOCAL_SERVICE.md) and [client protocol](CLIENT_PROTOCOL.md), including the experimental [task evidence read](CLIENT_PROTOCOL.md#task-projection-v1-har-hu-73).
-- [Code web tasks](CODE_WEB_TASKS.md): operator review and explicit snapshot acceptance before continuation.
+- [Retired web interface](CODE_WEB_TASKS.md): migration to Electron and the shared CLI.
 - [Installed recovery laboratory](https://github.com/Zhivex/zhivex-harness/blob/main/docs/TASK_RECOVERY_LAB.md): contributor fixtures for the evidence read. The laboratory guide stays in the repository and is not part of the published package.
 - [Experimental ACP text sessions](ACP.md) and [workspace checkpoint restoration](WORKSPACE_CHECKPOINTS.md).
 - [Durable operations](DURABLE_OPERATIONS.md), [repository editing](REPOSITORY_EDITING.md) and [change envelopes](CHANGE_ENVELOPES.md).
@@ -46,6 +46,9 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 
 ## Contribute and maintain
 
+- [Internal unification and UX archive](INTERNAL_ARCHIVE.md): historical plans, acceptance records and private original evidence.
+- [First shared CLI/Electron flow](https://github.com/Zhivex/zhivex-harness/blob/main/docs/UNIFIED_DESKTOP.md): local setup, new UX, acceptance smoke and remaining migration scope.
+
 - [Harness/Code boundary proposal (ADR 0001)](https://github.com/Zhivex/zhivex-harness/blob/main/docs/adr/0001-harness-code-public-boundary.md): ownership, public APIs and the proposed 1.x transition.
 
 [Contributor guide](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md) ·
@@ -57,3 +60,9 @@ Primary guides are maintained in English. Historical reports preserve their orig
 language and evidence. Maintainer procedures and reports remain in the repository
 and are excluded from the npm package. Published validation applies to the exact
 release artifact, not automatically to later source changes.
+
+- [Assistant en el core y Electron autónomo](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_ELECTRON.md): abrir la app, configurar perfiles, preservar datos y reproducir la validación.
+
+- [Assistant y Code autónomos en Electron](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_ELECTRON.md): proyectos, conexiones compartidas y recuperación sin servicios manuales.
+
+- [Worktrees, checkpoints y ejecución en Electron](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_DESKTOP_TOOLS.md): revisiones, restauración, checks y cancelación desde Code.

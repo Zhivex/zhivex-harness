@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { canonicalChunks, segmentedChunks, readBackupTransport } from "../src/persistence/state-backup-stream.js";
+import { canonicalChunks, segmentedChunks, readBackupTransport } from "../packages/core/src/persistence/state-backup-stream.js";
 
 test("segmented transport preserves large strings, keys, Unicode and prototype-named properties", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "backup-stream-"));

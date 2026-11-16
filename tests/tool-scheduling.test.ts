@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { createMockLanguageModel, streamText, tool, type ToolSet } from "@zhivex-ai/core";
 import { z } from "zod";
-import { scheduleLocalReads } from "../src/runtime/tool-scheduling.js";
+import { scheduleLocalReads } from "../packages/core/src/runtime/tool-scheduling.js";
 
 test("only host-owned local reads can claim independence", () => {
   const make = (name: string, extra = {}) => tool({ name, schema: z.object({}), execute: async () => "ok", independent: true, ...extra });

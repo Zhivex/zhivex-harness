@@ -1,0 +1,21 @@
+{
+  "campaigns": [
+    {
+      "name": "code-context-live-2026-11-15",
+      "attempts": 16,
+      "tokens": 1079356,
+      "usd": 1.1613531
+    },
+    {
+      "name": "code-context-pressure-2026-11-15",
+      "attempts": 8,
+      "tokens": 362192,
+      "usd": 0.4246116
+    }
+  ],
+  "totalTokens": 1441548,
+  "estimatedUSD": 1.5859647,
+  "unknownReceipts": 0,
+  "totalCeiling": 2400000,
+  "retries": 0
+}

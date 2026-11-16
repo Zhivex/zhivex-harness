@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { attestMcpServer, effectiveMcpContainerEnvironment } from '../src/execution/mcp-oci-server.js';
-import type { McpStdioLaunchProposal } from '../src/integrations/mcp-stdio-admission.js';
+import { attestMcpServer, effectiveMcpContainerEnvironment } from '../packages/core/src/execution/mcp-oci-server.js';
+import type { McpStdioLaunchProposal } from '../packages/core/src/integrations/mcp-stdio-admission.js';
 const imageId = `sha256:${'a'.repeat(64)}`;
 const proposal: McpStdioLaunchProposal = { schemaVersion: 1, serverId: 'local', boundary: 'oci', image: `local/server@${imageId}`,
   executable: '/usr/bin/server', args: ['--stdio'], protocolVersion: '2025-11-25', workingDirectory: '.', snapshotDigest: imageId,

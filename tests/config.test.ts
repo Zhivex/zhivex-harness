@@ -12,8 +12,8 @@ import {
   parseProvider,
   providerAvailability,
   resolveHarnessConfig
-} from "../src/runtime/config.js";
-import { providerModelInternals } from "../src/providers/providers.js";
+} from "../packages/core/src/runtime/config.js";
+import { providerModelInternals } from "../packages/core/src/providers/providers.js";
 
 describe("provider configuration", () => {
   test("migrates schema 4 inputs without enabling new trust surfaces", () => {

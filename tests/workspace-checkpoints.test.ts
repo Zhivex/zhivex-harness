@@ -3,9 +3,9 @@ import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { Workspace } from "../src/workspace/workspace.js";
-import { openCliSessionStore } from "../src/persistence/sessions.js";
-import { openWorkspaceCheckpointStore } from "../src/persistence/workspace-checkpoints.js";
+import { Workspace } from "../packages/core/src/workspace/workspace.js";
+import { openCliSessionStore } from "../packages/core/src/persistence/sessions.js";
+import { openWorkspaceCheckpointStore } from "../packages/core/src/persistence/workspace-checkpoints.js";
 
 const fixture = async (run: (value: { workspace: Workspace; sessions: Awaited<ReturnType<typeof openCliSessionStore>>;
   checkpoints: Awaited<ReturnType<typeof openWorkspaceCheckpointStore>>; sessionId: string; turnId: string }) => Promise<void>) => {

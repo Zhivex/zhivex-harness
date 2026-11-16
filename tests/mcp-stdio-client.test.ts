@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { IsolatedMcpStdioClient, type IsolatedMcpChannel } from '../src/integrations/mcp-stdio-client.js';
+import { IsolatedMcpStdioClient, type IsolatedMcpChannel } from '../packages/core/src/integrations/mcp-stdio-client.js';
 function fixture(handler?: (request: Record<string, unknown>, send: (value: unknown) => void) => void, cleanupFails = false) {
   const queue: Uint8Array[] = []; let wake: (() => void) | undefined; let ended = false; let closes = 0;
   const writes: Record<string, unknown>[] = [];

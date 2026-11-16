@@ -3,21 +3,21 @@ import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises
 import path from "node:path";
 
 import { z } from "zod";
-import { errorDetailsSchema, sanitizedErrorDetails } from "../src/runtime/error-diagnostics.js";
-import { classifyProviderFailure } from "../src/runtime/provider-transient.js";
+import { errorDetailsSchema, sanitizedErrorDetails } from "../packages/core/src/runtime/error-diagnostics.js";
+import { classifyProviderFailure } from "../packages/core/src/runtime/provider-transient.js";
 import { attachRoutingDiagnostic, routingDiagnosticFor, routingDiagnosticSchema, type RoutingDiagnostic } from "./live-routing-diagnostics.js";
 
 import {
   HARNESS_ERROR_CODES,
   HarnessError,
   normalizeHarnessError
-} from "../src/runtime/errors.js";
+} from "../packages/core/src/runtime/errors.js";
 import {
   TIME_TO_SAFE_FIX_CARRIERS,
   TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES,
   TIME_TO_SAFE_FIX_GOALS,
   TIME_TO_SAFE_FIX_PROFILES
-} from "../src/runtime/time-to-safe-fix.js";
+} from "../packages/core/src/runtime/time-to-safe-fix.js";
 
 const SHA_256_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const SHA_512_PATTERN = /^sha512-[A-Za-z0-9+/]+={0,2}$/;

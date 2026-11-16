@@ -1,0 +1,41 @@
+{
+  "pricing": "https://developers.openai.com/api/docs/pricing (standard, 2026-11-15)",
+  "note": "Historical failures preserved. Different configurations are not pooled into current cost per correct task. Known cost excludes one unknown prior receipt; not a complete invoice.",
+  "campaigns": [
+    {
+      "campaign": "context-live-2026-11-15",
+      "attempts": 14,
+      "knownTokens": 434516,
+      "unknownReceipts": 1,
+      "estimatedKnownUSD": 0.4984094
+    },
+    {
+      "campaign": "context-live-stateless-2026-11-15",
+      "attempts": 8,
+      "knownTokens": 237883,
+      "unknownReceipts": 0,
+      "estimatedKnownUSD": 0.2642544
+    },
+    {
+      "campaign": "context-live-control-2026-11-15",
+      "attempts": 4,
+      "knownTokens": 34110,
+      "unknownReceipts": 0,
+      "estimatedKnownUSD": 0.0406398
+    },
+    {
+      "campaign": "context-live-fixed-2026-11-15",
+      "attempts": 16,
+      "knownTokens": 336414,
+      "unknownReceipts": 0,
+      "estimatedKnownUSD": 0.3562666
+    },
+    {
+      "campaign": "context-live-fixed-budget-2026-11-15",
+      "attempts": 4,
+      "knownTokens": 69502,
+      "unknownReceipts": 0,
+      "estimatedKnownUSD": 0.0734204
+    }
+  ]
+}

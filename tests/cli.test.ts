@@ -20,16 +20,16 @@ import {
   runResultDocument,
   summarizeApproval,
   withTemporaryHarnessProfiles
-} from "../src/cli.js";
-import { resolveHarnessConfig, type HarnessSubagentProfile } from "../src/runtime/config.js";
-import { parseCliJsonDocument } from "../src/client/json-contracts.js";
-import { SqliteDatabase } from "../src/persistence/sqlite-database.js";
-import { HARNESS_VERSION } from "../src/version.js";
+} from "../packages/core/src/cli.js";
+import { resolveHarnessConfig, type HarnessSubagentProfile } from "../packages/core/src/runtime/config.js";
+import { parseCliJsonDocument } from "../packages/core/src/client/json-contracts.js";
+import { SqliteDatabase } from "../packages/core/src/persistence/sqlite-database.js";
+import { HARNESS_VERSION } from "../packages/core/src/version.js";
 
 const runCli = async (arguments_: string[], env: Record<string, string> = {}) => {
   const child = Bun.spawn([
     process.execPath,
-    path.resolve(import.meta.dir, "../src/cli.ts"),
+    path.resolve(import.meta.dir, "../packages/core/src/cli.ts"),
     ...arguments_
   ], {
     cwd: path.resolve(import.meta.dir, ".."),

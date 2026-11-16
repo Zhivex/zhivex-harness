@@ -3,9 +3,9 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../src/integrations/mcp-stdio-admission.js';
-import { createAcpMcpHost } from '../src/client/acp-mcp-host.js';
-import { createAcpConnection } from '../src/client/acp.js';
+import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../packages/core/src/integrations/mcp-stdio-admission.js';
+import { createAcpMcpHost } from '../packages/core/src/client/acp-mcp-host.js';
+import { createAcpConnection } from '../packages/core/src/client/acp.js';
 const digest = `sha256:${'a'.repeat(64)}`;
 const proposal: McpStdioLaunchProposal = { schemaVersion: 1, serverId: 'docs', boundary: 'oci', image: `example/server@${digest}`,
   executable: '/server', args: [], protocolVersion: '2025-11-25', workingDirectory: '.', snapshotDigest: digest,

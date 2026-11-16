@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import ts from "typescript-compiler-api";
+import apiContract from "../contracts/engine-api.json";
 
 export interface SourceDependency { target: string; typeOnly: boolean; computed?: boolean }
 
@@ -29,25 +30,39 @@ export const sourceDependencies = (source: string): SourceDependency[] => {
   return dependencies;
 };
 
-const desktopPackageImports = new Set(["engine", "protocol", "client", "service", "models", "desktop/v1/state", "desktop/v1/providers"].map(name => `@zhivex-ai/harness/${name}`));
-const assistantPackageImports = new Set(["engine", "protocol", "client", "service"].map(name => `@zhivex-ai/harness/${name}`));
+const desktopPackageImports = new Set(["assistant/managed/setup", "assistant/managed/secrets", "application/protocol", "application/client", "application", "engine", "protocol", "client", "service", "models", "desktop/v1/state", "desktop/v1/providers"].map(name => `@zhivex-ai/harness/${name}`));
+const assistantPackageImports = new Set([...Object.keys(apiContract.entrypoints).filter(name => name.startsWith("./assistant/")).map(name => name.slice(2)),"application/protocol", "application/client", "application", "engine", "protocol", "client", "service"].map(name => `@zhivex-ai/harness/${name}`));
 const resolveSource = (file: string, target: string) => path.posix.normalize(path.posix.join(path.posix.dirname(file), target)).replace(/\.js$/, ".ts");
 
 export const architectureViolations = (file: string, source: string): string[] => {
+  const physicalFile = file;
+  file = file.replace(/^packages\/core\/src/, "src").replace(/^packages\/desktop/, "desktop");
   const violations: string[] = [];
   if (/^src\/[^/]+\.tsx?$/.test(file) && !["src/index.ts", "src/cli.ts", "src/cli-entry.ts", "src/service-cli.ts", "src/acp-cli.ts", "src/version.ts"].includes(file)) {
     violations.push(`${file}: place implementation modules in their responsibility folder`);
   }
   for (const dependency of sourceDependencies(source)) {
-    const target = dependency.target.startsWith(".") ? resolveSource(file, dependency.target) : dependency.target;
+    const target = (dependency.target.startsWith(".") ? resolveSource(physicalFile, dependency.target) : dependency.target).replace(/^packages\/core\/src/, "src").replace(/^packages\/desktop/, "desktop");
     const reject = (reason: string) => violations.push(`${file} -> ${dependency.target}: ${reason}`);
+    if (file === "src/application/contracts.ts") reject("application projection contracts must have no dependencies, including type-only imports");
+    if (file === "src/engine/application-protocol.ts" && target !== "src/application/contracts.ts") reject("application protocol must only export standalone projection contracts");
+    if ((/^desktop\/src\/unified\/.*\.tsx$/.test(file) || file === "desktop/src/unified/bridge.ts") && ["@zhivex-ai/harness/application/client", "@zhivex-ai/harness/assistant/managed/setup"].includes(target)) reject("renderer projections must use application/protocol, not the Node client");
+    if (file.startsWith("src/application/") && /^(src\/cli(?:\/|\.|-)|desktop\/|packages\/|electron$|react(?:\/|$))/.test(target)) {
+      reject("the application core must not depend on a user interface or product implementation");
+    }
+    if (/^src\/(?:runtime|tools|providers|persistence|workspace|execution)\//.test(file) && target.startsWith("src/application/")) {
+      reject("the engine must not depend on application orchestration");
+    }
+    if (file.startsWith("packages/cli/src/") && (target.startsWith("src/") || target.startsWith("desktop/") || target.startsWith("packages/assistant/") || /^@zhivex-ai\/assistant(?:\/|$)/.test(target))) {
+      reject("Code must use declared core APIs, never source or another product");
+    }
     if (file.startsWith("packages/assistant/src/")) {
       if (dependency.computed || (dependency.target.startsWith(".") && !target.startsWith("packages/assistant/src/")) || path.isAbsolute(target) ||
           /^@zhivex-ai\/(?:code|code-web)(?:\/|$)/.test(target)) reject("Assistant must not import repository internals or other products");
       if (/^@zhivex-ai\/harness(?:\/|$)/.test(target) && !assistantPackageImports.has(target)) reject("Assistant must use declared engine integration exports");
     }
     if (file.startsWith("src/") && /^(packages\/assistant\/|@zhivex-ai\/assistant(?:\/|$))/.test(target)) reject("Harness must not depend on Assistant");
-    if (file.startsWith("desktop/src/") && (target.startsWith("src/") || target.startsWith("packages/code/") || /^@zhivex-ai\/code(?:\/|$)/.test(target))) {
+    if (file.startsWith("desktop/src/") && (target.startsWith("src/") || target.startsWith("packages/cli/") || /^@zhivex-ai\/code(?:\/|$)/.test(target))) {
       reject("Desktop must consume declared Harness package exports, never repository source or Code");
     }
     if (file.startsWith("desktop/src/") && /^@zhivex-ai\/harness(?:\/|$)/.test(target) && !desktopPackageImports.has(target)) {
@@ -73,7 +88,7 @@ export const architectureViolations = (file: string, source: string): string[] =
 };
 
 /** Traverse every source edge, including erased type references and intermediary helpers. */
-export const engineBoundaryViolations = (sources: ReadonlyMap<string, string>, entries: readonly string[] = ["src/engine/index.ts", "src/engine/protocol.ts", "src/engine/client.ts", "src/engine/service.ts", "src/engine/acp.ts", "src/engine/models.ts", "src/engine/desktop-state-v1.ts", "src/engine/desktop-providers-v1.ts", "src/engine/mcp-stdio-v1.ts", "src/compat/code-support.ts"]): string[] => {
+export const engineBoundaryViolations = (sources: ReadonlyMap<string, string>, entries: readonly string[] = [...Object.values(apiContract.entrypoints).filter(entry => entry.source.startsWith("src/engine/assistant/")).map(entry => entry.source),"src/engine/application-client.ts", "src/engine/application.ts", "src/engine/index.ts", "src/engine/protocol.ts", "src/engine/client.ts", "src/engine/service.ts", "src/engine/acp.ts", "src/engine/models.ts", "src/engine/desktop-state-v1.ts", "src/engine/desktop-providers-v1.ts", "src/engine/mcp-stdio-v1.ts", "src/compat/code-support.ts"]): string[] => {
   const violations: string[] = [];
   const visited = new Set<string>();
   const visit = (file: string, chain: string[]): void => {
@@ -104,18 +119,19 @@ export const checkArchitecture = async (root: string): Promise<string[]> => {
   const sources = new Map<string, string>();
   const visit = async (directory: string): Promise<void> => {
     for (const entry of await readdir(path.join(root, directory), { withFileTypes: true })) {
-      const file = `${directory}/${entry.name}`;
-      if (entry.isDirectory()) await visit(file);
+      const physical = `${directory}/${entry.name}`;
+      const file = physical.replace(/^packages\/core\/src/, "src").replace(/^packages\/desktop/, "desktop");
+      if (entry.isDirectory()) await visit(physical);
       else if (/\.tsx?$/.test(entry.name)) {
-        const source = await readFile(path.join(root, file), "utf8");
+        const source = await readFile(path.join(root, physical), "utf8");
         sources.set(file, source);
-        violations.push(...architectureViolations(file, source));
+        violations.push(...architectureViolations(physical, source));
       }
     }
   };
-  await visit("src");
-  await visit("desktop/src");
-  await visit("packages/assistant/src");
+  await visit("packages/core/src");
+  await visit("packages/desktop/src");
+  await visit("packages/cli/src");
   violations.push(...engineBoundaryViolations(sources));
   return violations;
 };

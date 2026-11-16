@@ -1,7 +1,7 @@
 import { expect,test } from 'bun:test';
-import { parseCliArgs } from '../src/cli/arguments.js';
-import { governanceReportCli } from '../src/cli/governance-report.js';
-import { resolveHarnessConfig } from '../src/runtime/config.js';
+import { parseCliArgs } from '../packages/core/src/cli/arguments.js';
+import { governanceReportCli } from '../packages/core/src/cli/governance-report.js';
+import { resolveHarnessConfig } from '../packages/core/src/runtime/config.js';
 import type { AgentRunState,AgentRunStore } from '@zhivex-ai/core';
 const store:AgentRunStore={load:async()=>({runId:'r',status:'completed',messages:[],pendingApprovals:[],metadata:{},childRuns:[]} as unknown as AgentRunState),save:async()=>{throw new Error('write');}};
 test('report command parses session, envelope and JSON without changing existing export',()=>{

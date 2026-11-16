@@ -1,4 +1,4 @@
-import { providerDiagnostic } from "../src/runtime/provider-diagnostics.js";
+import { providerDiagnostic } from "../packages/core/src/runtime/provider-diagnostics.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { LanguageModel } from "@zhivex-ai/agents";
 import { beginBenchmarkSpan, updateBenchmarkSpan } from "./time-to-safe-fix-progress.js";

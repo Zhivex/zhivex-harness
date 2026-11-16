@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import type { HarnessClientAdapter } from "../src/client/protocol.js";
-import { createAcpConnection } from "../src/client/acp.js";
+import type { HarnessClientAdapter } from "../packages/core/src/client/protocol.js";
+import { createAcpConnection } from "../packages/core/src/client/acp.js";
 
 const fixture = (permission: () => Promise<unknown> = async () => ({ outcome: { outcome: "selected", optionId: "allow_once" } })) => {
   const commands: any[] = [], updates: any[] = [];
@@ -83,8 +83,8 @@ test("ACP approval runs through real durable harness adapter before changing fil
   const { tmpdir } = await import("node:os");
   const { createHash } = await import("node:crypto");
   const { createMockLanguageModel } = await import("@zhivex-ai/agents/testing");
-  const { createHarness } = await import("../src/runtime/harness.js");
-  const { createHarnessClientAdapter } = await import("../src/client/adapter.js");
+  const { createHarness } = await import("../packages/core/src/runtime/harness.js");
+  const { createHarnessClientAdapter } = await import("../packages/core/src/client/adapter.js");
   const workspace = await mkdtemp(tmpdir() + "/acp-integration-");
   await writeFile(workspace + "/a.txt", "before\n");
   const model = createMockLanguageModel({ streamEvents: [[
@@ -112,7 +112,7 @@ test("ACP approval runs through real durable harness adapter before changing fil
 
 for (const permissionTimesOut of [false, true]) test(`stdio transport correlates permissions and cancellation (timeout=${permissionTimesOut})`, async () => {
   const { PassThrough } = await import("node:stream");
-  const { serveAcpStdio } = await import("../src/client/acp-stdio.js");
+  const { serveAcpStdio } = await import("../packages/core/src/client/acp-stdio.js");
   // Access a minimal adapter through the same durable command contract.
   let approved = false;
   const adapter: HarnessClientAdapter = {
@@ -152,7 +152,7 @@ for (const permissionTimesOut of [false, true]) test(`stdio transport correlates
 
 test("stdio rejects oversized frames and requests cancellation", async () => {
   const { PassThrough } = await import("node:stream");
-  const { serveAcpStdio } = await import("../src/client/acp-stdio.js");
+  const { serveAcpStdio } = await import("../packages/core/src/client/acp-stdio.js");
   let cancelled = false;
   const adapter: HarnessClientAdapter = {
     negotiate: () => ({ ok: true, protocolVersion: 1, connectionId: "c", projectId: "p", capabilities: [] }),

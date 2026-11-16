@@ -1,8 +1,8 @@
 import { test, expect } from 'bun:test';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { createHarness, runHarness } from '../src/runtime/harness.js';
-import { observeHarnessPolicyDecisions, type HarnessPolicyDecisionEvent } from '../src/runtime/policy-decisions.js';
+import { createHarness, runHarness } from '../packages/core/src/runtime/harness.js';
+import { observeHarnessPolicyDecisions, type HarnessPolicyDecisionEvent } from '../packages/core/src/runtime/policy-decisions.js';
 
 for (const scenario of ['baseline-read', 'baseline-pending', 'policy-pending'] as const) test(`decision observation: ${scenario}`, async () => {
   const root = await mkdtemp('/tmp/har-policy-decision-');
@@ -32,7 +32,7 @@ for (const scenario of ['baseline-read', 'baseline-pending', 'policy-pending'] a
 });
 
 test('bounded decision evidence reports truncation and returns detached snapshots', async () => {
-  const { createPolicyDecisionEvidence } = await import('../src/runtime/policy-decisions.js');
+  const { createPolicyDecisionEvidence } = await import('../packages/core/src/runtime/policy-decisions.js');
   const evidence = createPolicyDecisionEvidence();
   const event: HarnessPolicyDecisionEvent = { schemaVersion: 1, type: 'policy-decision', phase: 'tool-entry', toolName: 'read_file', decision: 'allow',
     ruleIds: [], reason: 'Baseline', reasonTruncated: false, policyDigest: null, source: 'baseline', approvalRequired: false,

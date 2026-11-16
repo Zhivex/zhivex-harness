@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { BUILTIN_PROVIDER_REGISTRATIONS, createProviderRegistry, DEFAULT_PROVIDER_REGISTRY } from "../src/providers/providers.js";
-import { azureOpenAIConfigured, createAzureOpenAIModel } from "../src/providers/azure-openai.js";
+import { BUILTIN_PROVIDER_REGISTRATIONS, createProviderRegistry, DEFAULT_PROVIDER_REGISTRY } from "../packages/core/src/providers/providers.js";
+import { azureOpenAIConfigured, createAzureOpenAIModel } from "../packages/core/src/providers/azure-openai.js";
 
 const registry = DEFAULT_PROVIDER_REGISTRY;
 const secret = "fixture-azure-api-key";

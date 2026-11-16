@@ -22,10 +22,7 @@ Usar una instancia nueva para no cambiar el perfil ligado a conversaciones y
 aprobaciones existentes. Preparar el candidato local como indica el README.
 Desde la raíz del repo:
 
-```sh
-bun run --cwd packages/assistant build
-bun run --cwd packages/assistant start --directory "$HOME/.zhx-daily" --owner local-owner --provider openai --web --config packages/assistant/examples/daily-tools.json
-```
+Use the shared application through Electron or the commands documented in [CLI](CLI.md). The standalone Assistant launcher has been retired.
 
 Configurar la credencial del proveedor en su variable habitual antes del arranque.
 El archivo de ejemplo solo activa `daily`; no necesita servicios externos para
@@ -97,9 +94,7 @@ Configurar `ASSISTANT_GOOGLE_CLIENT_ID`, `ASSISTANT_GOOGLE_CLIENT_SECRET` si cor
 y `ASSISTANT_CREDENTIAL_KEY` (32 bytes aleatorios codificados en base64, conservados
 fuera del repo). Detener el host y conectar usando el mismo directorio:
 
-```sh
-bun run --cwd packages/assistant start --directory "$HOME/.zhx-connected" --owner local-owner --config packages/assistant/examples/connected-tools.json --google-connect
-```
+Use the shared application through Electron or the commands documented in [CLI](CLI.md). The standalone Assistant launcher has been retired.
 
 `--google-status` inspecciona la conexión; `--google-disconnect` elimina credenciales
 locales e intenta revocar el token. Si falla la revocación, devuelve `revoked: false`.
@@ -133,7 +128,7 @@ Configurar las variables en el entorno que inicia Assistant:
 El wizard permite seleccionar GitHub y Brave indicando los nombres de las variables;
 no devuelve sus valores al navegador. Solo verifica presencia al guardar; acceso
 real y compatibilidad se comprueban al llamar las herramientas.
-El JSON [connected-tools.json](../packages/assistant/examples/connected-tools.json)
+El JSON [connected-tools.json](../examples/assistant/connected-tools.json)
 muestra ambos módulos. Reemplazar `account` por la cuenta correspondiente.
 
 GitHub usa `https://api.githubcopilot.com/mcp/x/all/readonly` y un catálogo fijo;
@@ -174,11 +169,7 @@ proceso que el recordatorio queda incierto y no se repite.
 Para repetir las verificaciones desde la raíz (Chromium debe estar instalado
 para Playwright; los servidores y proveedores de estas pruebas son simulados):
 
-```sh
-bun run --cwd packages/assistant typecheck
-bun run --cwd packages/assistant test
-bun run --cwd packages/assistant smoke:daily-web
-```
+Use the shared application through Electron or the commands documented in [CLI](CLI.md). The standalone Assistant launcher has been retired.
 
 Fuentes de los contratos externos:
 

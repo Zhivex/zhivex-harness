@@ -2,11 +2,11 @@ import { expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { wrapLanguageModel } from '@zhivex-ai/core';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { resolveHarnessConfig } from '../src/runtime/config.js';
-import { openHarnessPersistence } from '../src/persistence/operations.js';
-import { TaskBudget } from '../src/runtime/task-budget.js';
-import { createCheckpointTokenCap } from '../src/runtime/runtime-policy.js';
-import { UsageLedger } from '../src/runtime/usage-ledger.js';
+import { resolveHarnessConfig } from '../packages/core/src/runtime/config.js';
+import { openHarnessPersistence } from '../packages/core/src/persistence/operations.js';
+import { TaskBudget } from '../packages/core/src/runtime/task-budget.js';
+import { createCheckpointTokenCap } from '../packages/core/src/runtime/runtime-policy.js';
+import { UsageLedger } from '../packages/core/src/runtime/usage-ledger.js';
 
 const limits = { inputTokens: 10000, outputTokens: 1000, totalTokens: 11000 };
 for (const route of ['generate', 'stream'] as const)

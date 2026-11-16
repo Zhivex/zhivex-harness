@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { McpStdioFrameDecoder, type McpStdioMessage } from '../src/integrations/mcp-stdio-framing.js';
+import { McpStdioFrameDecoder, type McpStdioMessage } from '../packages/core/src/integrations/mcp-stdio-framing.js';
 const bytes = (value: string) => new TextEncoder().encode(value);
 const response: McpStdioMessage = { jsonrpc: '2.0', id: 1, result: { text: 'á😀' } };
 

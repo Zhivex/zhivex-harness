@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import type { TaskTelemetrySnapshot } from "../src/runtime/task-telemetry.js";
+import type { TaskTelemetrySnapshot } from "../packages/core/src/runtime/task-telemetry.js";
 import { sanitizeOperationalError } from "./release-diagnostics.js";
 
 const arg = (name: string) => process.argv[process.argv.indexOf(name) + 1];
@@ -29,8 +29,8 @@ interface Sample {
 async function worker() {
   const output = required("--output"), model = required("--model");
   const runtime = await import(pathToFileURL(path.resolve(required("--runtime"))).href) as
-    Pick<typeof import("../src/runtime/harness.js"), "createHarness" | "runHarnessTask"> &
-    Pick<typeof import("../src/client/service-events.js"), "openHarnessActivityStore">;
+    Pick<typeof import("../packages/core/src/runtime/harness.js"), "createHarness" | "runHarnessTask"> &
+    Pick<typeof import("../packages/core/src/client/service-events.js"), "openHarnessActivityStore">;
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-live-pair-"));
   const sample: Sample = { runtime: process.version, responseLimits: [] };
   let harness: Awaited<ReturnType<typeof runtime.createHarness>> | undefined;

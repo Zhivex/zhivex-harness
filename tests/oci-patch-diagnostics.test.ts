@@ -2,12 +2,12 @@ import { expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { createHarnessOciExecutionEnvironment, type HarnessOciRuntimeAdapter } from "../src/execution/execution-environment.js";
-import { EnvironmentPatchDriftError } from "../src/execution/patch-diagnostics.js";
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { HarnessExecutionError } from "../src/runtime/errors.js";
-import { classifyTimeToSafeFixFailure } from "../src/runtime/time-to-safe-fix.js";
-import { Workspace } from "../src/workspace/workspace.js";
+import { createHarnessOciExecutionEnvironment, type HarnessOciRuntimeAdapter } from "../packages/core/src/execution/execution-environment.js";
+import { EnvironmentPatchDriftError } from "../packages/core/src/execution/patch-diagnostics.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { HarnessExecutionError } from "../packages/core/src/runtime/errors.js";
+import { classifyTimeToSafeFixFailure } from "../packages/core/src/runtime/time-to-safe-fix.js";
+import { Workspace } from "../packages/core/src/workspace/workspace.js";
 import { restoreSanitizedOperationalError, sanitizeOperationalError } from "../scripts/release-diagnostics.js";
 
 const runtime: HarnessOciRuntimeAdapter = {

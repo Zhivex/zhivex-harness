@@ -5,14 +5,14 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { runPortableProcess } from "../src/execution/process-runtime.js";
+import { runPortableProcess } from "../packages/core/src/execution/process-runtime.js";
 import { sanitizeOperationalError } from "./release-diagnostics.js";
 
 assert.equal(process.env.ZHIVEX_HARNESS_LIVE, "1", "Set ZHIVEX_HARNESS_LIVE=1 to authorize provider calls.");
 const [artifactPath, reportPath] = process.argv.slice(2);
 assert(artifactPath && path.isAbsolute(artifactPath), "Pass the installed dist/index.js absolute path.");
 assert(reportPath && path.isAbsolute(reportPath), "Pass an absolute sanitized report path.");
-const api: typeof import("../src/index.js") = await import(pathToFileURL(artifactPath).href);
+const api: typeof import("../packages/core/src/index.js") = await import(pathToFileURL(artifactPath).href);
 const bun = await runPortableProcess(["bun", "--version"], { cwd: process.cwd() });
 assert.equal(bun.exitCode, 0);
 const models = { meta: "muse-spark-1.3", qwen: "qwen3.8-max", openai: "gpt-6-luna" } as const;
@@ -33,7 +33,7 @@ const scenarios = [
   {
     name: "fix-rounding-bug", files: {
       "src/money.js": "export function cents(amount) { return Math.floor(amount * 100); }\n",
-      "test/money.test.js": "import {test} from 'node:test'; import assert from 'node:assert/strict'; import {cents} from '../src/money.js'; test('round decimal currency',()=> { assert.equal(cents(1.005),101); assert.equal(cents(10.075),1008); assert.equal(cents(0),0); assert.equal(cents(1.23),123); });\n"
+      "test/money.test.js": "import {test} from 'node:test'; import assert from 'node:assert/strict'; import {cents} from '../packages/core/src/money.js'; test('round decimal currency',()=> { assert.equal(cents(1.005),101); assert.equal(cents(10.075),1008); assert.equal(cents(0),0); assert.equal(cents(1.23),123); });\n"
     }, editable: ["src/money.js"],
     task: "Fix decimal currency rounding in src/money.js for nonnegative amounts. Read the tests, reproduce the failure, repair the implementation, then run test. Do not change tests or package.json."
   },
@@ -41,7 +41,7 @@ const scenarios = [
     name: "multi-file-cart-feature", files: {
       "src/pricing.js": "export function subtotal(items) { return items.reduce((sum,item)=>sum+item.unitCents*item.quantity,0); }\n",
       "src/index.js": "export {subtotal} from './pricing.js';\n",
-      "test/pricing.test.js": "import {test} from 'node:test'; import assert from 'node:assert/strict'; import * as cart from '../src/index.js'; test('subtotal unchanged',()=>assert.equal(cart.subtotal([{unitCents:199,quantity:2}]),398)); test('discount',()=>{assert.equal(cart.total([{unitCents:199,quantity:2}],10),358);assert.equal(cart.total([],0),0);assert.equal(cart.total([{unitCents:100,quantity:1}],100),0);}); test('invalid discount',()=>{assert.throws(()=>cart.total([],101),RangeError);assert.throws(()=>cart.total([],-1),RangeError);});\n"
+      "test/pricing.test.js": "import {test} from 'node:test'; import assert from 'node:assert/strict'; import * as cart from '../packages/core/src/index.js'; test('subtotal unchanged',()=>assert.equal(cart.subtotal([{unitCents:199,quantity:2}]),398)); test('discount',()=>{assert.equal(cart.total([{unitCents:199,quantity:2}],10),358);assert.equal(cart.total([],0),0);assert.equal(cart.total([{unitCents:100,quantity:1}],100),0);}); test('invalid discount',()=>{assert.throws(()=>cart.total([],101),RangeError);assert.throws(()=>cart.total([],-1),RangeError);});\n"
     }, editable: ["src/pricing.js", "src/index.js"],
     task: "Implement total(items, discountPercent=0) in src/pricing.js and export it from src/index.js. Preserve subtotal. Round the discounted subtotal to nearest integer cent. Reject discounts outside [0,100] with RangeError. Read the tests, reproduce the failure, implement both files, and run test. Do not change tests or package.json."
   }

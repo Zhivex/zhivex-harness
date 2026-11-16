@@ -15,7 +15,7 @@ import {
   revertAutoApproval,
   type AskReason,
   type AutoApprovePolicy,
-} from "../src/approvals/auto-approve.js";
+} from "../packages/core/src/approvals/auto-approve.js";
 
 const root = "/workspace/demo";
 const policy = (mode: AutoApprovePolicy["mode"], allow: readonly string[] = [], overLimit = false): AutoApprovePolicy => ({

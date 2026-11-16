@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { loadReleaseMetadata, validateReleaseMetadata, type ReleaseMetadata } from "../scripts/release-preflight.js";
 import { prepareRelease, type Command } from "../scripts/prepare-release.js";
-import { bundledDefaultModel } from "../src/models/catalog.js";
+import { bundledDefaultModel } from "../packages/core/src/models/catalog.js";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 
@@ -84,7 +84,7 @@ test("dry run performs no remote mutation", async () => {
   const f = fixture(); await prepareRelease({ sha, version: "1.1.0-rc.3", publish: false, run: f.run });
   expect(f.calls.some(args => args.includes("POST") || args[1] === "workflow")).toBe(false);
 });
-for (const workflow of ["web.yml", "code-journey.yml", "assistant.yml"]) {
+for (const workflow of ["code-journey.yml", "assistant.yml"]) {
   test(`failed ${workflow} blocks release preparation before any mutation`, async () => {
     const f = fixture();
     const run: Command = async args => {

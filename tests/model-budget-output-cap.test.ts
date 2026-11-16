@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { createMockLanguageModel, wrapLanguageModel, type ModelGenerateInput } from "@zhivex-ai/core";
-import { createModelBudget } from "../src/runtime/model-budget.js";
+import { createModelBudget } from "../packages/core/src/runtime/model-budget.js";
 
 const saved = { inputTokens: 100, outputTokens: 1500, cachedInputTokens: 0, modelCalls: 1, usageComplete: true };
 const limits = { inputTokens: 100_000, outputTokens: 10_000 };

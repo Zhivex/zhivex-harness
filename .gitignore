@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .env
+.env.*
+!.env.example
 gha-creds-*.json
 .zhivex-harness/
 coverage/
@@ -16,20 +18,20 @@ results/*
 scripts/swebench/__pycache__/
 evaluations/external/.venv/
 
-# Desktop build artifacts
-desktop/build/
-desktop/out/
-desktop/.harness/
-
-# Local Assistant native-shell generated artifacts (not distribution sources)
-packages/assistant/src-tauri/target/
-packages/assistant/src-tauri/runtime/
-packages/assistant/src-tauri/gen/
-
 # Local working notes and intermediate diagnostics
 /.local-docs/
+
+# Historical migration/UX evidence is archived privately; new runs use results/.
+/docs/reports/unification/
+/docs/reports/ux-electron-*/
+/docs/proposals/tauri-ux/
 
 # Local private evaluation cohorts must never enter this public repository.
 /tests/private/minimum-evals/
 /.private-minimum-evals/
 /private-minimum-evals/
+
+# Electron build artifacts
+packages/desktop/build/
+packages/desktop/out/
+packages/desktop/.harness/

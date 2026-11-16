@@ -75,7 +75,7 @@ switching presentation does not migrate state or authorize new effects.
 
 ## Terminal product
 
-`packages/code` is the independently built terminal product. Its current version
+`packages/cli` is the independently built terminal product. Its current version
 is `0.1.0`, independently published and verified on `latest` with the exact
 engine dependency `@zhivex-ai/harness@1.3.0`. Reviewed main, CI and registry
 evidence are recorded in the [Code release procedure](CODE_RELEASE.md).

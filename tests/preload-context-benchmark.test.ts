@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { mkdtemp, writeFile, rm, symlink } from 'node:fs/promises';
-import { createHarness } from '../src/runtime/harness.js';
+import { createHarness } from '../packages/core/src/runtime/harness.js';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import { preloadKnownFiles } from '../scripts/benchmark-preload-context.js';
 

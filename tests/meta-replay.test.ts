@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { ModelMessage } from "@zhivex-ai/core";
-import { createMetaReplayModel } from "../src/providers/meta-replay.js";
+import { createMetaReplayModel } from "../packages/core/src/providers/meta-replay.js";
 
 const reasoning = { type: "reasoning", id: "rs_fixture", summary: [], encrypted_content: "opaque-fixture" };
 const response = { id: "resp_new", status: "completed", output: [reasoning,

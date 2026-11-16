@@ -6,6 +6,10 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Consolidate the source tree into core, CLI and Electron workspaces while retaining the published engine and CLI contracts. Retired web/Tauri interfaces direct users to Electron and the shared CLI; see the application migration guide for data-preservation and distribution limits.
+- Add optional `readAttempts` diagnostics to `HarnessRunDiagnostics`. Existing `runHarness` arguments and diagnostic fields remain compatible; the reviewed Stable declaration snapshot includes this additive field.
+- Archive internal unification/UX captures and migration planning in private Notion storage with verified local backups. Keep the CLI compatibility fixture and technical benchmark evidence in the repository; generated parity reports now use ignored `results/`.
+
 ## 1.7.0 - 2026-11-13
 
 - Prepare Harness 1.7.0 for `latest`, with Code 0.4.3 pinned to this engine and the private Desktop binding updated. Publication and release-bound live certification remain pending; `release-status.json` retains the verified 1.6.3 publication.
@@ -69,7 +73,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 - Classify Vertex and Google transient failures as retryable `PROVIDER_UNAVAILABLE` instead of a generic `EXECUTION_FAILED`. The covered cases are HTTP 409 ABORTED, 429 RESOURCE_EXHAUSTED, 500/502/503/504, UNAVAILABLE, DEADLINE_EXCEEDED, and stream resets. Sanitized diagnostics keep the HTTP status and the closed provider status category, and still omit provider messages, resource names, and credentials. That class, and an empty model turn with no text and no tool call, retries up to three times with jittered backoff in the Vertex driver.
 - Explicit positive integer output caps under a monetary limit, including caps above 2,048, were already in 1.4.0-rc.7 and remain in this release. The ledger reserves 2,048 only when the request omits a cap.
 - Prepare stable Harness 1.4.0 and Code 0.3.0 for npm `latest`, with the exact Code engine pin, private Desktop binding and an additive representative mapping for `v1.4.0` using the unchanged Meta, Qwen and OpenAI models. At preparation time the SDK pins were Core 1.31.0 and Agents 1.11.0. Published `next` stays Harness 1.4.0-rc.8 and Code 0.3.0-rc.8.
-- The published tag is not identical to annotated `v1.4.0-rc.8` (`5bba06c86fc82b34b67cec607053948f8e00d0d1`): `src/` includes the Vertex retry above. Before that retry, engine runtime source matched the rc.8 tag. Code (`packages/code`), web (`packages/web`) and desktop (`desktop`) were already not identical to that tag.
+- The published tag is not identical to annotated `v1.4.0-rc.8` (`5bba06c86fc82b34b67cec607053948f8e00d0d1`): `src/` includes the Vertex retry above. Before that retry, engine runtime source matched the rc.8 tag. Code (`packages/cli`), web (`packages/web`) and desktop (`desktop`) were already not identical to that tag.
 - Carry the reviewed product changes on main after that tag: the same Code review screen for shell `--continue` and `/pending` ([PR201](https://github.com/Zhivex/zhivex-harness/pull/201)); removal of the desktop fixture waiting button ([PR203](https://github.com/Zhivex/zhivex-harness/pull/203)); B-lite review scope on web and desktop ([PR211](https://github.com/Zhivex/zhivex-harness/pull/211)); the Code status line, one-line summary and 48×24 first-welcome logo ([PR210](https://github.com/Zhivex/zhivex-harness/pull/210)); and the public README ([PR200](https://github.com/Zhivex/zhivex-harness/pull/200)). Packaged Harness docs `README.md` and `docs/CLI.md` differ from the rc.8 tag. `docs/CLI_UX.md` and `docs/images/approval-survives-restart.gif` also differ and are outside the Harness `files` list.
 - Require fresh exact-source/artifact validation and separate explicit approval before any paid campaign, annotated tag or publication. Provider/API tiers remain unchanged. This preparation creates no tags and dispatches no release.
 
@@ -145,7 +149,7 @@ Migration: stop all workers sharing an SDK store and upgrade them together, keep
 - Prepare the independent Code package at 0.2.0, pinned to published Harness 1.3.0. Harness stays at 1.3.0.
 - Include guided approval diffs, reviewed checkpoints, per-run estimated budgets and a Node-only offline tutorial from PR158; estimates are not guaranteed financial caps.
 - Fix exact Code payload inspection, add deterministic packaging regressions, require exact-main installed journeys, and validate the retained release tarball with offline PTY acceptance.
-- See [Code changelog](https://github.com/Zhivex/zhivex-harness/blob/main/packages/code/CHANGELOG.md) for migration notes and publication status.
+- See [Code changelog](https://github.com/Zhivex/zhivex-harness/blob/main/packages/cli/CHANGELOG.md) for migration notes and publication status.
 
 ## 1.3.0 - 2026-10-02
 

@@ -89,6 +89,198 @@
     "./audit": {
       "types": "./dist/audit/index.d.ts",
       "import": "./dist/audit/index.js"
+    },
+    "./application": {
+      "types": "./dist/engine/application.d.ts",
+      "import": "./dist/engine/application.js"
+    },
+    "./application/client": {
+      "types": "./dist/engine/application-client.d.ts",
+      "import": "./dist/engine/application-client.js"
+    },
+    "./assistant/private-directory": {
+      "types": "./dist/engine/assistant/private-directory.d.ts",
+      "import": "./dist/engine/assistant/private-directory.js"
+    },
+    "./assistant/doctor": {
+      "types": "./dist/engine/assistant/doctor.d.ts",
+      "import": "./dist/engine/assistant/doctor.js"
+    },
+    "./assistant/calendar/oauth": {
+      "types": "./dist/engine/assistant/calendar/oauth.d.ts",
+      "import": "./dist/engine/assistant/calendar/oauth.js"
+    },
+    "./assistant/calendar/http": {
+      "types": "./dist/engine/assistant/calendar/http.d.ts",
+      "import": "./dist/engine/assistant/calendar/http.js"
+    },
+    "./assistant/calendar/calendar": {
+      "types": "./dist/engine/assistant/calendar/calendar.d.ts",
+      "import": "./dist/engine/assistant/calendar/calendar.js"
+    },
+    "./assistant/calendar/connection": {
+      "types": "./dist/engine/assistant/calendar/connection.d.ts",
+      "import": "./dist/engine/assistant/calendar/connection.js"
+    },
+    "./assistant/calendar/tools": {
+      "types": "./dist/engine/assistant/calendar/tools.d.ts",
+      "import": "./dist/engine/assistant/calendar/tools.js"
+    },
+    "./assistant/calendar/store": {
+      "types": "./dist/engine/assistant/calendar/store.d.ts",
+      "import": "./dist/engine/assistant/calendar/store.js"
+    },
+    "./assistant/contracts": {
+      "types": "./dist/engine/assistant/contracts.d.ts",
+      "import": "./dist/engine/assistant/contracts.js"
+    },
+    "./assistant/microsoft/connection": {
+      "types": "./dist/engine/assistant/microsoft/connection.d.ts",
+      "import": "./dist/engine/assistant/microsoft/connection.js"
+    },
+    "./assistant/microsoft/tools": {
+      "types": "./dist/engine/assistant/microsoft/tools.d.ts",
+      "import": "./dist/engine/assistant/microsoft/tools.js"
+    },
+    "./assistant/providers/openai-compatible": {
+      "types": "./dist/engine/assistant/providers/openai-compatible.d.ts",
+      "import": "./dist/engine/assistant/providers/openai-compatible.js"
+    },
+    "./assistant/providers/provider": {
+      "types": "./dist/engine/assistant/providers/provider.d.ts",
+      "import": "./dist/engine/assistant/providers/provider.js"
+    },
+    "./assistant/providers/web-citations": {
+      "types": "./dist/engine/assistant/providers/web-citations.d.ts",
+      "import": "./dist/engine/assistant/providers/web-citations.js"
+    },
+    "./assistant/daily/service": {
+      "types": "./dist/engine/assistant/daily/service.d.ts",
+      "import": "./dist/engine/assistant/daily/service.js"
+    },
+    "./assistant/runtime": {
+      "types": "./dist/engine/assistant/runtime.d.ts",
+      "import": "./dist/engine/assistant/runtime.js"
+    },
+    "./assistant/integrations/google": {
+      "types": "./dist/engine/assistant/integrations/google.d.ts",
+      "import": "./dist/engine/assistant/integrations/google.js"
+    },
+    "./assistant/integrations/public-web": {
+      "types": "./dist/engine/assistant/integrations/public-web.d.ts",
+      "import": "./dist/engine/assistant/integrations/public-web.js"
+    },
+    "./assistant/task-metrics": {
+      "types": "./dist/engine/assistant/task-metrics.d.ts",
+      "import": "./dist/engine/assistant/task-metrics.js"
+    },
+    "./assistant/client": {
+      "types": "./dist/engine/assistant/client.d.ts",
+      "import": "./dist/engine/assistant/client.js"
+    },
+    "./assistant/telegram/api": {
+      "types": "./dist/engine/assistant/telegram/api.d.ts",
+      "import": "./dist/engine/assistant/telegram/api.js"
+    },
+    "./assistant/telegram/bridge": {
+      "types": "./dist/engine/assistant/telegram/bridge.d.ts",
+      "import": "./dist/engine/assistant/telegram/bridge.js"
+    },
+    "./assistant/telegram/store": {
+      "types": "./dist/engine/assistant/telegram/store.d.ts",
+      "import": "./dist/engine/assistant/telegram/store.js"
+    },
+    "./assistant/evaluation": {
+      "types": "./dist/engine/assistant/evaluation.d.ts",
+      "import": "./dist/engine/assistant/evaluation.js"
+    },
+    "./assistant/host": {
+      "types": "./dist/engine/assistant/host.d.ts",
+      "import": "./dist/engine/assistant/host.js"
+    },
+    "./assistant/proactive/service": {
+      "types": "./dist/engine/assistant/proactive/service.d.ts",
+      "import": "./dist/engine/assistant/proactive/service.js"
+    },
+    "./assistant/automation/scheduler": {
+      "types": "./dist/engine/assistant/automation/scheduler.d.ts",
+      "import": "./dist/engine/assistant/automation/scheduler.js"
+    },
+    "./assistant/automation/summary": {
+      "types": "./dist/engine/assistant/automation/summary.d.ts",
+      "import": "./dist/engine/assistant/automation/summary.js"
+    },
+    "./assistant/automation/time": {
+      "types": "./dist/engine/assistant/automation/time.d.ts",
+      "import": "./dist/engine/assistant/automation/time.js"
+    },
+    "./assistant/config": {
+      "types": "./dist/engine/assistant/config.d.ts",
+      "import": "./dist/engine/assistant/config.js"
+    },
+    "./assistant/modules/github": {
+      "types": "./dist/engine/assistant/modules/github.d.ts",
+      "import": "./dist/engine/assistant/modules/github.js"
+    },
+    "./assistant/modules/daily": {
+      "types": "./dist/engine/assistant/modules/daily.d.ts",
+      "import": "./dist/engine/assistant/modules/daily.js"
+    },
+    "./assistant/modules/module": {
+      "types": "./dist/engine/assistant/modules/module.d.ts",
+      "import": "./dist/engine/assistant/modules/module.js"
+    },
+    "./assistant/modules/mcp": {
+      "types": "./dist/engine/assistant/modules/mcp.d.ts",
+      "import": "./dist/engine/assistant/modules/mcp.js"
+    },
+    "./assistant/modules/calendar": {
+      "types": "./dist/engine/assistant/modules/calendar.d.ts",
+      "import": "./dist/engine/assistant/modules/calendar.js"
+    },
+    "./assistant/modules/google": {
+      "types": "./dist/engine/assistant/modules/google.d.ts",
+      "import": "./dist/engine/assistant/modules/google.js"
+    },
+    "./assistant/modules/tools": {
+      "types": "./dist/engine/assistant/modules/tools.d.ts",
+      "import": "./dist/engine/assistant/modules/tools.js"
+    },
+    "./assistant/modules/web": {
+      "types": "./dist/engine/assistant/modules/web.d.ts",
+      "import": "./dist/engine/assistant/modules/web.js"
+    },
+    "./assistant/modules/microsoft": {
+      "types": "./dist/engine/assistant/modules/microsoft.d.ts",
+      "import": "./dist/engine/assistant/modules/microsoft.js"
+    },
+    "./assistant/modules/catalog": {
+      "types": "./dist/engine/assistant/modules/catalog.d.ts",
+      "import": "./dist/engine/assistant/modules/catalog.js"
+    },
+    "./assistant/managed/setup": {
+      "types": "./dist/engine/assistant/managed/setup.d.ts",
+      "import": "./dist/engine/assistant/managed/setup.js"
+    },
+    "./assistant/managed/setup-state": {
+      "types": "./dist/engine/assistant/managed/setup-state.d.ts",
+      "import": "./dist/engine/assistant/managed/setup-state.js"
+    },
+    "./assistant/managed/secrets": {
+      "types": "./dist/engine/assistant/managed/secrets.d.ts",
+      "import": "./dist/engine/assistant/managed/secrets.js"
+    },
+    "./assistant/calendar/environment": {
+      "types": "./dist/engine/assistant/calendar/environment.d.ts",
+      "import": "./dist/engine/assistant/calendar/environment.js"
+    },
+    "./application/protocol": {
+      "types": "./dist/engine/application-protocol.d.ts",
+      "import": "./dist/engine/application-protocol.js"
+    },
+    "./cli": {
+      "types": "./dist/compat/cli.d.ts",
+      "import": "./dist/compat/cli.js"
     }
   },
   "files": [
@@ -137,6 +329,8 @@
     "docs/ACP.md",
     "docs/WORKSPACE_CHECKPOINTS.md",
     "docs/ENGINE_API.md",
+    "docs/APPLICATION_MIGRATION.md",
+    "docs/INTERNAL_ARCHIVE.md",
     "docs/ANTHROPIC.md",
     "docs/MCP_STDIO.md",
     "docs/adr/0002-isolated-mcp-stdio.md",
@@ -155,7 +349,7 @@
     "models:import": "bun run scripts/generate-console-models.ts",
     "dev": "bun run build && node --env-file-if-exists=.env dist/cli.js",
     "start": "node dist/cli.js",
-    "build": "bun run scripts/clean-dist.ts && bun build ./src/index.ts ./src/service-cli.ts ./src/acp-cli.ts ./src/audit/index.ts ./src/engine/index.ts ./src/engine/protocol.ts ./src/engine/client.ts ./src/engine/service.ts ./src/engine/acp.ts ./src/engine/models.ts ./src/engine/desktop-state-v1.ts ./src/engine/desktop-providers-v1.ts ./src/compat/code-support.ts ./src/engine/mcp-stdio-v1.ts --root ./src --outdir ./dist --target node --packages external --splitting && bun build ./src/engine/protocol.ts ./src/engine/models.ts --outdir ./dist/engine --target browser --packages external && bun build ./src/cli-entry.ts --outdir ./dist --target node --packages external --splitting && mv ./dist/cli-entry.js ./dist/cli.js && cp ./dist/cli.js ./dist/zhx.js && bun build ./scripts/verify-historical-migrations.ts --outfile ./dist/verify-historical-migrations.js --target node --packages external && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target node --packages external && tsc --emitDeclarationOnly",
+    "build": "bun run scripts/clean-dist.ts && bun build ./packages/core/src/index.ts ./packages/core/src/service-cli.ts ./packages/core/src/acp-cli.ts ./packages/core/src/audit/index.ts ./packages/core/src/engine/index.ts ./packages/core/src/engine/application.ts ./packages/core/src/engine/application-client.ts ./packages/core/src/engine/protocol.ts ./packages/core/src/engine/client.ts ./packages/core/src/engine/service.ts ./packages/core/src/engine/acp.ts ./packages/core/src/engine/models.ts ./packages/core/src/engine/desktop-state-v1.ts ./packages/core/src/engine/desktop-providers-v1.ts ./packages/core/src/compat/code-support.ts ./packages/core/src/compat/cli.ts ./packages/core/src/engine/mcp-stdio-v1.ts ./packages/core/src/engine/assistant/private-directory.ts ./packages/core/src/engine/assistant/doctor.ts ./packages/core/src/engine/assistant/calendar/oauth.ts ./packages/core/src/engine/assistant/calendar/http.ts ./packages/core/src/engine/assistant/calendar/calendar.ts ./packages/core/src/engine/assistant/calendar/connection.ts ./packages/core/src/engine/assistant/calendar/tools.ts ./packages/core/src/engine/assistant/calendar/store.ts ./packages/core/src/engine/assistant/contracts.ts ./packages/core/src/engine/assistant/microsoft/connection.ts ./packages/core/src/engine/assistant/microsoft/tools.ts ./packages/core/src/engine/assistant/providers/openai-compatible.ts ./packages/core/src/engine/assistant/providers/provider.ts ./packages/core/src/engine/assistant/providers/web-citations.ts ./packages/core/src/engine/assistant/daily/service.ts ./packages/core/src/engine/assistant/runtime.ts ./packages/core/src/engine/assistant/integrations/google.ts ./packages/core/src/engine/assistant/integrations/public-web.ts ./packages/core/src/engine/assistant/task-metrics.ts ./packages/core/src/engine/assistant/client.ts ./packages/core/src/engine/assistant/telegram/api.ts ./packages/core/src/engine/assistant/telegram/bridge.ts ./packages/core/src/engine/assistant/telegram/store.ts ./packages/core/src/engine/assistant/evaluation.ts ./packages/core/src/engine/assistant/host.ts ./packages/core/src/engine/assistant/proactive/service.ts ./packages/core/src/engine/assistant/automation/scheduler.ts ./packages/core/src/engine/assistant/automation/summary.ts ./packages/core/src/engine/assistant/automation/time.ts ./packages/core/src/engine/assistant/config.ts ./packages/core/src/engine/assistant/modules/github.ts ./packages/core/src/engine/assistant/modules/daily.ts ./packages/core/src/engine/assistant/modules/module.ts ./packages/core/src/engine/assistant/modules/mcp.ts ./packages/core/src/engine/assistant/modules/calendar.ts ./packages/core/src/engine/assistant/modules/google.ts ./packages/core/src/engine/assistant/modules/tools.ts ./packages/core/src/engine/assistant/modules/web.ts ./packages/core/src/engine/assistant/modules/microsoft.ts ./packages/core/src/engine/assistant/modules/catalog.ts ./packages/core/src/engine/assistant/managed/setup.ts ./packages/core/src/engine/assistant/managed/setup-state.ts ./packages/core/src/engine/assistant/managed/secrets.ts ./packages/core/src/engine/assistant/calendar/environment.ts --root ./packages/core/src --outdir ./dist --target node --packages external --splitting && bun build ./packages/core/src/engine/protocol.ts ./packages/core/src/engine/application-protocol.ts ./packages/core/src/engine/models.ts --outdir ./dist/engine --target browser --packages external && bun build ./packages/core/src/cli-entry.ts --outdir ./dist --target node --packages external --splitting && mv ./dist/cli-entry.js ./dist/cli.js && cp ./dist/cli.js ./dist/zhx.js && bun build ./scripts/verify-historical-migrations.ts --outfile ./dist/verify-historical-migrations.js --target node --packages external && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target node --packages external && tsc --emitDeclarationOnly",
     "prepack": "bun run build",
     "architecture:check": "bun run scripts/check-architecture.ts",
     "docs:check": "bun run scripts/check-docs.ts",
@@ -165,10 +359,11 @@
     "readiness:1.0": "bun run scripts/check-1-0-readiness.ts",
     "readiness:1.0:release": "bun run scripts/check-1-0-readiness.ts --release",
     "typecheck": "tsc --noEmit",
-    "test": "bun test --preload ./tests/preload-bedrock-mock.ts ./tests ./desktop/tests",
+    "test": "bun test --preload ./tests/preload-bedrock-mock.ts ./tests ./packages/desktop/tests",
     "evaluate": "bun run scripts/evaluate.ts",
     "benchmark:workspace": "bun run scripts/benchmark-workspace.ts",
     "benchmark:harness": "bun run scripts/benchmark-harness-overhead.ts",
+    "benchmark:context-efficiency": "bun run scripts/benchmark-context-efficiency.ts --assert-improvement",
     "benchmark:workspace:ci": "bun run scripts/benchmark-workspace.ts --files 1000 --page-size 100 --repetitions 3 --warmups 0",
     "benchmark:oci": "bun run scripts/benchmark-oci.ts",
     "benchmark:safe-fix": "bun run scripts/benchmark-time-to-safe-fix.ts",
@@ -191,7 +386,7 @@
     "demo:hostile": "bun run dist/hostile-repository-demo.js",
     "artifact:check": "bun run scripts/check-release-artifact.ts",
     "pack:inspect": "bun run build && bun pm pack --dry-run --ignore-scripts",
-    "check": "bun run architecture:check && bun run docs:check && bun run contract:check && bun run typecheck && bun run typecheck:tooling && bun run test && bun run migration:check && bun run evaluate && bun run benchmark:workspace:ci && bun run benchmark:safe-fix:image:check && bun run benchmark:safe-fix:ci && bun run smoke:mcp && bun run smoke:mcp:official && bun run smoke:oci && bun run smoke:package",
+    "check": "bun run workspace:check && bun run architecture:check && bun run docs:check && bun run contract:check && bun run typecheck && bun run typecheck:tooling && bun run test && bun run migration:check && bun run evaluate && bun run benchmark:workspace:ci && bun run benchmark:safe-fix:image:check && bun run benchmark:safe-fix:ci && bun run smoke:mcp && bun run smoke:mcp:official && bun run smoke:oci && bun run smoke:package",
     "check:sdk-redaction": "bun run scripts/diagnostics/reproduce-redaction-state-divergence.ts --require-fixed",
     "release:check": "bun run release:preflight && bun run check:sdk-redaction && bun run check && bun run scripts/audit-dependencies.ts && bun pm untrusted && bun run pack:inspect && bun run scripts/check-release-readiness.ts",
     "release:status": "bun run scripts/check-registry-release-status.ts",
@@ -206,19 +401,20 @@
     "smoke:credentials": "node --experimental-strip-types scripts/credential-store-smoke.ts",
     "release:preflight": "bun run scripts/release-preflight.ts",
     "release:prepare": "bun run scripts/prepare-release.ts",
-    "build:code": "bun run --cwd packages/code build",
-    "test:code": "bun run --cwd packages/code test",
+    "build:code": "bun run --cwd packages/cli build",
+    "test:code": "bun run --cwd packages/cli test",
     "smoke:engine-code": "bun run scripts/smoke-engine-code.ts",
     "smoke:state-upgrade": "bun run scripts/smoke-state-upgrade.ts",
     "smoke:global-code": "node scripts/smoke-global-code.mjs",
-    "dev:code": "bun run build && bun run packages/code/scripts/link-local-engine.ts && bun run build:code",
-    "typecheck:code": "bun run --cwd packages/code typecheck",
+    "dev:code": "bun run build && bun run packages/cli/scripts/link-local-engine.ts --replace && bun run build:code",
+    "typecheck:code": "bun run --cwd packages/cli typecheck",
     "evaluate:tasks": "bun run scripts/task-acceptance.ts",
-    "prepare:desktop": "bun run build && bun pm pack --ignore-scripts --quiet --filename desktop/.harness-candidate.tgz && bun run desktop/scripts/prepare-harness.ts desktop/.harness-candidate.tgz",
+    "prepare:desktop": "bun run build && bun pm pack --ignore-scripts --quiet --filename packages/desktop/.harness-candidate.tgz && bun run packages/desktop/scripts/prepare-harness.ts packages/desktop/.harness-candidate.tgz",
     "smoke:mcp:installed": "bun run build && bun scripts/mcp-installed-smoke.ts",
-    "prepare:assistant": "bun run build && bun install --cwd packages/assistant --frozen-lockfile --ignore-scripts && bun run --cwd packages/assistant prepare:local",
-    "check:assistant": "bun run --cwd packages/assistant typecheck && bun run --cwd packages/assistant test && bun run --cwd packages/assistant smoke && bun run --cwd packages/assistant smoke:installed",
-    "smoke:assistant:web": "bun run --cwd packages/assistant build && bun run --cwd packages/assistant smoke:daily-web && bun run --cwd packages/assistant smoke:microsoft-web"
+    "cli:parity": "bun run scripts/check-unified-cli.ts",
+    "migration:application": "bun run scripts/migrate-application.ts",
+    "workspace:check": "bun run scripts/check-workspaces.ts",
+    "test:assistant": "bun test tests/assistant"
   },
   "dependencies": {
     "@zhivex-ai/agents": "1.12.0",
@@ -235,7 +431,9 @@
     "zod": "4.6.7"
   },
   "overrides": {
-    "@zhivex-ai/core": "1.37.0"
+    "@zhivex-ai/core": "1.37.0",
+    "glob": "14.0.3",
+    "minimatch": "11.0.4"
   },
   "devDependencies": {
     "@agentclientprotocol/sdk": "2.1.0",
@@ -252,5 +450,10 @@
   "packageManager": "bun@1.4.0",
   "optionalDependencies": {
     "@napi-rs/keyring": "2.1.2"
-  }
+  },
+  "workspaces": [
+    "packages/core",
+    "packages/cli",
+    "packages/desktop"
+  ]
 }

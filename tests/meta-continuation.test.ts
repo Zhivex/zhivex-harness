@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createMetaContinuationFetch } from "../src/providers/meta-continuation.js";
+import { createMetaContinuationFetch } from "../packages/core/src/providers/meta-continuation.js";
 
 const url = "https://api.meta.ai/v1/responses";
 const body = { previous_response_id: "resp_recent", input: [{ type: "function_call_output", call_id: "call_1", output: "done" }], tools: [{ type: "function", name: "read_file" }] };

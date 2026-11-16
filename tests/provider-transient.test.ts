@@ -1,12 +1,12 @@
 import { expect, test } from "bun:test";
-import { normalizeHarnessError } from "../src/runtime/errors.js";
-import { sanitizedErrorDetails } from "../src/runtime/error-diagnostics.js";
+import { normalizeHarnessError } from "../packages/core/src/runtime/errors.js";
+import { sanitizedErrorDetails } from "../packages/core/src/runtime/error-diagnostics.js";
 import { sanitizeOperationalError } from "../scripts/release-diagnostics.js";
 import {
   isEmptyModelTurn,
   transientBackoffMs,
   type ProviderStatusCategory
-} from "../src/runtime/provider-transient.js";
+} from "../packages/core/src/runtime/provider-transient.js";
 
 const secret = "projects/secret-project/serviceAccounts/private@example.com token=secret-token";
 

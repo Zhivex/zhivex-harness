@@ -125,7 +125,7 @@ function validateBuildIdentity(manifest, env = process.env) {
   assert.equal(env.GITHUB_WORKFLOW_REF, `Zhivex/zhivex-harness/.github/workflows/release-code.yml@refs/tags/${tag}`);
   assert.match(env.GITHUB_SHA || '', /^[a-f0-9]{40}$/);
   assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), env.GITHUB_SHA);
-  const checkout = JSON.parse(readFileSync('packages/code/package.json', 'utf8'));
+  const checkout = JSON.parse(readFileSync('packages/cli/package.json', 'utf8'));
   assert.equal(checkout.name, manifest.name);
   assert.equal(checkout.version, manifest.version);
   assert.ok(env.ACTIONS_ID_TOKEN_REQUEST_URL && env.ACTIONS_ID_TOKEN_REQUEST_TOKEN, 'GitHub OIDC permission is required');

@@ -2,12 +2,12 @@ import { expect, test } from "bun:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { resolveHarnessConfig, type HarnessConfig } from "../src/runtime/config.js";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { observeHarnessPolicyDecisions } from "../src/runtime/policy-decisions.js";
-import { SqliteDatabase } from "../src/persistence/sqlite-database.js";
-import { openHarnessActivityStore, type HarnessActivityEvent, type HarnessActivitySnapshot, type HarnessActivityStore } from "../src/client/service-events.js";
-import { createHarnessClientAdapter } from "../src/client/adapter.js";
+import { resolveHarnessConfig, type HarnessConfig } from "../packages/core/src/runtime/config.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { observeHarnessPolicyDecisions } from "../packages/core/src/runtime/policy-decisions.js";
+import { SqliteDatabase } from "../packages/core/src/persistence/sqlite-database.js";
+import { openHarnessActivityStore, type HarnessActivityEvent, type HarnessActivitySnapshot, type HarnessActivityStore } from "../packages/core/src/client/service-events.js";
+import { createHarnessClientAdapter } from "../packages/core/src/client/adapter.js";
 
 const CAP = 2 * 1024 * 1024;
 const snapshot = (config: HarnessConfig, session = "s") => {

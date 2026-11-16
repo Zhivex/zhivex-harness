@@ -4,9 +4,9 @@ import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { runPortableProcess } from "../src/execution/process-runtime.js";
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { openHarnessPersistence } from "../src/persistence/operations.js";
+import { runPortableProcess } from "../packages/core/src/execution/process-runtime.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { openHarnessPersistence } from "../packages/core/src/persistence/operations.js";
 
 const prepareOnly = process.argv.includes("--prepare-only");
 assert(prepareOnly || process.env.ZHIVEX_HARNESS_LIVE === "1", "Explicit live opt-in required.");

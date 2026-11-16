@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   createHarnessMcpTools,
   normalizeHarnessMcpConfiguration
-} from "../src/integrations/mcp.js";
+} from "../packages/core/src/integrations/mcp.js";
 
 const sessionId = "zhivex-controlled-session";
 const authorization = "Bearer controlled-loopback-fixture";

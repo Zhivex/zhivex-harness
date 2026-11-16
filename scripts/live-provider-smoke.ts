@@ -1,4 +1,4 @@
-import { HarnessConfigError as DriverConfigError } from '../src/runtime/errors.js';
+import { HarnessConfigError as DriverConfigError } from '../packages/core/src/runtime/errors.js';
 import { loadLiveSmokeRuntime } from "./live-smoke-runtime.js";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
@@ -8,12 +8,12 @@ import path from "node:path";
 import { createTextMessage, type ModelMessage } from "@zhivex-ai/core";
 import type { AgentRunInput } from "@zhivex-ai/agents";
 
-import type { HarnessProvider } from "../src/runtime/config.js";
+import type { HarnessProvider } from "../packages/core/src/runtime/config.js";
 import {
   restoreSanitizedOperationalError,
   sanitizeOperationalError
 } from "./release-diagnostics.js";
-import { classifyProviderFailure, isRetryableProviderFailure, transientBackoffMs } from "../src/runtime/provider-transient.js";
+import { classifyProviderFailure, isRetryableProviderFailure, transientBackoffMs } from "../packages/core/src/runtime/provider-transient.js";
 
 const { PROVIDERS, PROVIDER_DESCRIPTORS, providerAvailability, providerDescriptor, createEditProposal, HarnessExecutionError, createHarness, runHarness } = await loadLiveSmokeRuntime();
 

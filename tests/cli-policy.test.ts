@@ -2,12 +2,12 @@ import { expect, test } from 'bun:test';
 import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { createHarness } from '../src/runtime/harness.js';
-import { inspectHarnessPolicy } from '../src/runtime/policy-inspection.js';
-import { startHarnessLocalService } from '../src/client/local-service.js';
-import { parseCliArgs } from '../src/cli/arguments.js';
-import { parseCliJsonDocument, parseCliJsonLineDocument } from '../src/client/json-contracts.js';
-const cli = path.resolve(import.meta.dir, '../src/cli.ts');
+import { createHarness } from '../packages/core/src/runtime/harness.js';
+import { inspectHarnessPolicy } from '../packages/core/src/runtime/policy-inspection.js';
+import { startHarnessLocalService } from '../packages/core/src/client/local-service.js';
+import { parseCliArgs } from '../packages/core/src/cli/arguments.js';
+import { parseCliJsonDocument, parseCliJsonLineDocument } from '../packages/core/src/client/json-contracts.js';
+const cli = path.resolve(import.meta.dir, '../packages/core/src/cli.ts');
 const run = async (root: string, args: string[]) => {
   const child = Bun.spawn([process.execPath, '--preload', path.join(root, 'no-network.mjs'), cli, ...args], {
     cwd: root, env: { PATH: process.env.PATH, HOME: root, OPENAI_API_KEY: 'fixture-only', CONSOLE_FIXTURE_REQUESTS: path.join(root,'requests.jsonl'), ZHIVEX_HARNESS_CREDENTIAL_STORE: 'disabled' },

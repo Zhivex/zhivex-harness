@@ -3,8 +3,8 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { createHarness } from '../src/runtime/harness.js';
-import { createHarnessClientAdapter } from '../src/client/adapter.js';
+import { createHarness } from '../packages/core/src/runtime/harness.js';
+import { createHarnessClientAdapter } from '../packages/core/src/client/adapter.js';
 
 test('client checkpoint review restores into a derivative and reconnects without duplicating effects', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'client-checkpoints-'));

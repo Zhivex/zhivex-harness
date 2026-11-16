@@ -3,12 +3,12 @@ import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { assistantResponses } from "../src/context/task-memory.js";
+import { assistantResponses } from "../packages/core/src/context/task-memory.js";
 import { createTextMessage } from "@zhivex-ai/core";
-import { createHarness } from "../src/runtime/harness.js";
-import { openHarnessActivityStore } from "../src/client/service-events.js";
-import { createHarnessToolPolicy, type HarnessToolPolicy } from "../src/runtime/tool-policy.js";
-import { createHarnessClientAdapter, type HarnessClientCommand, type HarnessClientResponse, type HarnessClientData, type HarnessClientAdapterOptions } from "../src/client/index.js";
+import { createHarness } from "../packages/core/src/runtime/harness.js";
+import { openHarnessActivityStore } from "../packages/core/src/client/service-events.js";
+import { createHarnessToolPolicy, type HarnessToolPolicy } from "../packages/core/src/runtime/tool-policy.js";
+import { createHarnessClientAdapter, type HarnessClientCommand, type HarnessClientResponse, type HarnessClientData, type HarnessClientAdapterOptions } from "../packages/core/src/client/index.js";
 
 const fixture = async (options?: HarnessClientAdapterOptions, toolPolicy?: HarnessToolPolicy, modelOverride?: ReturnType<typeof createMockLanguageModel>) => {
   const workspace = await mkdtemp(tmpdir()+"/har-client-");

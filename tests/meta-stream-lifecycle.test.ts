@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 // leave a timeout alive after the caller had received the HTTP error.
 for (const scenario of ["503", "504", "network", "complete", "return", "stream-error", "caller-abort", "deadline", "stream-abort", "stream-deadline"] as const) {
   test(`Meta stream releases its deadline after ${scenario}`, async () => {
-    const modulePath = new URL("../src/providers/meta-replay.ts", import.meta.url).pathname;
+    const modulePath = new URL("../packages/core/src/providers/meta-replay.ts", import.meta.url).pathname;
     const source = `
       import assert from "node:assert/strict";
       import { createMetaReplayModel } from ${JSON.stringify(modulePath)};

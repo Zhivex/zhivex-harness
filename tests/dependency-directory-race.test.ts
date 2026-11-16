@@ -2,7 +2,7 @@ import { expect, spyOn, test } from "bun:test";
 import * as fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
-import { readDependency } from "../src/tools/dependency-read.js";
+import { readDependency } from "../packages/core/src/tools/dependency-read.js";
 
 // Reproduce PR #132's proposed ABA: opendir retains the outside directory,
 // but the original package inode is restored before any later path check.

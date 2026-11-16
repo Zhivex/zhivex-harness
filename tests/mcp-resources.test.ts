@@ -2,8 +2,8 @@ import { expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { createHarnessMcpTools, createHttpMcpClient, normalizeHarnessMcpConfiguration, type HarnessMcpResourceClient } from "../src/integrations/mcp.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { createHarnessMcpTools, createHttpMcpClient, normalizeHarnessMcpConfiguration, type HarnessMcpResourceClient } from "../packages/core/src/integrations/mcp.js";
 
 const uri = "docs://project/architecture";
 const configuration = (extra: Record<string, unknown> = {}) => normalizeHarnessMcpConfiguration({

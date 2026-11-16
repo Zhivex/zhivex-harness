@@ -3,10 +3,10 @@ import {mkdtemp, realpath, rm, mkdir, writeFile, readFile, symlink, link} from "
 import os from "node:os";
 import path from "node:path";
 import {spawnSync} from "node:child_process";
-import {openCliSessionStore} from "../src/persistence/sessions.js";
-import {openHarnessPersistence} from "../src/persistence/operations.js";
-import {resolveHarnessConfig} from "../src/runtime/config.js";
-import {protectStateFromGit} from "../src/persistence/state-gitignore.js";
+import {openCliSessionStore} from "../packages/core/src/persistence/sessions.js";
+import {openHarnessPersistence} from "../packages/core/src/persistence/operations.js";
+import {resolveHarnessConfig} from "../packages/core/src/runtime/config.js";
+import {protectStateFromGit} from "../packages/core/src/persistence/state-gitignore.js";
 
 async function fixture(run:(root:string)=>Promise<void>) {
  const root=await realpath(await mkdtemp(path.join(os.tmpdir(),"harness-gitignore-")));

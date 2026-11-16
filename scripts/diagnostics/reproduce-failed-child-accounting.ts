@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { getAgentBudgetStatus, type AgentRunState } from "@zhivex-ai/agents";
-import { createHarness, runHarness } from "../../src/runtime/harness.js";
+import { createHarness, runHarness } from "../../packages/core/src/runtime/harness.js";
 import { sanitizeOperationalError } from "../release-diagnostics.js";
 
 for (const ledger of [false, true]) {

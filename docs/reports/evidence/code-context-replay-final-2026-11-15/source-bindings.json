@@ -1,0 +1,66 @@
+{
+  "packages/core/src/context/working-read-replay.ts": {
+    "sha256": "aa08bd18cf9eec66d4d9b85ae0df4adde14bd1302bc1b958ecd0fe80ad9e5eb0",
+    "archive": "source/packages/core/src/context/working-read-replay.ts"
+  },
+  "packages/core/src/context/read-attempts.ts": {
+    "sha256": "0c8521f88b6336bae63c9b7f2e4891d71038cce46d97da3c92a99331880b28b4",
+    "archive": "source/packages/core/src/context/read-attempts.ts"
+  },
+  "packages/core/src/context/request-projection.ts": {
+    "sha256": "c4167e08582a7a9a7953c491c05fe97519a0f43304f0666ab2e62f649ea64fed",
+    "archive": "source/packages/core/src/context/request-projection.ts"
+  },
+  "packages/core/src/runtime/harness.ts": {
+    "sha256": "8f850e1175815c5e678f778f48356aa677699d3c705dc587594744851399339a",
+    "archive": "source/packages/core/src/runtime/harness.ts"
+  },
+  "scripts/benchmark-code-context-replay-final.ts": {
+    "sha256": "f3c754615d2e6f650f94557a734bc0fb353d5d65616e0f966e997afaa518cadc",
+    "archive": "source/scripts/benchmark-code-context-replay-final.ts"
+  },
+  "scripts/benchmark-code-context-replay.ts": {
+    "sha256": "9492daeaffe37c0acf81c7c703d1faa465ffd9b38bc3cef0c951a75411c5d711",
+    "archive": "source/scripts/benchmark-code-context-replay.ts"
+  },
+  "scripts/verify-code-context-repairs.ts": {
+    "sha256": "6df046e3cba22eadd756f34c0b797a26531b945ade6b7b375a0233b0c1ebe7c3",
+    "archive": "source/scripts/verify-code-context-repairs.ts"
+  },
+  "scripts/analyze-code-context-replay.ts": {
+    "sha256": "36ebcb73a1f7cdb769b4552bd4a07c091fdf87a44de883e9b412e66bf5b55f06",
+    "archive": "source/scripts/analyze-code-context-replay.ts"
+  },
+  "scripts/benchmarks/code-context/freeze-replay.ts": {
+    "sha256": "859e32b7edb5ef8e7e185822c85a228104edfabb09628e5acaa61eaedec8b9cc",
+    "archive": "source/scripts/benchmarks/code-context/freeze-replay.ts"
+  },
+  "scripts/benchmarks/code-context/fixtures.ts": {
+    "sha256": "476c8a3aa0133ae5cdd1ae66855822ba82ea176cff1c7b3be9666035535cb81d",
+    "archive": "source/scripts/benchmarks/code-context/fixtures.ts"
+  },
+  "scripts/benchmarks/code-context/grade.ts": {
+    "sha256": "21a43d625f899f682532e89b83e331aa0cb1a90799a4bcd63db199a874c33a99",
+    "archive": "source/scripts/benchmarks/code-context/grade.ts"
+  },
+  "scripts/benchmarks/context-live/meter.ts": {
+    "sha256": "bc6375fa74e783accca78387ef15c21195a5d760566bb30011c4359b5f90b4e7",
+    "archive": "source/scripts/benchmarks/context-live/meter.ts"
+  },
+  "tests/working-read-replay.test.ts": {
+    "sha256": "f8d5265a9b43199762b2024fcdf9c3a96afe983e34cab6ee556196ca1cb6f611",
+    "archive": "source/tests/working-read-replay.test.ts.txt"
+  },
+  "tests/request-projection.test.ts": {
+    "sha256": "2898cc1e509633bc27984e657dc7a9be761fb8c4039760bcd9b733709375582c",
+    "archive": "source/tests/request-projection.test.ts.txt"
+  },
+  "package.json": {
+    "sha256": "2a6e31878a00f09b200a7dbdd09a68bff118f29712defcff2b8c027df14b1ac9",
+    "archive": "source/package.json"
+  },
+  "bun.lock": {
+    "sha256": "688a9059d8b7de1c7915fc548cd6bd477f59834a00ccfb2f8828907a46bdf5e7",
+    "archive": "source/bun.lock"
+  }
+}

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createOpenAI } from "@zhivex-ai/openai";
 import type { ModelGenerateInput } from "@zhivex-ai/core";
-import { providerModelInternals } from "../src/providers/providers.js";
+import { providerModelInternals } from "../packages/core/src/providers/providers.js";
 
 const input = (name: string, isError = false, native = false): ModelGenerateInput => ({
   providerOptions: { apiMode: "responses" },
@@ -65,9 +65,9 @@ describe("OpenAI function receipts across native tool name collisions", () => {
 for (const mode of ["generate", "stream"] as const) test(`OpenAI ${mode} keeps fresh-edit and retry fields optional on the wire`, async () => {
   const { z } = await import("zod");
   const { wrapLanguageModel } = await import("@zhivex-ai/core");
-  const { createModelEditReferences } = await import("../src/runtime/model-edit-references.js");
-  const { editChangesSchema } = await import("../src/workspace/edit-contracts.js");
-  const { replacementEditSchema } = await import("../src/workspace/replacement-edits.js");
+  const { createModelEditReferences } = await import("../packages/core/src/runtime/model-edit-references.js");
+  const { editChangesSchema } = await import("../packages/core/src/workspace/edit-contracts.js");
+  const { replacementEditSchema } = await import("../packages/core/src/workspace/replacement-edits.js");
   const schemas = {
     apply_reviewed_edits: z.strictObject({ changes: editChangesSchema }),
     verify_and_apply_reviewed_edits: z.strictObject({ changes: editChangesSchema, command: z.string(), args: z.array(z.string()) }),

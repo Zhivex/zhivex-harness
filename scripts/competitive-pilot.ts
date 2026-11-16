@@ -1,7 +1,7 @@
 /** Offline protocol preparation and journal summary. Never runs a tool or provider. */
 import path from 'node:path';
 import {writeFile} from 'node:fs/promises';
-import {readRegularFileNoFollow} from '../src/workspace/file-security.js';
+import {readRegularFileNoFollow} from '../packages/core/src/workspace/file-security.js';
 import {compileCompetitivePilotPlan,summarizeCompetitivePilot} from './acceptance/pilot-protocol.js';
 
 const [command,planPath,inputOrOutput,summaryOutput]=process.argv.slice(2);

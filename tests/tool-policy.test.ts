@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { tool } from "@zhivex-ai/agents";
 import { z } from "zod";
-import { applyHarnessToolPolicy, createHarnessToolPolicy, type HarnessToolPolicy } from "../src/runtime/tool-policy.js";
+import { applyHarnessToolPolicy, createHarnessToolPolicy, type HarnessToolPolicy } from "../packages/core/src/runtime/tool-policy.js";
 
 const policy: HarnessToolPolicy = { schemaVersion: 1, rules: [
   { id: "permit", tools: ["read"], decision: "allow", reason: "Ordinary read" },

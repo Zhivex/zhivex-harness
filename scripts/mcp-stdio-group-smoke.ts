@@ -1,16 +1,16 @@
-import { createHarness, runHarness } from '../src/runtime/harness.js';
+import { createHarness, runHarness } from '../packages/core/src/runtime/harness.js';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Workspace } from '../src/workspace/workspace.js';
-import { prepareMcpWorkspaceSnapshot, discardMcpWorkspaceSnapshot } from '../src/execution/mcp-workspace-snapshot.js';
-import { launchDockerMcpGroup } from '../src/execution/mcp-oci-server.js';
-import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../src/integrations/mcp-stdio-admission.js';
-import { runPortableProcess } from '../src/execution/process-runtime.js';
-import { resolveHarnessConfig } from '../src/runtime/config.js';
-import { openHarnessPersistence } from '../src/persistence/operations.js';
+import { Workspace } from '../packages/core/src/workspace/workspace.js';
+import { prepareMcpWorkspaceSnapshot, discardMcpWorkspaceSnapshot } from '../packages/core/src/execution/mcp-workspace-snapshot.js';
+import { launchDockerMcpGroup } from '../packages/core/src/execution/mcp-oci-server.js';
+import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../packages/core/src/integrations/mcp-stdio-admission.js';
+import { runPortableProcess } from '../packages/core/src/execution/process-runtime.js';
+import { resolveHarnessConfig } from '../packages/core/src/runtime/config.js';
+import { openHarnessPersistence } from '../packages/core/src/persistence/operations.js';
 const env = Object.fromEntries(['HOME', 'PATH', 'DOCKER_CONFIG', 'DOCKER_CONTEXT', 'DOCKER_HOST', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH', 'XDG_RUNTIME_DIR']
   .flatMap(key => process.env[key] ? [[key, process.env[key]!]] : []));
 async function docker(args: string[]) {

@@ -1,9 +1,9 @@
 import {test,expect} from 'bun:test';
 import type {AgentToolCallJournalEntry} from '@zhivex-ai/core';
 import {mkdtemp,writeFile,rm,symlink} from 'node:fs/promises';
-import {nextTaskAcceptanceLedger} from '../src/runtime/task-acceptance-record.js';
-import {createTaskAcceptanceChecks} from '../src/runtime/task-acceptance-checks.js';
-import {acceptanceSnapshotDigest} from '../src/execution/acceptance-snapshot.js';
+import {nextTaskAcceptanceLedger} from '../packages/core/src/runtime/task-acceptance-record.js';
+import {createTaskAcceptanceChecks} from '../packages/core/src/runtime/task-acceptance-checks.js';
+import {acceptanceSnapshotDigest} from '../packages/core/src/execution/acceptance-snapshot.js';
 const contract={schemaVersion:1,taskId:'check',allowedWritePaths:['result.txt'],protectedFiles:[],humanReview:[],requiredChecks:[
   {id:'first',kind:'argv',command:'node',args:['--test','first.js'],purpose:'First',execution:{backend:'oci',approval:'required',network:'none'}},
   {id:'second',kind:'argv',command:'node',args:['--test','second.js'],purpose:'Second',execution:{backend:'oci',approval:'required',network:'none'}}]};

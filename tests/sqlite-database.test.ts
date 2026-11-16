@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { SqliteDatabase } from "../src/persistence/sqlite-database.js";
+import { SqliteDatabase } from "../packages/core/src/persistence/sqlite-database.js";
 
 describe("SQLite runtime compatibility", () => {
   test("binds numbered parameters portably and preserves repeated indices", () => {

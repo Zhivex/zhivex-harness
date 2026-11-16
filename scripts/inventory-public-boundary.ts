@@ -9,7 +9,7 @@ const root = path.resolve(import.meta.dir, "..");
 const read = (file: string) => readFile(path.join(root, file), "utf8");
 const manifest = JSON.parse(await read("package.json"));
 const baseline = JSON.parse(await read("contracts/public-api.json"));
-const source = ts.createSourceFile("index.ts", await read("src/index.ts"), ts.ScriptTarget.Latest, true);
+const source = ts.createSourceFile("index.ts", await read("packages/core/src/index.ts"), ts.ScriptTarget.Latest, true);
 const exports: { name: string; kind: string; tier: string; source: string }[] = [];
 for (const statement of source.statements) {
   if (!ts.isExportDeclaration(statement) || !statement.moduleSpecifier || !ts.isStringLiteral(statement.moduleSpecifier)
@@ -41,16 +41,16 @@ const visit = async (directory: string): Promise<void> => {
           ? path.posix.normalize(path.posix.join(path.posix.dirname(file), dependency.target)).replace(/\.js$/, ".ts")
           : dependency.target;
         // All CLI/Desktop dependencies plus any reverse edge into CLI from the rest of Harness.
-        if (file.startsWith("src/cli/") || ["src/cli.ts", "src/cli-entry.ts", "src/acp-cli.ts", "src/service-cli.ts"].includes(file)
-          || file.startsWith("desktop/src/") || resolved.startsWith("src/cli/")) {
+        if (file.startsWith("packages/core/src/cli/") || ["packages/core/src/cli.ts", "packages/core/src/cli-entry.ts", "packages/core/src/acp-cli.ts", "packages/core/src/service-cli.ts"].includes(file)
+          || file.startsWith("packages/desktop/src/") || resolved.startsWith("packages/core/src/cli/")) {
           imports.push({ file, ...dependency, resolved });
         }
       }
     }
   }
 };
-await visit("src");
-await visit("desktop/src");
+await visit("packages/core/src");
+await visit("packages/desktop/src");
 process.stdout.write(`${JSON.stringify({
   schemaVersion: 1,
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),

@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { expect, test } from 'bun:test';
 import type { AgentRunState, AgentRunStore, AgentToolCallJournalEntry } from '@zhivex-ai/core';
-import { exportHarnessGovernanceReport, harnessGovernanceReportSchema, renderHarnessGovernanceMarkdown } from '../src/persistence/governance-report.js';
-import { APPROVAL_HISTORY_KEY, approvalInputDigest } from '../src/approvals/approval-history.js';
-import { nextTaskAcceptanceLedger, TASK_ACCEPTANCE_KEY, TASK_ACCEPTANCE_EVIDENCE_KEY } from '../src/runtime/task-acceptance-record.js';
+import { exportHarnessGovernanceReport, harnessGovernanceReportSchema, renderHarnessGovernanceMarkdown } from '../packages/core/src/persistence/governance-report.js';
+import { APPROVAL_HISTORY_KEY, approvalInputDigest } from '../packages/core/src/approvals/approval-history.js';
+import { nextTaskAcceptanceLedger, TASK_ACCEPTANCE_KEY, TASK_ACCEPTANCE_EVIDENCE_KEY } from '../packages/core/src/runtime/task-acceptance-record.js';
 const sha='sha256:'+'a'.repeat(64);
 const state=(overrides:Partial<AgentRunState>={})=>({runId:'private-run',revision:1,status:'completed',messages:[],pendingApprovals:[],childRuns:[],metadata:{},...overrides} as AgentRunState);
 const store=(states:AgentRunState[],journal:AgentToolCallJournalEntry[]=[]):AgentRunStore=>({
@@ -97,7 +97,7 @@ test('recorded verified outcome requires matching contract, checks and import bi
 test('SQLite projection is stable after closing and reopening; no additional model calls',async()=>{
  const {mkdtemp,rm}=await import('node:fs/promises');
  const {createMockLanguageModel}=await import('@zhivex-ai/agents/testing');
- const {createHarness,runHarness}=await import('../src/runtime/harness.js');
+ const {createHarness,runHarness}=await import('../packages/core/src/runtime/harness.js');
  const root=await mkdtemp('/tmp/har-governance-');
  const model=createMockLanguageModel({streamEvents:[[{type:'text-delta',textDelta:'PRIVATE OUTPUT'},{type:'finish',finishReason:'stop'}]]});
  const open=()=>createHarness({workspace:root,subagentProfiles:[],modelInstance:model});

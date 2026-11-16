@@ -7,12 +7,12 @@ import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import { createInMemoryAgentRunStore, createSqliteAgentRunStore } from '@zhivex-ai/agents/ops';
 import { wrapLanguageModel, fingerprintAgentHarness, type AgentRunState, type LanguageModel, type ModelGenerateInput } from '@zhivex-ai/core';
 import { ProviderToolCallError } from '@zhivex-ai/core/provider';
-import { openHarnessPersistence, sqliteAdapter, type HarnessPersistence } from '../src/persistence/operations.js';
-import { budgetLedgerScope } from '../src/runtime/budget-ledger-scope.js';
-import { SqliteDatabase } from '../src/persistence/sqlite-database.js';
-import { resolveHarnessConfig } from '../src/runtime/config.js';
-import { createHarnessStateBackup, importHarnessStateBackup } from '../src/persistence/state-backup.js';
-import { TASK_BUDGET_KEY, TASK_BUDGET_ACCOUNT_KEY, TaskBudget, inspectTaskBudgetSummary, assertTaskBudgetBackupLinks } from '../src/runtime/task-budget.js';
+import { openHarnessPersistence, sqliteAdapter, type HarnessPersistence } from '../packages/core/src/persistence/operations.js';
+import { budgetLedgerScope } from '../packages/core/src/runtime/budget-ledger-scope.js';
+import { SqliteDatabase } from '../packages/core/src/persistence/sqlite-database.js';
+import { resolveHarnessConfig } from '../packages/core/src/runtime/config.js';
+import { createHarnessStateBackup, importHarnessStateBackup } from '../packages/core/src/persistence/state-backup.js';
+import { TASK_BUDGET_KEY, TASK_BUDGET_ACCOUNT_KEY, TaskBudget, inspectTaskBudgetSummary, assertTaskBudgetBackupLinks } from '../packages/core/src/runtime/task-budget.js';
 
 const scope = { tenantId: 'task-budget-tests', userId: 'operator', namespace: 'workspace' };
 const policy = { limits: { inputTokens: 2000, outputTokens: 100, totalTokens: 2100 }, closureReserve: 0 };
@@ -388,9 +388,9 @@ test('SQLite restart and complete backup roundtrip preserve task policy, members
 
 test('a real worker exit before receipt keeps its SQLite reservation and blocks a later process', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'task-budget-crash-')); roots.push(root);
-  const modulePath = new URL('../src/runtime/task-budget.ts', import.meta.url).pathname;
-  const operationsPath = new URL('../src/persistence/operations.ts', import.meta.url).pathname;
-  const configPath = new URL('../src/runtime/config.ts', import.meta.url).pathname;
+  const modulePath = new URL('../packages/core/src/runtime/task-budget.ts', import.meta.url).pathname;
+  const operationsPath = new URL('../packages/core/src/persistence/operations.ts', import.meta.url).pathname;
+  const configPath = new URL('../packages/core/src/runtime/config.ts', import.meta.url).pathname;
   const child = Bun.spawn([process.execPath, '--eval', `
     import { TaskBudget } from ${JSON.stringify(modulePath)};
     import { openHarnessPersistence } from ${JSON.stringify(operationsPath)};
@@ -415,9 +415,9 @@ test('a real worker exit before receipt keeps its SQLite reservation and blocks 
 
 test('a real worker exit after confirmed model usage retains the active native invocation', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'task-budget-effect-crash-')); roots.push(root);
-  const taskPath = new URL('../src/runtime/task-budget.ts', import.meta.url).pathname;
-  const operationsPath = new URL('../src/persistence/operations.ts', import.meta.url).pathname;
-  const configPath = new URL('../src/runtime/config.ts', import.meta.url).pathname;
+  const taskPath = new URL('../packages/core/src/runtime/task-budget.ts', import.meta.url).pathname;
+  const operationsPath = new URL('../packages/core/src/persistence/operations.ts', import.meta.url).pathname;
+  const configPath = new URL('../packages/core/src/runtime/config.ts', import.meta.url).pathname;
   const child = Bun.spawn([process.execPath, '--eval', `
     import {TaskBudget} from ${JSON.stringify(taskPath)};
     import {openHarnessPersistence} from ${JSON.stringify(operationsPath)};

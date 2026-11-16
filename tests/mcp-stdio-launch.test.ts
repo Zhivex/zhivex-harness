@@ -2,10 +2,10 @@ import { expect, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Workspace } from '../src/workspace/workspace.js';
-import { prepareMcpWorkspaceSnapshot, discardMcpWorkspaceSnapshot } from '../src/execution/mcp-workspace-snapshot.js';
-import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../src/integrations/mcp-stdio-admission.js';
-import { withAdmittedMcpLaunch } from '../src/integrations/mcp-stdio-launch.js';
+import { Workspace } from '../packages/core/src/workspace/workspace.js';
+import { prepareMcpWorkspaceSnapshot, discardMcpWorkspaceSnapshot } from '../packages/core/src/execution/mcp-workspace-snapshot.js';
+import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../packages/core/src/integrations/mcp-stdio-admission.js';
+import { withAdmittedMcpLaunch } from '../packages/core/src/integrations/mcp-stdio-launch.js';
 
 async function fixture(run: (context: Awaited<ReturnType<typeof setup>>) => Promise<void>) {
   const root = await mkdtemp(path.join(tmpdir(), 'mcp-launch-test-'));

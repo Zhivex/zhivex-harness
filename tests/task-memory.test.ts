@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { createTextMessage, type ToolExecutionContext } from "@zhivex-ai/core";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { captureTaskSources, createTaskTools, TASK_SOURCE_KEY, ASSISTANT_RESPONSE_KEY, captureAssistantResponses, assistantResponses, MAX_ASSISTANT_RESPONSE_CHARACTERS } from "../src/context/task-memory.js";
+import { captureTaskSources, createTaskTools, TASK_SOURCE_KEY, ASSISTANT_RESPONSE_KEY, captureAssistantResponses, assistantResponses, MAX_ASSISTANT_RESPONSE_CHARACTERS } from "../packages/core/src/context/task-memory.js";
 
 test("operator history beyond 64 requests stays durable while read_task projects a bounded recent page", async () => {
   const original = "Keep the public API and Unicode ordering.";

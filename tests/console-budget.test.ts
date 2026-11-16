@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
-import { parseCliArgs } from "../src/cli/arguments.js";
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { consoleBudgetOptions, restoreConsoleOptions, formatConsoleBudget } from "../src/cli/console/console-budget.js";
-import { createHarnessResumeMetadata, readHarnessResumeConfig, persistedCliOptions } from "../src/cli/resume-metadata.js";
+import { parseCliArgs } from "../packages/core/src/cli/arguments.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { consoleBudgetOptions, restoreConsoleOptions, formatConsoleBudget } from "../packages/core/src/cli/console/console-budget.js";
+import { createHarnessResumeMetadata, readHarnessResumeConfig, persistedCliOptions } from "../packages/core/src/cli/resume-metadata.js";
 
 test("new consoles continue without token ceilings while automation remains bounded", () => {
   const options = parseCliArgs(["chat"]);

@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { tool, type ModelMessage } from "@zhivex-ai/core";
 import { z } from "zod";
-import { createMetaReplayModel } from "../src/providers/meta-replay.js";
+import { createMetaReplayModel } from "../packages/core/src/providers/meta-replay.js";
 import { sanitizeOperationalError } from "./release-diagnostics.js";
 
 assert.equal(process.env.ZHIVEX_HARNESS_LIVE, "1", "Set ZHIVEX_HARNESS_LIVE=1 for bounded live requests.");

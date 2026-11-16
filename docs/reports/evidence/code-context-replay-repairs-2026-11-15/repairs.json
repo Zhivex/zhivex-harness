@@ -1,0 +1,160 @@
+{
+  "method": "Exploratory one-pass verification repair for every completed proposal failing executable tests, with intact context and security. No retry of exhausted/no-answer tasks. Original campaign remains immutable. Full original source is supplied as untrusted data; no tools or compaction; one model call and Bun grading. Incremental usage/latency must be added to the originating task.",
+  "eligible": [
+    {
+      "pair": 1,
+      "variant": "after"
+    },
+    {
+      "pair": 2,
+      "variant": "before"
+    }
+  ],
+  "records": [
+    {
+      "pair": 1,
+      "model": "gpt-6-luna",
+      "variant": "after",
+      "fixture": "path-policy",
+      "threshold": 12000,
+      "fixtureHash": "d5e0e997885c4de48eca0624679a4739735a5dd9bd1358e0783e772e39bd8670",
+      "runtimeHash": "f2f49713db108154d3a7709ddffcf68d44439b1986aa81066c5793483e970186",
+      "status": "completed",
+      "answer": "{\"edits\":[{\"oldText\":\"normalized !== '.env.example'\",\"newText\":\"normalized !== '.env.example'\"},{\"oldText\":\"normalized.endsWith(extension)\",\"newText\":\"normalized.endsWith(extension) && normalized.length > extension.length\"},{\"oldText\":\"segment.toLocaleLowerCase(\\\"tr\\\")\",\"newText\":\"segment.toLowerCase()\"}],\"evidence\":{\"early\":\"df94332fa83f50fbf281\",\"late\":\"ce04ba8ce1a3707e572f\",\"policy\":\"bun-only\"}}",
+      "sdkUsage": {
+        "inputTokens": 16890,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 16887,
+        "outputTokens": 111,
+        "reasoningTokens": 0,
+        "totalTokens": 17001,
+        "cacheWriteTokensDetails": {
+          "ttl30mTokens": 16887,
+          "ttl12hTokens": 0
+        }
+      },
+      "grade": {
+        "passed": false,
+        "context": true,
+        "tests": {
+          "passed": false,
+          "exit": 1,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n1 | \n2 | import {test,expect} from 'bun:test';\n3 | import {isSensitiveName,isHardIgnored} from './candidate.ts';\n4 | test('sensitive basenames, extensions, case and nested exclusions',()=>{\n5 |  for(const p of ['ID_RSA','id_ed25519','.ENV','.Env.Local','.NPMRC','SERVER.PEM','a.KEY','a.p12','a.PFX'])expect(isSensitiveName(p)).toBe(true);\n                                                                                                                                         ^\nerror: expect(received).toBe(expected)\n\nExpected: true\nReceived: false\n\n      at <anonymous> (<isolated>/candidate.test.ts:5:134)\n(fail) sensitive basenames, extensions, case and nested exclusions [0.25ms]\n(pass) allowed examples, ordinary paths and suffix boundaries [0.09ms]\n 9 |  for(const p of ['.ENV.EXAMPLE','.env.example','config.pem.txt','distribution','README.md'])expect(isSensitiveName(p)).toBe(false);\n10 |  for(const p of ['src/.ENV.EXAMPLE','src/README.md','distribution/index.ts','src/notnode_modules/x'])expect(isHardIgnored(p)).toBe(false);\n11 | });\n12 | test('case variants exhaustive ASCII combinations',()=>{\n13 |  for(const name of ['id_rsa','.git','.npmrc'])for(let mask=0;mask<1<<name.length;mask++){\n14 |  const p=Array.from(name,(c,i)=>mask&(1<<i)?c.toUpperCase():c).join('');expect(isHardIgnored('a/'+p+'/child')).toBe(true);\n                                                                                                                    ^\nerror: expect(received).toBe(expected)\n\nExpected: true\nReceived: false\n\n      at <anonymous> (<isolated>/candidate.test.ts:14:112)\n(fail) case variants exhaustive ASCII combinations [0.15ms]\n\n 1 pass\n 2 fail\n 12 expect() calls\nRan 3 tests across 1 file. [3.00ms]\n"
+        },
+        "candidate": "/** Shared lexical exclusions for workspace access and acceptance preflight.\n * Comparisons use toLowerCase so a Turkish locale cannot map ASCII I to dotless ı and skip .git or id_rsa. */\nexport const HARD_IGNORES = new Set(['.git', '.next', '.turbo', '.zhivex-harness', 'coverage', 'dist', 'node_modules']);\nexport const isSensitiveName = (name: string) => {\n  const normalized = name.toLocaleLowerCase(\"tr\");\n  return normalized === '.env' || (normalized.startsWith('.env.') && normalized !== '.env.example') ||\n    normalized === '.npmrc' || normalized === 'id_rsa' || normalized === 'id_ed25519' ||\n    ['.key','.pem','.p12','.pfx'].some(extension => normalized.endsWith(extension) && normalized.length > extension.length);\n};\nexport const isHardIgnored = (relativePath: string) => relativePath.split('/').some(segment => HARD_IGNORES.has(segment.toLowerCase()) || isSensitiveName(segment));\n"
+      },
+      "verifiedTaskMs": 1647.545292,
+      "noToolCalls": true,
+      "calls": [
+        {
+          "previousResponse": false,
+          "scopedGuidance": true,
+          "stateless": true,
+          "replayedReadHistory": false,
+          "losslessReads": 0,
+          "projections": 0,
+          "index": 1,
+          "startMs": 31.150958000000003,
+          "requestBytes": 75031,
+          "cacheKeyHash": "e90382fdaecf61d3e8608ba31faddda48110746b54f2d6fd3c5b27bf862898ee",
+          "requestedEffort": "low",
+          "maxOutputTokens": 4096,
+          "duplicateTerminals": 0,
+          "headersMs": 445.721833,
+          "httpStatus": 200,
+          "firstEventMs": 446.620292,
+          "firstTextMs": 768.2222919999999,
+          "terminalMs": 1543.4239579999999,
+          "terminalType": "response.completed",
+          "returnedModel": "gpt-6-luna",
+          "returnedEffort": "low",
+          "cachedUsageReported": true,
+          "usage": {
+            "inputTokens": 16890,
+            "outputTokens": 111,
+            "totalTokens": 17001,
+            "cachedInputTokens": 0,
+            "reasoningTokens": 0
+          },
+          "streamEndMs": 1561.783958,
+          "interrupted": false
+        }
+      ],
+      "usageKnown": true,
+      "accepted": false
+    },
+    {
+      "pair": 2,
+      "model": "gpt-6-luna",
+      "variant": "before",
+      "fixture": "path-policy",
+      "threshold": 120000,
+      "fixtureHash": "d5e0e997885c4de48eca0624679a4739735a5dd9bd1358e0783e772e39bd8670",
+      "runtimeHash": "d6c9ae14d38d03894db4be4d3ed35158f8af503171eeda7c80935ea16be1e1c0",
+      "status": "completed",
+      "answer": "{\"edits\":[{\"oldText\":\"name.toLocaleLowerCase(\\\"tr\\\")\",\"newText\":\"name.toLowerCase()\"},{\"oldText\":\"segment.toLocaleLowerCase(\\\"tr\\\")\",\"newText\":\"segment.toLowerCase()\"}],\"evidence\":{\"early\":\"df94332fa83f50fbf281\",\"late\":\"ce04ba8ce1a3707e572f\",\"policy\":\"bun-only\"}}",
+      "sdkUsage": {
+        "inputTokens": 16890,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 16887,
+        "outputTokens": 347,
+        "reasoningTokens": 257,
+        "totalTokens": 17237,
+        "cacheWriteTokensDetails": {
+          "ttl30mTokens": 16887,
+          "ttl12hTokens": 0
+        }
+      },
+      "grade": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) sensitive basenames, extensions, case and nested exclusions [0.21ms]\n(pass) allowed examples, ordinary paths and suffix boundaries [0.04ms]\n(pass) case variants exhaustive ASCII combinations [0.37ms]\n\n 3 pass\n 0 fail\n 167 expect() calls\nRan 3 tests across 1 file. [5.00ms]\n"
+        },
+        "candidate": "/** Shared lexical exclusions for workspace access and acceptance preflight.\n * Comparisons use toLowerCase so a Turkish locale cannot map ASCII I to dotless ı and skip .git or id_rsa. */\nexport const HARD_IGNORES = new Set(['.git', '.next', '.turbo', '.zhivex-harness', 'coverage', 'dist', 'node_modules']);\nexport const isSensitiveName = (name: string) => {\n  const normalized = name.toLowerCase();\n  return normalized === '.env' || (normalized.startsWith('.env.') && normalized !== '.env.example') ||\n    normalized === '.npmrc' || normalized === 'id_rsa' || normalized === 'id_ed25519' ||\n    ['.key','.pem','.p12','.pfx'].some(extension => normalized.endsWith(extension));\n};\nexport const isHardIgnored = (relativePath: string) => relativePath.split('/').some(segment => HARD_IGNORES.has(segment.toLowerCase()) || isSensitiveName(segment));\n"
+      },
+      "verifiedTaskMs": 5113.8745,
+      "noToolCalls": true,
+      "calls": [
+        {
+          "previousResponse": false,
+          "scopedGuidance": true,
+          "stateless": true,
+          "replayedReadHistory": false,
+          "losslessReads": 0,
+          "projections": 0,
+          "index": 1,
+          "startMs": 19.643167000000176,
+          "requestBytes": 75030,
+          "cacheKeyHash": "aff1c507603337d40c1f51b00fec7092a1b35aea1fda8ab109f0bbd44a1b8297",
+          "requestedEffort": "low",
+          "maxOutputTokens": 4096,
+          "duplicateTerminals": 0,
+          "headersMs": 472.36304100000007,
+          "httpStatus": 200,
+          "firstEventMs": 472.5093750000001,
+          "firstReasoningEventMs": 940.5694159999998,
+          "firstTextMs": 4354.348833,
+          "terminalMs": 4995.1095829999995,
+          "terminalType": "response.completed",
+          "returnedModel": "gpt-6-luna",
+          "returnedEffort": "low",
+          "cachedUsageReported": true,
+          "usage": {
+            "inputTokens": 16890,
+            "outputTokens": 347,
+            "totalTokens": 17237,
+            "cachedInputTokens": 0,
+            "reasoningTokens": 257
+          },
+          "streamEndMs": 5046.9337080000005,
+          "interrupted": false
+        }
+      ],
+      "usageKnown": true,
+      "accepted": true
+    }
+  ]
+}

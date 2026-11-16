@@ -1,8 +1,8 @@
 import { appendFile, access, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness } from "../../src/runtime/harness.js";
-import { runHarnessDurableReviewGroup } from "../../src/runtime/durable-review-group.js";
+import { createHarness } from "../../packages/core/src/runtime/harness.js";
+import { runHarnessDurableReviewGroup } from "../../packages/core/src/runtime/durable-review-group.js";
 
 const workspace = process.argv[2]!;
 const models = Object.fromEntries((["explorer", "reviewer"] as const).map(role => {

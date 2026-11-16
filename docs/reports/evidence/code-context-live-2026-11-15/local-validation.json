@@ -1,0 +1,18 @@
+{
+  "bun": "1.4.3",
+  "focusedTests": {
+    "passed": 27,
+    "failed": 0,
+    "files": 7
+  },
+  "oracles": "Both original modules pass; both injected faults rejected",
+  "sandboxProbe": "home reads, outside writes, network blocked; no child credentials",
+  "checks": [
+    "typecheck",
+    "typecheck:tooling",
+    "architecture:check",
+    "docs:check",
+    "git diff --check"
+  ],
+  "initialFilteredTestFailure": "Archived .test.ts files were inadvertently included by Bun substring matching; snapshots renamed .txt without changing contents; explicit test paths pass."
+}

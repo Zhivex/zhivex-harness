@@ -12,7 +12,7 @@ payload inspection and deciding later separate; returning to a pending review
 does not grant authority by itself.
 
 For current controls and restart behavior, use the
-[Code package guide](../packages/code/README.md#continue). The original
+[Code package guide](../packages/cli/README.md#continue). The original
 [compact-flow implementation snapshot](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/CODE_COMPACT_FLOW.md) preserves
 its earlier labels, scope and installed validation; it is not a current release claim.
 

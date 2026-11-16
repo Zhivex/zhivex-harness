@@ -9,7 +9,7 @@ import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { ProviderToolCallError } from "@zhivex-ai/core";
 
-import * as harnessRuntime from "../src/index.js";
+import * as harnessRuntime from "../packages/core/src/index.js";
 
 import type {
   HarnessOciRuntimeAdapter,
@@ -18,7 +18,7 @@ import type {
   OciImageInspection,
   OciRunBatchRequest,
   OciRunRequest
-} from "../src/execution/execution-environment.js";
+} from "../packages/core/src/execution/execution-environment.js";
 import {
   MAX_TIME_TO_SAFE_FIX_DRIVER_INPUT_BYTES,
   parseTimeToSafeFixDriverRequest,

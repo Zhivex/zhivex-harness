@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtemp, mkdir, copyFile, rm, writeFile, symlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { HARNESS_VERSION } from "../src/version.js";
+import { HARNESS_VERSION } from "../packages/core/src/version.js";
 
 test("packaged informational commands avoid provider imports and lazy dispatch preserves errors", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cli-entry-"));
@@ -11,7 +11,7 @@ test("packaged informational commands avoid provider imports and lazy dispatch p
     await mkdir(path.join(root, "dist"));
     await copyFile(path.join(repo, "package.json"), path.join(root, "package.json"));
     await symlink(path.join(repo, "node_modules"), path.join(root, "node_modules"));
-    const build = await Bun.build({ entrypoints: [path.join(repo, "src/cli-entry.ts")],
+    const build = await Bun.build({ entrypoints: [path.join(repo, "packages/core/src/cli-entry.ts")],
       outdir: path.join(root, "dist"), target: "node", packages: "external", splitting: true });
     expect(build.success).toBe(true);
     const loader = path.join(root, "deny-provider.mjs");

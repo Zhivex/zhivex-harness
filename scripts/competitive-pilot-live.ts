@@ -32,7 +32,7 @@ async function inventory(runtime:string){
  assert.deepEqual(installedDependencies,dependencies,'PILOT_DEPENDENCY_MISMATCH');
  return {files,dependencies,installedDependencies,harnessDist:await tree(runtime)};
 }
-const engine=async(runtime:string):Promise<typeof import('../src/engine/index.js')>=>import(pathToFileURL(path.join(runtime,'engine/index.js')).href);
+const engine=async(runtime:string):Promise<typeof import('../packages/core/src/engine/index.js')>=>import(pathToFileURL(path.join(runtime,'engine/index.js')).href);
 const [command,...args]=process.argv.slice(2);
 async function main(){
  if(command==='prepare'){

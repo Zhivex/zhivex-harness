@@ -1,0 +1,72 @@
+{
+  "name": "zhivex-harness-desktop",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "main": "build/unified-main.cjs",
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "start": "electron .",
+    "typecheck": "tsc --noEmit",
+    "package": "bun run build && bun run scripts/package.ts",
+    "prepare:harness": "bun run scripts/prepare-harness.ts",
+    "start:unified": "electron build/unified-main.cjs",
+    "smoke:unified": "bun run scripts/smoke-unified.mjs",
+    "smoke:autonomous": "bun run scripts/smoke-autonomous.mjs",
+    "smoke:autonomous:packaged": "bun run scripts/smoke-autonomous.mjs --packaged",
+    "smoke:code": "bun run scripts/smoke-autonomous.mjs --code",
+    "smoke:code:packaged": "bun run scripts/smoke-autonomous.mjs --code --packaged",
+    "smoke:code-tools": "bun run scripts/smoke-autonomous.mjs --tools",
+    "smoke:code-tools:packaged": "bun run scripts/smoke-autonomous.mjs --tools --packaged",
+    "smoke:git:unified": "bun run scripts/smoke-autonomous.mjs --git",
+    "smoke:git:unified:packaged": "bun run scripts/smoke-autonomous.mjs --git --packaged",
+    "smoke:coordinator:packaged": "bun run scripts/smoke-autonomous.mjs --git --node-host --packaged",
+    "smoke:cli:coordinator": "bun run scripts/smoke-cli-coordinator.mjs",
+    "smoke:personal:packaged": "bun run scripts/smoke-autonomous.mjs --personal --packaged",
+    "smoke:coordinator-recovery:packaged": "bun run scripts/smoke-autonomous.mjs --git --recover-node-host --packaged",
+    "smoke:coordinator-auto-recovery:packaged": "bun run scripts/smoke-autonomous.mjs --git --auto-recover-node-host --packaged",
+    "smoke:automations:packaged": "bun run scripts/smoke-automations.mjs",
+    "smoke:telegram:packaged": "bun run scripts/smoke-telegram.mjs",
+    "smoke:calendar:packaged": "bun run scripts/smoke-calendar.mjs",
+    "smoke:agenda:packaged": "bun run scripts/smoke-calendar.mjs --agenda",
+    "smoke:launch-race:packaged": "bun run scripts/smoke-launch-race.mjs",
+    "smoke:keychain-unavailable:packaged": "bun run scripts/smoke-keychain-unavailable.mjs",
+    "smoke:agenda-edit:packaged": "bun run scripts/smoke-calendar.mjs --edit",
+    "smoke:agenda-create:packaged": "bun run scripts/smoke-calendar.mjs --create",
+    "smoke:today": "bun run scripts/smoke-today.mjs",
+    "smoke:phase-one": "bun run scripts/smoke-phase-one.mjs",
+    "smoke:phase-two:race": "bun run scripts/smoke-coordinator-race-offline.mjs",
+    "smoke:phase-two:recovery": "bun run scripts/smoke-phase-one.mjs --phase-two-recovery",
+    "smoke:phase-three": "bun run scripts/smoke-phase-one.mjs --phase-three-shell",
+    "smoke:phase-four": "bun run scripts/smoke-assistant.mjs",
+    "smoke:calendar-edit:offline": "bun run scripts/smoke-today.mjs --edit",
+    "smoke:calendar-create:offline": "bun run scripts/smoke-today.mjs --create",
+    "smoke:phase-five": "bun run scripts/smoke-phase-five.mjs",
+    "smoke": "bun run scripts/smoke-phase-five.mjs",
+    "smoke:packaged": "bun run scripts/smoke-phase-five.mjs --packaged"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/space-grotesk": "^5.3.0",
+    "diff": "^9.0.0",
+    "lucide-react": "1.50.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "@napi-rs/keyring": "2.1.2"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "electron": "44.9.3",
+    "playwright": "1.64.1",
+    "@electron/asar": "4.3.2"
+  },
+  "trustedDependencies": [
+    "electron"
+  ],
+  "harness": {
+    "version": "1.7.0"
+  }
+}

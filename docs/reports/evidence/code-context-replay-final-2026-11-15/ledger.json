@@ -1,0 +1,28 @@
+{
+  "pricing": "https://developers.openai.com/api/docs/pricing (standard, 2026-11-15)",
+  "campaigns": [
+    {
+      "name": "intermediate-replay",
+      "attempts": 16,
+      "tokens": 1307438,
+      "estimatedUSD": 1.4467663000000002
+    },
+    {
+      "name": "single-verification-repair",
+      "attempts": 2,
+      "tokens": 34238,
+      "estimatedUSD": 0.003607,
+      "accepted": 1
+    },
+    {
+      "name": "final-replay",
+      "attempts": 8,
+      "tokens": 564462,
+      "estimatedUSD": 0.6018069999999999
+    }
+  ],
+  "totalTokens": 1906138,
+  "estimatedUSD": 2.0521803,
+  "unknownUsageReceipts": 0,
+  "note": "Different runtime versions and exploratory verification repairs remain separate; no failure discarded or pooled into final-runtime cost per accepted task."
+}

@@ -4,8 +4,8 @@ import path from "node:path";
 import os from "node:os";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { terminalRunFailure } from "../src/cli/terminal/terminal-ui.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { terminalRunFailure } from "../packages/core/src/cli/terminal/terminal-ui.js";
 
 for (const approval of [false, true]) test(`long event stream retains every live delta${approval ? " after approval" : ""}`, async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-stream-retention-"));

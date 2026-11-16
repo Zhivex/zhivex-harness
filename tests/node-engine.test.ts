@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { nodeEngineError } from "../src/cli/node-engine.js";
+import { nodeEngineError } from "../packages/core/src/cli/node-engine.js";
 
 test("startup rejects Node below 22.13 and accepts the supported range", () => {
   const range = ">=22.13.0";
@@ -13,7 +13,7 @@ test("startup rejects Node below 22.13 and accepts the supported range", () => {
 
 test("supported Node still prints the version before the engine loads", () => {
   if (!process.versions.bun) return;
-  const result = spawnSync(process.execPath, ["src/cli-entry.ts", "--version"], { encoding: "utf8" });
+  const result = spawnSync(process.execPath, ["packages/core/src/cli-entry.ts", "--version"], { encoding: "utf8" });
   expect(result.status).toBe(0);
   expect(result.stdout.trim()).toBe("1.7.0");
   expect(result.stderr).toBe("");

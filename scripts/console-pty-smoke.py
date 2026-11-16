@@ -162,16 +162,21 @@ try:
     send("/new\n")
     read_until("> ")
     send("EDIT_FIXTURE WAIT_FIXTURE\n")
-    read_until("Waiting for model response")
+    # Synchronize with the fixture request, not the former console status label.
+    # WAIT_FIXTURE holds the model response while we queue literal input.
+    deadline = time.monotonic() + 5
+    while "WAIT_FIXTURE" not in pathlib.Path(root, "requests.jsonl").read_text():
+        assert time.monotonic() < deadline
+        time.sleep(0.02)
     send("/approve\r")
-    read_until("1 queued")
+    # The compact run view need not render a queue counter; /queue below verifies it.
     read_until("Filter > ")
     assert not pathlib.Path(root, "result.txt").exists()
     send("\x1b[200~y\n/approve\x1b[201~")
     time.sleep(0.1)
     assert not pathlib.Path(root, "result.txt").exists()
     send("\x03")
-    read_until("is paused; use /pending")
+    read_until("Decided later · nothing applied")
     read_until("> ")
     send("/queue\n")
     assert b"1. /approve" in read_until("> ")
@@ -183,8 +188,11 @@ try:
     send("/sessions pilot\n")
     assert b"Daily pilot" in read_until("> ")
     send("/pending\n")
-    assert b"apply_reviewed_edits" in read_until("> ")
+    assert b"approved fixture edit" in read_until("Filter > ")
     assert not pathlib.Path(root, "result.txt").exists()
+    send("\x03")
+    read_until("Decided later · nothing applied")
+    read_until("> ")
     exit_chat()
     os.close(master)
     master, slave = pty.openpty()
@@ -193,11 +201,15 @@ try:
                              str(cli), "chat", "--continue", "--workspace", root],
                             stdin=slave, stdout=slave, stderr=slave, env=env)
     os.close(slave)
-    restored = read_until("> ")
-    assert b"durable status: waiting_approval" in restored
-    assert b"apply_reviewed_edits" in restored
-    send("/pending\n")
-    assert b"apply_reviewed_edits" in read_until("> ")
+    # A restored approval now opens the same review directly, before the prompt.
+    restored = read_until("Filter > ")
+    assert b"approved fixture edit" in restored
+    assert not pathlib.Path(root, "result.txt").exists()
+    send("\x03")
+    read_until("Decided later · nothing applied")
+    read_until("> ")
+    send("/sessions pilot\n")
+    assert b"waiting_approval" in read_until("> ")
     send("/approve\n")
     read_until("Fixture done")
     read_until("> ")

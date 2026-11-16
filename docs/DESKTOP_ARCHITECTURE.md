@@ -22,7 +22,7 @@ Desktop owns update admission, application verification and recovery coordinatio
 - **Preload:** a narrow typed bridge for projects, sessions, activity, model
   selection, review, tasks, Git delivery, credentials and update status. It exposes
   no arbitrary shell, filesystem, environment or IPC-channel API. The authoritative
-  interface is `desktop/src/bridge.ts` in the source checkout.
+  interface is `packages/desktop/src/bridge.ts` in the source checkout.
 - **Main:** validates the sender, exact local page and main frame, and checks all
   arguments. Native selection supplies project paths; renderer requests use registered
   project keys. Main manages runtime ownership, review receipts, Keychain access,
@@ -92,10 +92,10 @@ distribution; fixture success is not a substitute.
 
 ## Maintainer guides
 
-- [Desktop setup and reproducible checks](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/README.md)
-- [Model selection and credential behavior](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/MODELS.md)
-- [Installation and platform limits](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/INSTALLATION.md)
-- [Update trust and recovery protocol](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/UPDATES.md)
+- [Desktop setup and reproducible checks](https://github.com/Zhivex/zhivex-harness/blob/main/packages/desktop/README.md)
+- [Model selection and credential behavior](https://github.com/Zhivex/zhivex-harness/blob/main/packages/desktop/MODELS.md)
+- [Installation and platform limits](https://github.com/Zhivex/zhivex-harness/blob/main/packages/desktop/INSTALLATION.md)
+- [Update trust and recovery protocol](https://github.com/Zhivex/zhivex-harness/blob/main/packages/desktop/UPDATES.md)
 
 Automated Electron checks cover packaged offline behavior and process isolation.
 Live provider calls, real OCI execution, live GitHub authentication and signed

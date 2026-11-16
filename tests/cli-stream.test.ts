@@ -6,7 +6,7 @@ import {
   serializeStreamResult,
   streamEventDocument,
   streamResultDocument
-} from "../src/cli/cli-stream.js";
+} from "../packages/core/src/cli/cli-stream.js";
 
 describe("CLI JSONL stream contract", () => {
   test("emits text deltas as one versioned event", () => {

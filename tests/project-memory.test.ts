@@ -3,12 +3,12 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { openHarnessProjectMemory, HARNESS_PROJECT_MEMORY_LIMITS, projectMemoryBinding } from "../src/persistence/project-memory.js";
-import { createHarnessStateBackup, importHarnessStateBackup } from "../src/persistence/state-backup.js";
-import { SqliteDatabase } from "../src/persistence/sqlite-database.js";
-import { parseCliArgs } from "../src/cli/arguments.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { openHarnessProjectMemory, HARNESS_PROJECT_MEMORY_LIMITS, projectMemoryBinding } from "../packages/core/src/persistence/project-memory.js";
+import { createHarnessStateBackup, importHarnessStateBackup } from "../packages/core/src/persistence/state-backup.js";
+import { SqliteDatabase } from "../packages/core/src/persistence/sqlite-database.js";
+import { parseCliArgs } from "../packages/core/src/cli/arguments.js";
 
 const cleanups: (() => Promise<void> | void)[] = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); });

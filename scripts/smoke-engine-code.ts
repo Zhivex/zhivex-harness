@@ -28,7 +28,7 @@ const checkout = JSON.parse(await readFile(path.join(root, "package.json"), "utf
 if (sourceVersion !== checkout.version || !/^1\.(?:[3-9]|[1-9]\d+)\./.test(sourceVersion)) {
   throw new Error("Installed acceptance requires the exact current Harness 1.3+ candidate; metadata is never rewritten");
 }
-run("bun", ["pm", "pack", "--ignore-scripts", "--quiet", "--filename", path.join(output, "code.tgz")], path.join(root, "packages/code"));
+run("bun", ["pm", "pack", "--ignore-scripts", "--quiet", "--filename", path.join(output, "code.tgz")], path.join(root, "packages/cli"));
 console.log(`Installed consumer proof: exact Harness ${sourceVersion}; artifacts ${output}. No package published.`);
 const result = spawnSync("node", [path.join(root, "scripts/smoke-engine-code.mjs"), path.join(output, "harness.tgz"),
   path.join(output, "code.tgz"), process.argv[2] ?? "npm,pnpm,yarn,bun"], { cwd: root, env: process.env, encoding: "utf8", timeout: 900_000 });

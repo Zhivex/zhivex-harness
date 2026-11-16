@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 
-import { resolveHarnessConfig } from "../src/runtime/config.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
 import {
   cleanupHarnessExecutionArtifacts,
   createHarnessOciExecutionEnvironment,
@@ -12,8 +12,8 @@ import {
   type HarnessExecutionSession,
   type HarnessOciExecutionEnvironment,
   type OciPhaseLatencies
-} from "../src/execution/execution-environment.js";
-import { Workspace } from "../src/workspace/workspace.js";
+} from "../packages/core/src/execution/execution-environment.js";
+import { Workspace } from "../packages/core/src/workspace/workspace.js";
 
 const integerOption = (name: string, fallback: number, maximum: number, minimum = 1) => {
   const index = process.argv.indexOf(name);

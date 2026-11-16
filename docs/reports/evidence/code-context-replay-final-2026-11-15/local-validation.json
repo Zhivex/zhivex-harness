@@ -1,0 +1,26 @@
+{
+  "bun": "1.4.3",
+  "fullSuite": {
+    "pass": 2733,
+    "skip": 1,
+    "fail": 0,
+    "files": 366,
+    "seconds": 247.3
+  },
+  "durableHistory": {
+    "reads": 200,
+    "compactions": 99,
+    "checkpointBytes": 45249,
+    "hydratedBytes": 10972429,
+    "seconds": 34.21506
+  },
+  "checks": [
+    "typecheck",
+    "typecheck:tooling",
+    "architecture:check",
+    "docs:check",
+    "git diff --check"
+  ],
+  "finalProductionSourceMatchesFrozenBundleManifest": true,
+  "intermediateFailure": "Initial replay persisted expanded request history; 200-read test exceeded 180 seconds with cascading timeouts; suite stopped. Final wire-only replay resolves this without increasing limits."
+}

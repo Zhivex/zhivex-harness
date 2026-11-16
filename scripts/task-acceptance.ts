@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
-import { runPortableProcess } from "../src/execution/process-runtime.js";
+import { runPortableProcess } from "../packages/core/src/execution/process-runtime.js";
 import { ACCEPTANCE_FIXTURES, ACCEPTANCE_LIMITS, ACCEPTANCE_REVISION } from "./acceptance/fixtures.js";
 import { fixtureDigest, runAcceptanceCase, summarizeAcceptance, type AcceptanceAttempt } from "./acceptance/runner.js";
 
@@ -33,7 +33,7 @@ try {
   assert.equal(install.exitCode, 0, "Tarball installation failed");
   const packageRoot = path.join(consumer, "node_modules/@zhivex-ai/harness");
   const manifest = JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8"));
-  const api: typeof import("../src/engine/index.js") = await import(pathToFileURL(path.join(packageRoot, "dist/engine/index.js")).href);
+  const api: typeof import("../packages/core/src/engine/index.js") = await import(pathToFileURL(path.join(packageRoot, "dist/engine/index.js")).href);
   for (const route of routes) {
     assert(api.PROVIDERS.includes(route.provider as typeof api.PROVIDERS[number]), "Route not installed");
     const availability = api.providerAvailability().find(p => p.id === route.provider)!;

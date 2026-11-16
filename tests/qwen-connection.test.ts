@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { decodeQwenCredential, qwenEndpoint, selectQwenConnection } from "../src/cli/qwen-connection.js";
+import { decodeQwenCredential, qwenEndpoint, selectQwenConnection } from "../packages/core/src/cli/qwen-connection.js";
 
 test("Qwen destinations are constrained to official regional hosts", () => {
   expect(qwenEndpoint({service:"api",region:"virginia",workspace:"llm-example"})).toBe("https://llm-example.us-east-1.maas.aliyuncs.com/compatible-mode/v1");

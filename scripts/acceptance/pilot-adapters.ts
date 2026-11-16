@@ -6,9 +6,9 @@ import path from 'node:path';
 import { z } from 'zod';
 import type { AcceptanceFixture } from './fixtures.js';
 import { ACCEPTANCE_LIMITS } from './fixtures.js';
-import { runPortableProcess } from '../../src/execution/process-runtime.js';
+import { runPortableProcess } from '../../packages/core/src/execution/process-runtime.js';
 
-type Engine=typeof import('../../src/engine/index.js');
+type Engine=typeof import('../../packages/core/src/engine/index.js');
 /** Use the installed production transport (including signed continuation) for both agents. */
 export const createPilotModel = (api:Engine,modelId:string,apiKey:string):LanguageModel =>
  api.DEFAULT_PROVIDER_REGISTRY.createModel({provider:'anthropic',model:modelId},{ANTHROPIC_API_KEY:apiKey});

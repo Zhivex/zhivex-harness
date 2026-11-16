@@ -1,7 +1,7 @@
 import {test,expect} from "bun:test";
 import {mkdtemp,rm,readFile} from "node:fs/promises";
-import {resolveHarnessConfig} from "../src/runtime/config.js";
-import {openHarnessActivityStore} from "../src/client/service-events.js";
+import {resolveHarnessConfig} from "../packages/core/src/runtime/config.js";
+import {openHarnessActivityStore} from "../packages/core/src/client/service-events.js";
 
 test("projection cache observes interleaved writers, literal run IDs and backwards clocks",async()=>{
  const root=await mkdtemp("/tmp/har-events-writers-");const config=resolveHarnessConfig({workspace:root});

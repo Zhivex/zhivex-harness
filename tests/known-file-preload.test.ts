@@ -2,7 +2,7 @@ import { test, expect } from 'bun:test';
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import { createInMemoryAgentRunStore } from '@zhivex-ai/agents/ops';
-import { createHarness, runHarnessTask, type CreateHarnessOptions } from '../src/runtime/harness.js';
+import { createHarness, runHarnessTask, type CreateHarnessOptions } from '../packages/core/src/runtime/harness.js';
 
 async function fixture(extra: Partial<CreateHarnessOptions> = {}) {
   const root = await mkdtemp('/tmp/known-preload-');

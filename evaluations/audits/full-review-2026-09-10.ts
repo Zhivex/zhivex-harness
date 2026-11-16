@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import type { McpClient, ModelMessage, ToolSet } from "@zhivex-ai/core";
-import { createHarness, compactHarnessMessages } from "../../src/harness.js";
-import { createHttpMcpClient, normalizeHarnessMcpConfiguration } from "../../src/mcp.js";
+import { createHarness, compactHarnessMessages } from "../../packages/core/src/harness.js";
+import { createHttpMcpClient, normalizeHarnessMcpConfiguration } from "../../packages/core/src/mcp.js";
 
 const root = await mkdtemp(join(tmpdir(), "zhx-full-review-"));
 try {
