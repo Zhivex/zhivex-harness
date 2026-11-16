@@ -2870,6 +2870,96 @@
           "name": "KnownFilePreload",
           "kind": "type",
           "tier": "experimental"
+        },
+        {
+          "name": "appendAutoApproval",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "approvalFacts",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "buildSnapshots",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "classifyApproval",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createAutoApprovalEntry",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "decideBatch",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "loadApprovalConfig",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "publicAutoApproval",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "readAutoApprovals",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "readWorkspaceSnapshot",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "resolveAutoApprovePolicy",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "revertAutoApproval",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "writeApprovalConfig",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "revealInvisible",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "revealInvisibleText",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "ApprovalConfigFile",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "AutoApproveMode",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "AutoApprovePolicy",
+          "kind": "type",
+          "tier": "experimental"
         }
       ]
     },
@@ -3223,6 +3313,1473 @@
         },
         {
           "name": "AuditPackVerifyOptions",
+          "kind": "type",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./application": {
+      "source": "src/engine/application.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "connectApplication",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "ApplicationClient",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "ApplicationCommand",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "projectApprovalReview",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "ApprovalReview",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "ApprovalReviewItem",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "ApprovalReviewFile",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "ReviewTickets",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TicketedApprovalReview",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "startApplicationHost",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "startCodeHost",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createCodeProjects",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "CodeProject",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CodeProjectState",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "openTaskWorktrees",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "taskCreationSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "ManagedTask",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TaskRemovalReview",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "createCheckpointReviewHost",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "CheckpointReview",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "DeliveryChanges",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CommitFile",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CommitReview",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CommitOperation",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CommitReconciliation",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "openGitDelivery",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "pushDestinationSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "pushSnapshotSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "PushSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "PushDestination",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "PushReview",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "PushOperation",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "RemoteTransport",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "openRemoteDelivery",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "PullRequestInput",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "pullRequestRecordSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "PullRequestRecord",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "PullRequestRejectedError",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "PullRequestTransport",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "PullRequestReview",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "PullRequestOperation",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "openPullRequestDelivery",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "RemoteTargets",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "openGitHubGitTransport",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "openGitHubPullRequestTransport",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "startApplicationCoordinator",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "acquireApplicationCoordinator",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createProcessSecretStore",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "runCredentialWorker",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./application/client": {
+      "source": "src/engine/application-client.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "connectApplication",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "ApplicationClient",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "ApplicationCommand",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "readHarnessLocalCredentials",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "connectCoordinator",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "ApplicationCoordinatorError",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "CoordinatorSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CoordinatorMethod",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "PersonalSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "AutomationSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "AutomationChange",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "AgendaSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "NotesSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CodeContextSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/private-directory": {
+      "source": "src/engine/assistant/private-directory.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "syncPrivateDirectory",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/doctor": {
+      "source": "src/engine/assistant/doctor.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "assistantDoctor",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/calendar/oauth": {
+      "source": "src/engine/assistant/calendar/oauth.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "CALENDAR_SCOPE",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "CalendarCredentials",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CalendarOAuthOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "createCalendarOAuth",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "startCalendarAuthorization",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/calendar/http": {
+      "source": "src/engine/assistant/calendar/http.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "CalendarFetch",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CalendarHttpError",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "googleJson",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/calendar/calendar": {
+      "source": "src/engine/assistant/calendar/calendar.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "CalendarEvent",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "changeSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "proposalSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "CalendarProposal",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "createCalendarService",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/calendar/connection": {
+      "source": "src/engine/assistant/calendar/connection.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "CalendarConnectionOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "openCalendarConnection",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/calendar/tools": {
+      "source": "src/engine/assistant/calendar/tools.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "calendarEngineOptions",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "calendarApprovalDetails",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/calendar/store": {
+      "source": "src/engine/assistant/calendar/store.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "openCalendarStore",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "CalendarStore",
+          "kind": "type",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/contracts": {
+      "source": "src/engine/assistant/contracts.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "ownerSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "conversationSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "connectionSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "automationSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "deliverySchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "Owner",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "Conversation",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "Connection",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "Automation",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "Delivery",
+          "kind": "type",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/microsoft/connection": {
+      "source": "src/engine/assistant/microsoft/connection.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "microsoftConfigSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "MicrosoftOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "microsoftScopes",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "MicrosoftHttpError",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "microsoftJson",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "openMicrosoftConnection",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "startMicrosoftAuthorization",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/microsoft/tools": {
+      "source": "src/engine/assistant/microsoft/tools.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "mailListSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "mailReadSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "outlookDraftSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "calendarListSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "eventCreateSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "proposalReferenceSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "operationSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createMicrosoftTools",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/providers/openai-compatible": {
+      "source": "src/engine/assistant/providers/openai-compatible.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "compatibleProviderSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "CompatibleProviderConfig",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "parseCompatibleProvider",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createCompatibleProvider",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/providers/provider": {
+      "source": "src/engine/assistant/providers/provider.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "qwenServices",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "qwenRegions",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "nativeProviderSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "assistantProviderSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "AssistantProviderConfig",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "parseAssistantProvider",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createAssistantProvider",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/providers/web-citations": {
+      "source": "src/engine/assistant/providers/web-citations.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "citeResponseText",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/daily/service": {
+      "source": "src/engine/assistant/daily/service.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "NotificationDelivery",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "requestId",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "reminderSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "ReminderInput",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "taskCreateSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "taskCompleteSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "noteSaveSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "noteDeleteSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "cancelReminderSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "pageSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "openDailyService",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "DailyService",
+          "kind": "type",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/runtime": {
+      "source": "src/engine/assistant/runtime.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "AssistantRuntimeOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "createAssistantRuntime",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/integrations/google": {
+      "source": "src/engine/assistant/integrations/google.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "GoogleToolsOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "googleScopes",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "openGoogleConnection",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "mailSearchSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "threadSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "draftSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "driveSearchSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "fileSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createGoogleTools",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/integrations/public-web": {
+      "source": "src/engine/assistant/integrations/public-web.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "publicAddress",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "publicUrl",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "readPublicPage",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/task-metrics": {
+      "source": "src/engine/assistant/task-metrics.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "taskMetricsPricingSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "taskCategorySchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "taskFeedbackSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "taskLinkSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "taskUsageSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TaskRunSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "openTaskMetrics",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TaskMetrics",
+          "kind": "type",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/client": {
+      "source": "src/engine/assistant/client.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "AssistantCommand",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "connectAssistant",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/telegram/api": {
+      "source": "src/engine/assistant/telegram/api.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "updateSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TelegramUpdate",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TelegramApi",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TelegramFailure",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createTelegramApi",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/telegram/bridge": {
+      "source": "src/engine/assistant/telegram/bridge.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "TelegramBridgeOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "createTelegramBridge",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/telegram/store": {
+      "source": "src/engine/assistant/telegram/store.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "openTelegramStore",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TelegramStore",
+          "kind": "type",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/evaluation": {
+      "source": "src/engine/assistant/evaluation.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "assistantEvaluationSuiteSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "planAssistantEvaluation",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/host": {
+      "source": "src/engine/assistant/host.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "AssistantHostOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "startAssistantHost",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/proactive/service": {
+      "source": "src/engine/assistant/proactive/service.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "proactivePolicySchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "watchReplySchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "cancelWatchSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "ReplySource",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "mailbox",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createProactiveService",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/automation/scheduler": {
+      "source": "src/engine/assistant/automation/scheduler.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "automationHelp",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createDailyScheduler",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/automation/summary": {
+      "source": "src/engine/assistant/automation/summary.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "AgendaEvent",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "AgendaSource",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "dailySummary",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/automation/time": {
+      "source": "src/engine/assistant/automation/time.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "validZone",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "localDate",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "addDay",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "dayWindow",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "nextDaily",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/config": {
+      "source": "src/engine/assistant/config.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "loadAssistantConfig",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/modules/github": {
+      "source": "src/engine/assistant/modules/github.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "createGithubModule",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/modules/daily": {
+      "source": "src/engine/assistant/modules/daily.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "createDailyModule",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/modules/module": {
+      "source": "src/engine/assistant/modules/module.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "SummarySource",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "AssistantModuleContext",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "AssistantModuleInstance",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "AssistantModule",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "openAssistantModules",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/modules/mcp": {
+      "source": "src/engine/assistant/modules/mcp.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "createMcpModule",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/modules/calendar": {
+      "source": "src/engine/assistant/modules/calendar.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "createCalendarModule",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/modules/google": {
+      "source": "src/engine/assistant/modules/google.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "createGoogleModule",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/modules/tools": {
+      "source": "src/engine/assistant/modules/tools.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "ModuleTool",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "moduleTools",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/modules/web": {
+      "source": "src/engine/assistant/modules/web.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "createWebModule",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/modules/microsoft": {
+      "source": "src/engine/assistant/modules/microsoft.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "createMicrosoftModule",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/modules/catalog": {
+      "source": "src/engine/assistant/modules/catalog.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "dailyIntegrationSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "moduleConfigSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "configuredModules",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/managed/setup": {
+      "source": "src/engine/assistant/managed/setup.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "providerConfig",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "testProvider",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "startManagedAssistant",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/managed/setup-state": {
+      "source": "src/engine/assistant/managed/setup-state.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "secret",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "providerSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "calendarSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "agentName",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "Profile",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "Saved",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "connectionId",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "profileConnectionId",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "connectionsFor",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "encodeSaved",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "decodeSaved",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/managed/secrets": {
+      "source": "src/engine/assistant/managed/secrets.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "SecretStore",
+          "kind": "type",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./assistant/calendar/environment": {
+      "source": "src/engine/assistant/calendar/environment.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "calendarEnvironment",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./application/protocol": {
+      "source": "src/engine/application-protocol.ts",
+      "environment": "browser",
+      "exports": [
+        {
+          "name": "APPLICATION_PROJECTION_VERSION",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "PersonalSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "NotesSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "AutomationSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "AutomationChange",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "AgendaSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CodeContextSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "APPLICATION_PROTOCOL_VERSION",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "AssistantSetupState",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "ProviderSummary",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CodeProject",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CodeProjectState",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "ApplicationRuntimeBinding",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "ApplicationCatalogSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "ApplicationError",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "ApplicationHello",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CoordinatorMethod",
           "kind": "type",
           "tier": "experimental"
         }

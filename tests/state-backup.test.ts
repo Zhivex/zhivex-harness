@@ -1,6 +1,6 @@
-import { segmentedChunks } from "../src/persistence/state-backup-stream.js";
-import { Workspace } from "../src/workspace/workspace.js";
-import { openWorkspaceCheckpointStore } from "../src/persistence/workspace-checkpoints.js";
+import { segmentedChunks } from "../packages/core/src/persistence/state-backup-stream.js";
+import { Workspace } from "../packages/core/src/workspace/workspace.js";
+import { openWorkspaceCheckpointStore } from "../packages/core/src/persistence/workspace-checkpoints.js";
 import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
@@ -10,17 +10,17 @@ import path from "node:path";
 import type { AgentRunState } from "@zhivex-ai/agents";
 import { createFileAgentRunStore } from "@zhivex-ai/agents/ops";
 
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { HARNESS_SQLITE_FILE, openHarnessPersistence } from "../src/persistence/operations.js";
-import { openCliSessionStore } from "../src/persistence/sessions.js";
-import { SqliteDatabase } from "../src/persistence/sqlite-database.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { HARNESS_SQLITE_FILE, openHarnessPersistence } from "../packages/core/src/persistence/operations.js";
+import { openCliSessionStore } from "../packages/core/src/persistence/sessions.js";
+import { SqliteDatabase } from "../packages/core/src/persistence/sqlite-database.js";
 import {
   createHarnessStateBackup,
   exportHarnessStateBackup,
   importHarnessStateBackup,
   inspectHarnessState,
   readHarnessStateBackup
-} from "../src/persistence/state-backup.js";
+} from "../packages/core/src/persistence/state-backup.js";
 
 const temporaryDirectories: string[] = [];
 

@@ -3,9 +3,9 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { createHarness } from '../src/runtime/harness.js';
-import { inspectHarnessPolicy } from '../src/runtime/policy-inspection.js';
-import { createHarnessToolPolicy } from '../src/runtime/tool-policy.js';
+import { createHarness } from '../packages/core/src/runtime/harness.js';
+import { inspectHarnessPolicy } from '../packages/core/src/runtime/policy-inspection.js';
+import { createHarnessToolPolicy } from '../packages/core/src/runtime/tool-policy.js';
 
 test('policy inspection is a detached host snapshot and never evaluates or executes tools', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'policy-view-'));

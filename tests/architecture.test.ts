@@ -1,3 +1,4 @@
+import {execFileSync} from 'node:child_process';
 import { expect, test } from "bun:test";
 import path from "node:path";
 import { architectureViolations, checkArchitecture, sourceDependencies, engineBoundaryViolations } from "../scripts/check-architecture.js";
@@ -17,16 +18,16 @@ test("Assistant uses public engine exports and Harness never depends on Assistan
 
 test("Desktop cannot bypass the surface with direct, dynamic, or re-exported imports", () => {
   for (const source of [
-    'import { createHarness } from "../../src/runtime/harness.js";',
-    'export { createHarness } from "../../src/runtime/harness.js";',
-    'const runtime = import("../../src/runtime/harness.js");',
-    'const runtime = require("../../src/runtime/harness.js");',
-    'type Runtime = import("../../src/runtime/harness.js").ZhivexHarness;',
-  ]) expect(architectureViolations("desktop/src/runtime.ts", source)).toHaveLength(1);
-  expect(architectureViolations("desktop/src/runtime.ts", 'import { createHarness } from "../../src/internal/desktop/runtime.js";')).toHaveLength(1);
-  expect(architectureViolations("desktop/src/runtime.ts", 'import { createHarness } from "@zhivex-ai/harness/engine";')).toEqual([]);
+    'import { createHarness } from "../../core/src/runtime/harness.js";',
+    'export { createHarness } from "../../core/src/runtime/harness.js";',
+    'const runtime = import("../../core/src/runtime/harness.js");',
+    'const runtime = require("../../core/src/runtime/harness.js");',
+    'type Runtime = import("../../core/src/runtime/harness.js").ZhivexHarness;',
+  ]) expect(architectureViolations("packages/desktop/src/runtime.ts", source)).toHaveLength(1);
+  expect(architectureViolations("packages/desktop/src/runtime.ts", 'import { createHarness } from "../../core/src/internal/desktop/runtime.js";')).toHaveLength(1);
+  expect(architectureViolations("packages/desktop/src/runtime.ts", 'import { createHarness } from "@zhivex-ai/harness/engine";')).toEqual([]);
   for (const target of ["@zhivex-ai/harness", "@zhivex-ai/harness/dist/engine/index.js", "@zhivex-ai/code"]) {
-    expect(architectureViolations("desktop/src/runtime.ts", `import anything from "${target}";`)).toHaveLength(1);
+    expect(architectureViolations("packages/desktop/src/runtime.ts", `import anything from "${target}";`)).toHaveLength(1);
   }
 });
 
@@ -41,12 +42,12 @@ test("protocol boundaries distinguish erased type references from runtime loadin
 
 test("Desktop renderer catalog cannot load authentication or transport dependencies", async () => {
   expect(architectureViolations("src/internal/desktop/catalog.ts", 'export { createVertexModel } from "../../providers/vertex-auth.js";')).toHaveLength(1);
-  const result = await Bun.build({ entrypoints: [path.resolve(import.meta.dir, "../src/internal/desktop/catalog.ts")], target: "browser" });
+  const result = await Bun.build({ entrypoints: [path.resolve(import.meta.dir, "../packages/core/src/internal/desktop/catalog.ts")], target: "browser" });
   expect(result.success).toBe(true);
 });
 
 test("public model catalog bundles for browsers without provider transport or Node dependencies", async () => {
-  const result = await Bun.build({ entrypoints: [path.resolve(import.meta.dir, "../src/engine/models.ts")], target: "browser" });
+  const result = await Bun.build({ entrypoints: [path.resolve(import.meta.dir, "../packages/core/src/engine/models.ts")], target: "browser" });
   expect(result.success).toBe(true);
   const output = await result.outputs[0]!.text();
   expect(output).not.toMatch(/google-auth-library|@grpc\/grpc-js|node:fs|createVertexModel/);
@@ -68,7 +69,7 @@ test("source root is reserved for entrypoints and package metadata", () => {
 });
 
 test("Desktop protocol bundles for a browser without host runtime dependencies", async () => {
-  const result = await Bun.build({ entrypoints: [path.resolve(import.meta.dir, "../src/internal/desktop/protocol.ts")], target: "browser" });
+  const result = await Bun.build({ entrypoints: [path.resolve(import.meta.dir, "../packages/core/src/internal/desktop/protocol.ts")], target: "browser" });
   expect(result.success).toBe(true);
   expect(result.logs).toEqual([]);
 });
@@ -77,7 +78,7 @@ test("Desktop protocol bundles for a browser without host runtime dependencies",
 test("engine closure rejects transitive runtime, re-export and erased reverse dependencies", () => {
   for (const edge of [
     'import "../cli/console.js";',
-    'export { x } from "../../packages/code/src/index.js";',
+    'export { x } from "../../packages/cli/src/index.js";',
     'import type { X } from "../../desktop/src/types.js";',
     'type X = import("@zhivex-ai/code").X;',
     'const x = import("../cli/console.js");',
@@ -95,7 +96,7 @@ test("engine closure rejects transitive runtime, re-export and erased reverse de
 });
 
 test("public protocol bundles for browsers with no host runtime", async () => {
-  const result = await Bun.build({ entrypoints: [path.resolve(import.meta.dir, "../src/engine/protocol.ts")], target: "browser" });
+  const result = await Bun.build({ entrypoints: [path.resolve(import.meta.dir, "../packages/core/src/engine/protocol.ts")], target: "browser" });
   expect(result.success).toBe(true);
   expect(result.logs).toEqual([]);
   const output = await result.outputs[0]!.text();
@@ -113,7 +114,7 @@ test("additive engine contracts enumerate exact named exports and preserve histo
       types: "./" + value.source.replace(/^src\//, "dist/").replace(/\.ts$/, ".d.ts"),
       import: "./" + value.source.replace(/^src\//, "dist/").replace(/\.ts$/, ".js"),
     });
-    const source = await Bun.file(path.resolve(import.meta.dir, "..", value.source)).text();
+    const source = await Bun.file(path.resolve(import.meta.dir, "..", value.source.replace(/^src\//, "packages/core/src/"))).text();
     const ast = ts.createSourceFile(value.source, source, ts.ScriptTarget.Latest, true);
     const actual: {name:string;kind:string}[] = [];
     for (const statement of ast.statements) {
@@ -149,4 +150,33 @@ test("engine closure cannot bypass isolation through self-package aliases or ter
       expect(violations[0]).toContain(`src/engine/index.ts -> src/runtime/bridge.ts -> ${target}`);
     }
   }
+});
+
+test("application core and engine have a one-way boundary", () => {
+  expect(architectureViolations("src/application/host.ts", 'import "electron";')).toHaveLength(1);
+  expect(architectureViolations("src/runtime/harness.ts", 'import "../application/host.js";')).toHaveLength(1);
+  expect(architectureViolations("packages/cli/src/example.ts", 'import "../../../src/runtime/harness.js";')).toHaveLength(1);
+});
+
+test("application client bundles without loading the host, SQLite or the agent runtime", async () => {
+  const result = await Bun.build({ entrypoints: [path.resolve(import.meta.dir, "../packages/core/src/engine/application-client.ts")], target: "node", packages: "external" });
+  expect(result.success).toBe(true);
+  const output = await result.outputs[0]!.text();
+  expect(output).not.toMatch(/node:sqlite|createHarnessClientAdapter|createApplicationReviewChannel|@zhivex-ai\/agents/);
+});
+
+test('application projections have no runtime or declaration dependency on host modules', async () => {
+  const contracts = await Bun.file(path.resolve(import.meta.dir, '../packages/core/src/application/contracts.ts')).text();
+  expect(sourceDependencies(contracts)).toEqual([]);
+  expect(architectureViolations('src/application/contracts.ts', 'import type {Host} from "./host.js";')).toHaveLength(1);
+  expect(architectureViolations('src/engine/application-protocol.ts', 'export type {Host} from "../application/host.js";')).toHaveLength(1);
+  expect(architectureViolations('packages/desktop/src/unified/Example.tsx', 'import type {AgendaSnapshot} from "@zhivex-ai/harness/application/client";')).toHaveLength(1);
+  expect(architectureViolations('packages/desktop/src/unified/Example.tsx', 'import type {AgendaSnapshot} from "@zhivex-ai/harness/application/protocol";')).toEqual([]);
+  expect(architectureViolations('packages/desktop/src/unified/bridge.ts', 'import type {startManagedAssistant} from "@zhivex-ai/harness/assistant/managed/setup";')).toHaveLength(1);
+  const result = await Bun.build({entrypoints: [path.resolve(import.meta.dir, '../packages/core/src/engine/application-protocol.ts')], target: 'browser'});
+  expect(result.success).toBe(true);
+  const output = await result.outputs[0]!.text();
+  expect(output).not.toMatch(/node:|process\.|Buffer|require\(|connectCoordinator|createHarness|@zhivex-ai\/agents/);
+  const exports = JSON.parse(execFileSync('node', ['--input-type=module', '-e', 'const module = await import(process.argv[1]); console.log(JSON.stringify(module));', 'data:text/javascript,' + encodeURIComponent(output)], {encoding: 'utf8'}));
+  expect(exports).toEqual({APPLICATION_PROJECTION_VERSION: 1, APPLICATION_PROTOCOL_VERSION: 1});
 });

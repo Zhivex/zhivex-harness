@@ -8,10 +8,10 @@ import {
   createEditProposal,
   editChangeSchema,
   editProposalInputSchema
-} from "../src/workspace/edit-contracts.js";
-import { replacementEditSchema } from "../src/workspace/replacement-edits.js";
-import { verifiedReviewedEditsInputSchema } from "../src/tools/shared.js";
-import { Workspace } from "../src/workspace/workspace.js";
+} from "../packages/core/src/workspace/edit-contracts.js";
+import { replacementEditSchema } from "../packages/core/src/workspace/replacement-edits.js";
+import { verifiedReviewedEditsInputSchema } from "../packages/core/src/tools/shared.js";
+import { Workspace } from "../packages/core/src/workspace/workspace.js";
 
 const changeFields = ["content", "expectedDigest", "path"];
 

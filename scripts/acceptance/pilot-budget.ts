@@ -1,4 +1,4 @@
-import { measureContext } from '../../src/context/context-metrics.js';
+import { measureContext } from '../../packages/core/src/context/context-metrics.js';
 import type { LanguageModelMiddleware, ModelGenerateInput, TokenUsage } from '@zhivex-ai/core';
 import { z } from 'zod';
 import type { CompetitivePilotPlan } from './pilot-protocol.js';

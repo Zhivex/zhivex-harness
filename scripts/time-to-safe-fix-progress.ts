@@ -1,5 +1,5 @@
 import { writeSync } from "node:fs";
-import { benchmarkProgressSchema, benchmarkSpanSchema, benchmarkOperationSchema } from "../src/runtime/error-diagnostics.js";
+import { benchmarkProgressSchema, benchmarkSpanSchema, benchmarkOperationSchema } from "../packages/core/src/runtime/error-diagnostics.js";
 import type { z } from "zod";
 
 type Progress = z.infer<typeof benchmarkProgressSchema>;

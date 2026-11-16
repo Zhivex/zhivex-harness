@@ -5,14 +5,14 @@ import os from "node:os";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createTextMessage, serializeJsonValue, tool, type AgentCompactionRequest, type ModelMessage } from "@zhivex-ai/core";
-import { createSemanticCompactor, createSemanticSourceProvenance, SEMANTIC_COMPACTION_VERSION } from "../src/context/semantic-compaction.js";
-import { summarizeHarnessMessages, compactMessages } from "../src/context/compaction.js";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { parseCliArgs } from "../src/cli/arguments.js";
-import { harnessConfigInput } from "../src/cli/resume-metadata.js";
+import { createSemanticCompactor, createSemanticSourceProvenance, SEMANTIC_COMPACTION_VERSION } from "../packages/core/src/context/semantic-compaction.js";
+import { summarizeHarnessMessages, compactMessages } from "../packages/core/src/context/compaction.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { parseCliArgs } from "../packages/core/src/cli/arguments.js";
+import { harnessConfigInput } from "../packages/core/src/cli/resume-metadata.js";
 import { z } from "zod";
-import { createWorkspaceTools } from "../src/tools/workspace.js";
-import { Workspace } from "../src/workspace/workspace.js";
+import { createWorkspaceTools } from "../packages/core/src/tools/workspace.js";
+import { Workspace } from "../packages/core/src/workspace/workspace.js";
 
 const messages = [createTextMessage("user", "Keep compatibility. " + "Old analysis. ".repeat(1500)),
   createTextMessage("assistant", "Rejected replacing the schema because old clients depend on it. ".repeat(200)),

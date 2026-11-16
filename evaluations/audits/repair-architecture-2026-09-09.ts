@@ -3,12 +3,12 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ToolSet } from "@zhivex-ai/core";
-import { createWorkspaceTools, estimateMessageTokens } from "../../src/harness.js";
-import { Workspace } from "../../src/workspace.js";
-import { createRepairProgress } from "../../src/repair-progress.js";
-import { createTaskTools } from "../../src/task-memory.js";
-import { createModelBudget } from "../../src/model-budget.js";
-import { summarizeHarnessMessages } from "../../src/compaction.js";
+import { createWorkspaceTools, estimateMessageTokens } from "../../packages/core/src/harness.js";
+import { Workspace } from "../../packages/core/src/workspace.js";
+import { createRepairProgress } from "../../packages/core/src/repair-progress.js";
+import { createTaskTools } from "../../packages/core/src/task-memory.js";
+import { createModelBudget } from "../../packages/core/src/model-budget.js";
+import { summarizeHarnessMessages } from "../../packages/core/src/compaction.js";
 
 const root = await mkdtemp(join(tmpdir(), "zhx-architecture-audit-"));
 try {

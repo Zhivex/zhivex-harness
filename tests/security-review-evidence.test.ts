@@ -10,9 +10,9 @@ import {
   type SecurityReviewEvidence,
   type SecurityReviewReleaseBinding
 } from "../scripts/security-review-evidence.js";
-import { createExecutionEnvironmentTools, createWorkspaceTools } from "../src/runtime/harness.js";
-import { HARNESS_SUBAGENT_PROFILE_DESCRIPTORS } from "../src/runtime/orchestration.js";
-import { createTaskTools } from "../src/context/task-memory.js";
+import { createExecutionEnvironmentTools, createWorkspaceTools } from "../packages/core/src/runtime/harness.js";
+import { HARNESS_SUBAGENT_PROFILE_DESCRIPTORS } from "../packages/core/src/runtime/orchestration.js";
+import { createTaskTools } from "../packages/core/src/context/task-memory.js";
 
 const binding = {
   releaseTag: "v1.0.0-rc.1",

@@ -2,11 +2,11 @@ import { test, expect } from 'bun:test';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { readTaskAcceptanceLedger } from '../src/runtime/task-acceptance-record.js';
-import { openHarnessTaskBudget, inspectHarnessTaskBudget } from '../src/runtime/task-budget-host.js';
-import { createHarness } from '../src/runtime/harness.js';
-import { createHarnessClientAdapter } from '../src/client/adapter.js';
-import type { HarnessClientResponse } from '../src/client/protocol.js';
+import { readTaskAcceptanceLedger } from '../packages/core/src/runtime/task-acceptance-record.js';
+import { openHarnessTaskBudget, inspectHarnessTaskBudget } from '../packages/core/src/runtime/task-budget-host.js';
+import { createHarness } from '../packages/core/src/runtime/harness.js';
+import { createHarnessClientAdapter } from '../packages/core/src/client/adapter.js';
+import type { HarnessClientResponse } from '../packages/core/src/client/protocol.js';
 
 const usage = { inputTokens: 10, outputTokens: 5, totalTokens: 15 };
 const done = [{ type: 'text-delta' as const, textDelta: 'Done' }, { type: 'finish' as const, finishReason: 'stop' as const, usage }];

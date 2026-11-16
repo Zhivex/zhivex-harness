@@ -5,11 +5,11 @@ import path from "node:path";
 import { Agent, createInMemoryAgentRunStore, createTextMessage, tool, type ModelMessage } from "@zhivex-ai/core";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { z } from "zod";
-import { createAdaptiveCompaction, estimateMessages, safeRetentionCuts } from "../src/context/adaptive-compaction.js";
-import { estimateContextTokens, measureContext } from "../src/context/context-metrics.js";
-import { summarizeHarnessMessages } from "../src/context/compaction.js";
-import { createWorkspaceTools } from "../src/tools/workspace.js";
-import type { Workspace } from "../src/workspace/workspace.js";
+import { createAdaptiveCompaction, estimateMessages, safeRetentionCuts } from "../packages/core/src/context/adaptive-compaction.js";
+import { estimateContextTokens, measureContext } from "../packages/core/src/context/context-metrics.js";
+import { summarizeHarnessMessages } from "../packages/core/src/context/compaction.js";
+import { createWorkspaceTools } from "../packages/core/src/tools/workspace.js";
+import type { Workspace } from "../packages/core/src/workspace/workspace.js";
 
 const group = (id: string, length: number): ModelMessage[] => [
   { role: "assistant", parts: [{ type: "tool-call", toolCall: { id, name: "read_file", input: {} } }] },

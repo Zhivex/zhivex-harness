@@ -5,8 +5,8 @@ import os from "node:os";
 import { type ModelMessage, type StreamEvent } from "@zhivex-ai/core";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
-import { normalizeQwenReasoning, coalesceQwenReasoning } from "../src/context/qwen-reasoning.js";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { normalizeQwenReasoning, coalesceQwenReasoning } from "../packages/core/src/context/qwen-reasoning.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
 
 const fragment = (text: string) => ({type:"provider-data" as const,provider:"qwen",data:{type:"reasoning_content",reasoningContent:text}});
 const summary = (text: string) => ({type:"provider-data" as const,provider:"qwen",data:{type:"reasoning",id:"rs_fixture",summary:[{type:"summary_text",text}]}});

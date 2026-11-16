@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { openDockerMcpChannel } from '../src/execution/mcp-oci-channel.js';
-import { IsolatedMcpStdioClient, McpStdioClientError } from '../src/integrations/mcp-stdio-client.js';
-import { runPortableProcess } from '../src/execution/process-runtime.js';
+import { openDockerMcpChannel } from '../packages/core/src/execution/mcp-oci-channel.js';
+import { IsolatedMcpStdioClient, McpStdioClientError } from '../packages/core/src/integrations/mcp-stdio-client.js';
+import { runPortableProcess } from '../packages/core/src/execution/process-runtime.js';
 
 // Explicit local integration check: requires an already provisioned image, never pulls.
 const image = process.env.HARNESS_MCP_SMOKE_IMAGE ?? 'node:22-alpine';

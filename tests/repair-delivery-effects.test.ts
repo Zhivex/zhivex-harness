@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { tool, type ToolExecutionContext } from "@zhivex-ai/core";
 import { z } from "zod";
-import { createRepairController, REPAIR_CONTROLLER_KEY } from "../src/runtime/repair-controller.js";
+import { createRepairController, REPAIR_CONTROLLER_KEY } from "../packages/core/src/runtime/repair-controller.js";
 
 const prior = `sha256:${"a".repeat(64)}`;
 const changed = `sha256:${"b".repeat(64)}`;

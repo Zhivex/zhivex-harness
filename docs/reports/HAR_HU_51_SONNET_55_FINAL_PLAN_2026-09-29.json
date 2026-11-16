@@ -278,7 +278,7 @@
   "createdAt": "2026-09-29T21:49:26.601Z",
   "artifact": "/tmp/harness-fresh-dedup-candidate.tgz",
   "runtime": "/tmp/har-hu51-fresh-dedup-install/node_modules/@zhivex-ai/harness/dist",
-  "evidencePath": "/Users/miguelortiz/Desktop/dev/zhivex-harness/docs/reports/HAR_HU_45_SONNET_55_FRESH_CANDIDATE_2026-09-29.json",
+  "evidencePath": "docs/reports/HAR_HU_45_SONNET_55_FRESH_CANDIDATE_2026-09-29.json",
   "frozen": {
     "files": {
       "scripts/competitive-pilot-live.ts": "sha256:94950173c257104f5e013bff3385004fad60e2832c31bd56038fa73abda9d54d",

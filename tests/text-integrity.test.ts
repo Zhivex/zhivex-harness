@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { firstDisallowedControl, firstDisallowedControlBytes, textGuards } from "../src/workspace/text-integrity.js";
+import { firstDisallowedControl, firstDisallowedControlBytes, textGuards } from "../packages/core/src/workspace/text-integrity.js";
 
 test("control scans name the line and allow tabs, CR, LF, and unicode", () => {
   expect(firstDisallowedControl("a\nb\0c")).toEqual({ line: 2, label: "NUL byte" });

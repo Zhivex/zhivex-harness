@@ -5,8 +5,8 @@ import path from "node:path";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { wrapLanguageModel } from "@zhivex-ai/core";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import type { HarnessExecutionSession, HarnessOciRuntimeAdapter } from "../src/execution/execution-environment.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import type { HarnessExecutionSession, HarnessOciRuntimeAdapter } from "../packages/core/src/execution/execution-environment.js";
 
 for (const scenario of ["corrected", "exhausted", "resumed-exhausted", "snapshot-changed", "new-approval-pending"] as const) {
   test(`terminal patch ID recovery: ${scenario}`, async () => {

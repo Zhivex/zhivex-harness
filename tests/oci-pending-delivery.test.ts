@@ -2,9 +2,9 @@ import { expect, test } from "bun:test";
 import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { createHarnessOciExecutionEnvironment, type HarnessOciRuntimeAdapter } from "../src/execution/execution-environment.js";
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { Workspace } from "../src/workspace/workspace.js";
+import { createHarnessOciExecutionEnvironment, type HarnessOciRuntimeAdapter } from "../packages/core/src/execution/execution-environment.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { Workspace } from "../packages/core/src/workspace/workspace.js";
 
 const runtime: HarnessOciRuntimeAdapter = {
   async inspectImage(imageReference) {

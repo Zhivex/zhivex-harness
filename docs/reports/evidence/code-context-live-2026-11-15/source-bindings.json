@@ -1,0 +1,82 @@
+{
+  "scripts/benchmark-code-context-live.ts": {
+    "sha256": "a923a102490edee982f01a7db419b03ee4b7754dc2682469e105abc9071d79a7",
+    "archive": "source/scripts/benchmark-code-context-live.ts"
+  },
+  "scripts/benchmark-code-context-pressure.ts": {
+    "sha256": "036e98dfa0713bace6b2fbb158918a67ed90b76ac6e8ae587c30775d2e1f57ff",
+    "archive": "source/scripts/benchmark-code-context-pressure.ts"
+  },
+  "scripts/analyze-code-context-live.ts": {
+    "sha256": "e0d7c82c862fb2d3df5d5ce698dab68f669740ae075010f4bfc6a71de3dcffd8",
+    "archive": "source/scripts/analyze-code-context-live.ts"
+  },
+  "scripts/audit-code-context-format.ts": {
+    "sha256": "b94328f0f3df62a2b342a80acc22ba2b48981a0dffc42a511cae23a2da59b8c0",
+    "archive": "source/scripts/audit-code-context-format.ts"
+  },
+  "scripts/benchmarks/context-live/meter.ts": {
+    "sha256": "dab41e399ed18ba4263c59aecf6b20007f02eb189f1a9f73501b145519c8c98c",
+    "archive": "source/scripts/benchmarks/context-live/meter.ts"
+  },
+  "scripts/benchmarks/context-live/freeze.ts": {
+    "sha256": "b7a582fede56390c971ceb83aa6366d6e02d653b33270dcb9279de3c0b94d267",
+    "archive": "source/scripts/benchmarks/context-live/freeze.ts"
+  },
+  "scripts/benchmarks/paired-statistics.ts": {
+    "sha256": "8ec915634ac6611d9eaf0163313ebc76bedc40c6aff3e6a2caf5e114e1e96644",
+    "archive": "source/scripts/benchmarks/paired-statistics.ts"
+  },
+  "scripts/benchmarks/code-context/fixtures.ts": {
+    "sha256": "476c8a3aa0133ae5cdd1ae66855822ba82ea176cff1c7b3be9666035535cb81d",
+    "archive": "source/scripts/benchmarks/code-context/fixtures.ts"
+  },
+  "scripts/benchmarks/code-context/grade.ts": {
+    "sha256": "21a43d625f899f682532e89b83e331aa0cb1a90799a4bcd63db199a874c33a99",
+    "archive": "source/scripts/benchmarks/code-context/grade.ts"
+  },
+  "scripts/benchmarks/code-context/preflight.ts": {
+    "sha256": "25141ccb452b2f11eb5445c5d67fb375280632c60ceae56c9a010e261c8cd64f",
+    "archive": "source/scripts/benchmarks/code-context/preflight.ts"
+  },
+  "scripts/benchmarks/code-context/sandbox-probe.ts": {
+    "sha256": "766379e5131b3578125fa2160e4fb1ad6296822c5107fcf461050471d9104848",
+    "archive": "source/scripts/benchmarks/code-context/sandbox-probe.ts"
+  },
+  "tests/code-context-benchmark.test.ts": {
+    "sha256": "bba0111ea149a53f537ce88382fbea85e8a113d449b9d8eee33d7f5167ca1aec",
+    "archive": "source/tests/code-context-benchmark.test.ts.txt"
+  },
+  "packages/core/src/workspace/path-policy.ts": {
+    "sha256": "aa856148da817718ef6125fca519be419d3bae51ae00521a081d5c96aaeeca1d",
+    "archive": "source/packages/core/src/workspace/path-policy.ts"
+  },
+  "packages/core/src/workspace/text-integrity.ts": {
+    "sha256": "1433968cd0b0f929d8dcc3ad25cd20b2b964a08d38a977cb4c77e51c74746824",
+    "archive": "source/packages/core/src/workspace/text-integrity.ts"
+  },
+  "packages/core/src/workspace/file-security.ts": {
+    "sha256": "421198eaa1f1bcde4528f79781a95df7505cc572915b62cf3074b10eaacbe575",
+    "archive": "source/packages/core/src/workspace/file-security.ts"
+  },
+  "packages/core/src/workspace/edit-contracts.ts": {
+    "sha256": "b4a7f1547d9dde381aaba2842928738f8c69ee4f427907ab67c2f5e91660ea63",
+    "archive": "source/packages/core/src/workspace/edit-contracts.ts"
+  },
+  "packages/core/src/workspace/workspace.ts": {
+    "sha256": "0d5cde949ed8b07dd6351c69f3245f8ae293d69b7d74b6c67b8ddfdc58a35c97",
+    "archive": "source/packages/core/src/workspace/workspace.ts"
+  },
+  "packages/core/src/workspace/change-envelope.ts": {
+    "sha256": "9047ec978c9e5117965b8093ec961d855f97bbc2c3accdc79b74cfe6a0e4f01e",
+    "archive": "source/packages/core/src/workspace/change-envelope.ts"
+  },
+  "package.json": {
+    "sha256": "2a6e31878a00f09b200a7dbdd09a68bff118f29712defcff2b8c027df14b1ac9",
+    "archive": "source/package.json"
+  },
+  "bun.lock": {
+    "sha256": "688a9059d8b7de1c7915fc548cd6bd477f59834a00ccfb2f8828907a46bdf5e7",
+    "archive": "source/bun.lock"
+  }
+}

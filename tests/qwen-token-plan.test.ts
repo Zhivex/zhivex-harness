@@ -2,9 +2,9 @@ import {expect, test} from "bun:test";
 import {z} from "zod";
 import {tool} from "@zhivex-ai/core";
 import {QWEN_TOKEN_PLAN_BASE_URL} from "@zhivex-ai/qwen";
-import {DEFAULT_PROVIDER_REGISTRY} from "../src/providers/providers.js";
+import {DEFAULT_PROVIDER_REGISTRY} from "../packages/core/src/providers/providers.js";
 
-for (const modelId of ["qwen3.8-max", "qwen3.8-flash"]) {
+for (const modelId of ["qwen4-max", "qwen3.8-max", "qwen3.8-flash"]) {
  for (const apiMode of ["chat","responses"] as const) for (const streaming of [false,true]) test(`Token Plan ${modelId} ${apiMode} ${streaming ? "stream" : "generate"} sends callable tools and receipts`, async () => {
   const original = globalThis.fetch;
   const requests: Record<string,any>[] = [];

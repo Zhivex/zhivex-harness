@@ -2,9 +2,9 @@ import { expect, test } from 'bun:test';
 import { createTextMessage, tool, wrapLanguageModel, type AgentRunState, type ModelMessage, type ToolSet } from '@zhivex-ai/core';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import { z } from 'zod';
-import { createRequestContextTools, createRequestProjection, selectRequestTools } from '../src/context/request-projection.js';
-import { createHarnessToolPolicy, applyHarnessToolPolicy } from '../src/runtime/tool-policy.js';
-import { createAdaptiveCompaction } from '../src/context/adaptive-compaction.js';
+import { createRequestContextTools, createRequestProjection, selectRequestTools } from '../packages/core/src/context/request-projection.js';
+import { createHarnessToolPolicy, applyHarnessToolPolicy } from '../packages/core/src/runtime/tool-policy.js';
+import { createAdaptiveCompaction } from '../packages/core/src/context/adaptive-compaction.js';
 
 const definition = (name: string, approval = false) => tool({ name, description: name, schema: z.object({}),
   requiresApproval: approval, ...(approval ? { approvalMode: 'interrupt' as const } : {}), execute: () => 'ok' });
@@ -47,8 +47,8 @@ for (const mode of ['generate', 'stream'] as const) test(`large result projectio
   const all = setup(state), original: ModelMessage[] = [{ role: 'tool', parts: [{ type: 'tool-result', toolResult: result }] }];
   const before = structuredClone(original);
   const base = createMockLanguageModel(); let received: any;
-  base.generate = async input => { received = input; return { text: 'done', finishReason: 'stop' }; };
-  base.stream = async input => { received = input; return (async function* () { yield { type: 'finish' as const, finishReason: 'stop' as const }; })(); };
+  base.generate = async input => { received = { ...input, messages: structuredClone(input.messages) }; return { text: 'done', finishReason: 'stop' }; };
+  base.stream = async input => { received = { ...input, messages: structuredClone(input.messages) }; return (async function* () { yield { type: 'finish' as const, finishReason: 'stop' as const }; })(); };
   const model = wrapLanguageModel(base, [createRequestProjection(async () => state)]);
   const request = { messages: original, tools: all };
   if (mode === 'generate') await model.generate(request); else for await (const _ of await model.stream!(request)) {}
@@ -78,7 +78,7 @@ test('adaptive compaction measures the advertised catalog and grows when tools a
 
 test('durable result references survive approval and reopening with host policy intact', async () => {
   const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
-  const { createHarness, runHarness } = await import('../src/runtime/harness.js');
+  const { createHarness, runHarness } = await import('../packages/core/src/runtime/harness.js');
   const root = await mkdtemp('/tmp/har-result-reopen-');
   await writeFile(root + '/package.json', JSON.stringify({ scripts: { test: 'bun verify.mjs' } }));
   await writeFile(root + '/verify.mjs', 'console.log("x".repeat(12000) + "END-EVIDENCE");');
@@ -121,8 +121,8 @@ test('durable result references survive approval and reopening with host policy 
 
 for (const mode of ['generate', 'stream'] as const) test(`host-forced deferred tool remains advertised (${mode})`, async () => {
   let received: any; const base = createMockLanguageModel();
-  base.generate = async input => { received = input; return { text: 'done', finishReason: 'stop' }; };
-  base.stream = async input => { received = input; return (async function* () { yield { type: 'finish' as const, finishReason: 'stop' as const }; })(); };
+  base.generate = async input => { received = { ...input, messages: structuredClone(input.messages) }; return { text: 'done', finishReason: 'stop' }; };
+  base.stream = async input => { received = { ...input, messages: structuredClone(input.messages) }; return (async function* () { yield { type: 'finish' as const, finishReason: 'stop' as const }; })(); };
   const all = setup(), model = wrapLanguageModel(base, [createRequestProjection(async () => undefined)]);
   const request = { messages: [], tools: all, toolChoice: { type: 'tool' as const, toolName: 'apply_patch' } };
   if (mode === 'generate') await model.generate(request); else for await (const _ of await model.stream!(request)) {}
@@ -132,7 +132,7 @@ for (const mode of ['generate', 'stream'] as const) test(`host-forced deferred t
 });
 
 test('request measurements retain unknown usage on interrupted streams and bound diagnostic retention', async () => {
-  const { createRequestMeasurements } = await import('../src/context/request-measurements.js');
+  const { createRequestMeasurements } = await import('../packages/core/src/context/request-measurements.js');
   const measurements = createRequestMeasurements(), base = createMockLanguageModel();
   base.stream = async () => (async function* () { yield { type: 'text-delta' as const, textDelta: 'partial' }; throw new Error('transport interrupted'); })();
   const model = wrapLanguageModel(base, [measurements.middleware]);

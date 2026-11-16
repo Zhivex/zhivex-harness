@@ -3,12 +3,12 @@ import {mkdtemp,mkdir,readFile,writeFile,lstat,readdir,rm} from 'node:fs/promise
 import os from 'node:os';
 import path from 'node:path';
 import {createTextMessage,wrapLanguageModel,type LanguageModel,type AgentApprovalRequest,type AgentRunOutput} from '@zhivex-ai/core';
-import {runPortableProcess} from '../../src/execution/process-runtime.js';
+import {runPortableProcess} from '../../packages/core/src/execution/process-runtime.js';
 import {ACCEPTANCE_LIMITS,type AcceptanceFixture} from './fixtures.js';
 import {createPilotBudget} from './pilot-budget.js';
 import {createSdkReference,createHarnessPilot,pilotCorrection,type PilotSession} from './pilot-adapters.js';
 
-type Engine=typeof import('../../src/engine/index.js');
+type Engine=typeof import('../../packages/core/src/engine/index.js');
 export async function runPilotCase(api:Engine,participant:'harness'|'sdk-reference',fixture:AcceptanceFixture,baseModel:LanguageModel,modelId:string,onError?:(error:unknown)=>void) {
  const meter=createPilotBudget(ACCEPTANCE_LIMITS);
  const signal=AbortSignal.timeout(ACCEPTANCE_LIMITS.timeoutMs);

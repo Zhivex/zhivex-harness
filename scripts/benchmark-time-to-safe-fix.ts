@@ -1,4 +1,4 @@
-import { benchmarkProgressSchema, errorDetailsSchema } from "../src/runtime/error-diagnostics.js";
+import { benchmarkProgressSchema, errorDetailsSchema } from "../packages/core/src/runtime/error-diagnostics.js";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -14,7 +14,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 
-import { createEditProposal } from "../src/workspace/edit-contracts.js";
+import { createEditProposal } from "../packages/core/src/workspace/edit-contracts.js";
 import {
   assertNoForbiddenDiagnosticContent,
   diagnosticFingerprint,
@@ -37,8 +37,8 @@ import {
   type TimeToSafeFixProfile,
   type TimeToSafeFixSample,
   type TimeToSafeFixTask
-} from "../src/runtime/time-to-safe-fix.js";
-import { Workspace } from "../src/workspace/workspace.js";
+} from "../packages/core/src/runtime/time-to-safe-fix.js";
+import { Workspace } from "../packages/core/src/workspace/workspace.js";
 
 interface CliOptions {
   dataset: string;

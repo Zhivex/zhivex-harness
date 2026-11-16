@@ -124,7 +124,7 @@ Release-gated providers are OpenAI, Qwen, and Meta. **Gemini, Anthropic, Vertex,
 | MCP | Bounded Streamable HTTP is supported. stdio is outside the default CLI. An experimental host-only path can launch stdio servers in Docker; see [Isolated MCP stdio](docs/MCP_STDIO.md). |
 | Editor protocol | `zhx-acp` is an experimental ACP subset: text sessions, one-time permissions, and cancellation. Output is buffered until the run finishes. ACP cannot load or resume a session. See [ACP](docs/ACP.md). |
 | Isolated commands | Docker on Linux is supported. Podman is provisional. See [Execution environments](docs/EXECUTION_ENVIRONMENTS.md). |
-| Desktop | Separate private alpha for macOS Apple Silicon. Unsigned, and not part of the npm package. See [Desktop](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/README.md). |
+| Desktop | Separate private alpha for macOS Apple Silicon. Unsigned, and not part of the npm package. See [Desktop](https://github.com/Zhivex/zhivex-harness/blob/main/packages/desktop/README.md). |
 
 ## Use the engine as a library
 
@@ -152,7 +152,7 @@ Contracts, stability tiers, and the experimental ACP and MCP entry points are in
 
 ## Documentation
 
-- **Using Code:** [Code package notes](https://github.com/Zhivex/zhivex-harness/blob/main/packages/code/README.md), [first use](docs/FIRST_USE.md), [daily workflow](docs/CLI.md#interactive-daily-workflow), [usage reference](docs/USAGE.md), [Code web tasks](docs/CODE_WEB_TASKS.md).
+- **Using Code:** [Code package notes](https://github.com/Zhivex/zhivex-harness/blob/main/packages/cli/README.md), [first use](docs/FIRST_USE.md), [daily workflow](docs/CLI.md#interactive-daily-workflow), [usage reference](docs/USAGE.md), [Code web tasks](docs/CODE_WEB_TASKS.md).
 - **Integrating Harness:** [engine API](docs/ENGINE_API.md), [CLI contracts](docs/CLI.md), [experimental task projection](docs/CLIENT_PROTOCOL.md#task-projection-v1-har-hu-73), [extensibility](docs/EXTENSIBILITY.md), [API stability](docs/STABILITY.md).
 - **Limits:** [support matrix](docs/SUPPORT_MATRIX.md), [security policy](SECURITY.md).
 - **Contributing:** [development](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md) and [maintenance](https://github.com/Zhivex/zhivex-harness/blob/main/docs/MAINTENANCE.md).
@@ -164,3 +164,13 @@ Contracts, stability tiers, and the experimental ACP and MCP entry points are in
 Version `1.7.0` is the current public npm release. The Code package on npm `latest` is `0.4.3`, pinned exactly to Harness `1.7.0`. The quick start above follows the published `latest` tag. npm `next` is Harness `1.4.0-rc.8` and Code `0.3.0-rc.8`. Confirm dist-tags on the [Code versions](https://www.npmjs.com/package/@zhivex-ai/code?activeTab=versions) and [Harness versions](https://www.npmjs.com/package/@zhivex-ai/harness?activeTab=versions) pages before you install a prerelease.
 
 Release channels, publication, and certification records are in the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md). Releases are verified with npm provenance. See the [verified 1.7.0 / 0.4.3 publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_7_0_CODE_0_4_3.md). Source in this checkout can be newer than the public package. See the [changelog](CHANGELOG.md) and the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json).
+
+## Electron workspace layout
+
+The maintained source lives in `packages/core`, `packages/cli`, and `packages/desktop`. Root package exports remain compatible. See [application migration and recovery](docs/APPLICATION_MIGRATION.md) for the Bun workspace commands, offline backups, and distribution gates.
+
+## Repository packages
+
+The supported implementations are `packages/core`, `packages/cli`, and `packages/desktop` (Electron). The standalone browser applications, Tauri launcher, and temporary source aliases have been removed. Assistant functionality belongs to the core and Electron; its domain regressions run with `bun run test:assistant`.
+
+Run `bun run workspace:check`, `bun run check`, `bun run dev:code`, and `bun run prepare:desktop`. Then run `bun run --cwd packages/cli test` and `bun run --cwd packages/desktop package`. Electron smoke tests own their Playwright dependency and use the unified application.

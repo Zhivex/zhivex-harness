@@ -4,7 +4,7 @@ import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import type { ModelGenerateInput, StreamEvent } from "@zhivex-ai/core";
 import { z } from "zod";
-import { createOciDelivery, OCI_DELIVERY_KEY, pendingDescendantDelivery } from "../src/runtime/oci-delivery.js";
+import { createOciDelivery, OCI_DELIVERY_KEY, pendingDescendantDelivery } from "../packages/core/src/runtime/oci-delivery.js";
 
 const model = createMockLanguageModel();
 const input = (): ModelGenerateInput => ({ messages: [], tools: {

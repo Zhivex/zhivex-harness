@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { createQwen } from "@zhivex-ai/qwen";
-import { classifyTimeToSafeFixFailure, timeToSafeFixDriverResultSchema } from "../src/runtime/time-to-safe-fix.js";
-import { HarnessExecutionError } from "../src/runtime/errors.js";
+import { classifyTimeToSafeFixFailure, timeToSafeFixDriverResultSchema } from "../packages/core/src/runtime/time-to-safe-fix.js";
+import { HarnessExecutionError } from "../packages/core/src/runtime/errors.js";
 import { sanitizeOperationalError, restoreSanitizedOperationalError } from "../scripts/release-diagnostics.js";
 
 const sentinel = "PRIVATE_PROVIDER_PAYLOAD";

@@ -2,11 +2,11 @@ import { expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { createQwen } from "@zhivex-ai/qwen";
-import { createHarness } from "../src/runtime/harness.js";
-import { createHarnessClientAdapter } from "../src/client/adapter.js";
-import { harnessErrorDocument, normalizeHarnessError } from "../src/runtime/errors.js";
-import { streamEventDocument } from "../src/client/stream.js";
-import { cliRunEventDocumentSchema } from "../src/client/json-contracts.js";
+import { createHarness } from "../packages/core/src/runtime/harness.js";
+import { createHarnessClientAdapter } from "../packages/core/src/client/adapter.js";
+import { harnessErrorDocument, normalizeHarnessError } from "../packages/core/src/runtime/errors.js";
+import { streamEventDocument } from "../packages/core/src/client/stream.js";
+import { cliRunEventDocumentSchema } from "../packages/core/src/client/json-contracts.js";
 
 const diagnostic = { provider: "qwen", transport: "responses", diagnosticCode: "QWEN_SSE_EVENT_INVALID", reason: "invalid_json", retryable: false } as const;
 const failure = () => Object.assign(new Error("PRIVATE_PROVIDER_DETAIL"), diagnostic, { name: "QwenStreamEventError", cause: new SyntaxError("PRIVATE_PARSER_CAUSE") });

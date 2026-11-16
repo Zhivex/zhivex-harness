@@ -14,7 +14,7 @@ import {
   writeLiveGateDiagnostic
 } from "../scripts/release-diagnostics.js";
 import { liveExecutionSmokeInternals } from "../scripts/live-execution-smoke.js";
-import { HarnessExecutionError, HarnessProviderError } from "../src/runtime/errors.js";
+import { HarnessExecutionError, HarnessProviderError } from "../packages/core/src/runtime/errors.js";
 
 const artifactSha512 = `sha512-${Buffer.alloc(64, 1).toString("base64")}`;
 const workflowBinding = {

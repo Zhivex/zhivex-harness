@@ -1,0 +1,62 @@
+{
+  "method": "Before is the immutable optimized runtime from the previous non-repetitive-code campaign. After adds exact sequential line-prefix encoding to restored reads; replay, diagnostics, and security are otherwise unchanged. Common benchmark instrumentation is used in both arms.",
+  "previous": {
+    "method": "Before is the immutable optimized runtime from the previous non-repetitive-code campaign. After adds durable read replay and read-attempt diagnostics. Common benchmark instrumentation is used in both arms.",
+    "previous": {
+      "baselineCommit": "f7af79937734337f9beb93acb828689cf96aa5a1",
+      "method": "Same current workspace/dependencies in both bundles. Control restores four pre-optimization modules from HEAD:src, and reverts only projection wiring and recovery-denial metadata in current harness/policy. Migration and other user changes retained.",
+      "modules": {
+        "packages/core/src/context/request-projection.ts": {
+          "before": "c508706364ed0e47ede8e72bbdf41cd0a10e8bbeb069ec36e877fc067b3fbec6",
+          "after": "9ebedbaccd82f48caf65936667538030e49d946ee1904df1ebd48b433e19ff6b"
+        },
+        "packages/core/src/context/adaptive-compaction.ts": {
+          "before": "4686c9754aeb42e2fa2f920380758915d53c12c27a4576559ce174a78c769c6c",
+          "after": "e7cb3656f7446d9e1c8e8a4eda9f31dffa4af813bf03ea880baec39e4dec6a1d"
+        },
+        "packages/core/src/context/scoped-context.ts": {
+          "before": "584813e060bfab1d0b11005aec75aa512055e19d781a5d4cbdc0b8ef10b0d5bc",
+          "after": "d404023b5e2292b235b6a53b785a2b58d6d2cac211ab0d112133d1ea24accc65"
+        },
+        "packages/core/src/runtime/context-runtime.ts": {
+          "before": "e1e7c19aaf42fbe9cd54e34616e1152c17d8d0bfcae9e15e0b1d3de88a422d2b",
+          "after": "755ac655a86fc5cb52b708768c4bf6ed0010ea04d26689f3e6823d80ac777ff5"
+        },
+        "packages/core/src/runtime/harness.ts": {
+          "before": "cea9559f5810e580506d066940bd916cc01c019aad26bec0f6fad5f9ad205f32",
+          "after": "70410a4034df43a7f1e0ed25c48a43c8911f228cf127b5a9bcfedebaba76c5a8"
+        },
+        "packages/core/src/runtime/tool-policy.ts": {
+          "before": "2cd1d5f2596099cc4a8637ad02f039e173dead45d60a1452fc3dc06f4d5ed813",
+          "after": "1825b7ad3f73b76daf091de30a05a975940cd8aca69d863853a38df4d7e745e5"
+        }
+      },
+      "bundles": {
+        "before": "e10ea819caa09139235993c96b2a8643fc4b73d249f9c307fd656deed742e3ff",
+        "after": "d6c9ae14d38d03894db4be4d3ed35158f8af503171eeda7c80935ea16be1e1c0"
+      }
+    },
+    "bundles": {
+      "before": "d6c9ae14d38d03894db4be4d3ed35158f8af503171eeda7c80935ea16be1e1c0",
+      "after": "f00f820066152df486f0a24078bc6a2395b9996b9e3b2776d9674186a49d5f9c"
+    },
+    "modules": {
+      "packages/core/src/context/request-projection.ts": "c4167e08582a7a9a7953c491c05fe97519a0f43304f0666ab2e62f649ea64fed",
+      "packages/core/src/context/working-read-replay.ts": "aa08bd18cf9eec66d4d9b85ae0df4adde14bd1302bc1b958ecd0fe80ad9e5eb0",
+      "packages/core/src/context/read-attempts.ts": "0c8521f88b6336bae63c9b7f2e4891d71038cce46d97da3c92a99331880b28b4",
+      "packages/core/src/runtime/harness.ts": "8f850e1175815c5e678f778f48356aa677699d3c705dc587594744851399339a"
+    }
+  },
+  "bundles": {
+    "before": "f00f820066152df486f0a24078bc6a2395b9996b9e3b2776d9674186a49d5f9c",
+    "after": "7afcdc77ddfe147529af7e3bf03febde82619e23fa53bd23f3b064e5f416737b"
+  },
+  "modules": {
+    "packages/core/src/context/request-projection.ts": "c4167e08582a7a9a7953c491c05fe97519a0f43304f0666ab2e62f649ea64fed",
+    "packages/core/src/context/working-read-replay.ts": "0465df6afab513673d27c7d2bb4b348ea45bdb9a3dbdd93328ecc37a372e73c1",
+    "packages/core/src/context/read-attempts.ts": "0c8521f88b6336bae63c9b7f2e4891d71038cce46d97da3c92a99331880b28b4",
+    "packages/core/src/context/numbered-read-lines.ts": "e76213e9b4d36d1d9d892eb89b3b3aca3531afa6d5481ca3af9092ab9eb860e3",
+    "packages/core/src/context/lossless-lines.ts": "9bd575cb2b0ab95f2abde0237f965eb3d23aeae4f1966fd07734ca1bb8d2f072",
+    "packages/core/src/runtime/harness.ts": "144d1429526d80d5f9bc861038e949bba9bd750c2db74f3dd3310c974c99510d"
+  }
+}

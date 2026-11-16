@@ -3,7 +3,7 @@
 Status: phase 0 contracts with phases 1–4 implemented, 2026-11-10.
 See [persistent host and general profile](ASSISTANT_HOST.md).
 Experimental v1 schemas; these are not yet a
-published database format. Implementation: `packages/assistant`.
+published database format. Implementation: `packages/core/src/application/assistant`.
 
 ## Existing API inventory
 
@@ -99,7 +99,7 @@ profile; the stable signature snapshot was not modified to accommodate the chang
 ## Phase 0 acceptance
 
 `bun run build` at the root, followed by
-`bun run --cwd packages/assistant smoke:installed`, must package Harness without
+`bun run packages/desktop/scripts/smoke-assistant.mjs`, must package Harness without
 rewriting its metadata, install it in a temporary consumer, check resolution
 local to the consumer, validate types/schemas and execute an offline task with Node.
 The report prints the tarball version and SHA-256. It does not certify a real provider,

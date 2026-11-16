@@ -1,0 +1,309 @@
+{
+  "method": "Secondary terminal-JSON extraction audit. Primary strict grades and all paid attempts remain unchanged. This is not a retry or a changed model answer.",
+  "records": [
+    {
+      "pair": 1,
+      "model": "gpt-6-luna",
+      "variant": "before",
+      "fixture": "path-policy",
+      "files": 4,
+      "strictPassed": true,
+      "removedPrefix": false,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) sensitive basenames, extensions, case and nested exclusions [0.20ms]\n(pass) allowed examples, ordinary paths and suffix boundaries [0.08ms]\n(pass) case variants exhaustive ASCII combinations [0.40ms]\n\n 3 pass\n 0 fail\n 167 expect() calls\nRan 3 tests across 1 file. [3.00ms]\n"
+        },
+        "candidate": "/** Shared lexical exclusions for workspace access and acceptance preflight.\n * Comparisons use toLowerCase so a Turkish locale cannot map ASCII I to dotless ı and skip .git or id_rsa. */\nexport const HARD_IGNORES = new Set(['.git', '.next', '.turbo', '.zhivex-harness', 'coverage', 'dist', 'node_modules']);\nexport const isSensitiveName = (name: string) => {\n  const normalized = name.toLowerCase();\n  return normalized === '.env' || (normalized.startsWith('.env.') && normalized !== '.env.example') ||\n    normalized === '.npmrc' || normalized === 'id_rsa' || normalized === 'id_ed25519' ||\n    ['.key','.pem','.p12','.pfx'].some(extension => normalized.endsWith(extension));\n};\nexport const isHardIgnored = (relativePath: string) => relativePath.split('/').some(segment => HARD_IGNORES.has(segment.toLowerCase()) || isSensitiveName(segment));\n"
+      }
+    },
+    {
+      "pair": 1,
+      "model": "gpt-6-luna",
+      "variant": "after",
+      "fixture": "path-policy",
+      "files": 4,
+      "strictPassed": true,
+      "removedPrefix": false,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) sensitive basenames, extensions, case and nested exclusions [0.18ms]\n(pass) allowed examples, ordinary paths and suffix boundaries [0.04ms]\n(pass) case variants exhaustive ASCII combinations [0.35ms]\n\n 3 pass\n 0 fail\n 167 expect() calls\nRan 3 tests across 1 file. [2.00ms]\n"
+        },
+        "candidate": "/** Shared lexical exclusions for workspace access and acceptance preflight.\n * Comparisons use toLowerCase so a Turkish locale cannot map ASCII I to dotless ı and skip .git or id_rsa. */\nexport const HARD_IGNORES = new Set(['.git', '.next', '.turbo', '.zhivex-harness', 'coverage', 'dist', 'node_modules']);\nexport const isSensitiveName = (name: string) => {\n  const normalized = name.toLowerCase();\n  return normalized === '.env' || (normalized.startsWith('.env.') && normalized !== '.env.example') ||\n    normalized === '.npmrc' || normalized === 'id_rsa' || normalized === 'id_ed25519' ||\n    ['.key','.pem','.p12','.pfx'].some(extension => normalized.endsWith(extension));\n};\nexport const isHardIgnored = (relativePath: string) => relativePath.split('/').some(segment => HARD_IGNORES.has(segment.toLowerCase()) || isSensitiveName(segment));\n"
+      }
+    },
+    {
+      "pair": 2,
+      "model": "gpt-6-luna",
+      "variant": "after",
+      "fixture": "path-policy",
+      "files": 6,
+      "strictPassed": true,
+      "removedPrefix": false,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) sensitive basenames, extensions, case and nested exclusions [0.18ms]\n(pass) allowed examples, ordinary paths and suffix boundaries [0.05ms]\n(pass) case variants exhaustive ASCII combinations [0.40ms]\n\n 3 pass\n 0 fail\n 167 expect() calls\nRan 3 tests across 1 file. [2.00ms]\n"
+        },
+        "candidate": "/** Shared lexical exclusions for workspace access and acceptance preflight.\n * Comparisons use toLowerCase so a Turkish locale cannot map ASCII I to dotless ı and skip .git or id_rsa. */\nexport const HARD_IGNORES = new Set(['.git', '.next', '.turbo', '.zhivex-harness', 'coverage', 'dist', 'node_modules']);\nexport const isSensitiveName = (name: string) => {\n  const normalized = name.toLowerCase();\n  return normalized === '.env' || (normalized.startsWith('.env.') && normalized !== '.env.example') ||\n    normalized === '.npmrc' || normalized === 'id_rsa' || normalized === 'id_ed25519' ||\n    ['.key','.pem','.p12','.pfx'].some(extension => normalized.endsWith(extension));\n};\nexport const isHardIgnored = (relativePath: string) => relativePath.split('/').some(segment => HARD_IGNORES.has(segment.toLowerCase()) || isSensitiveName(segment));\n"
+      }
+    },
+    {
+      "pair": 2,
+      "model": "gpt-6-luna",
+      "variant": "before",
+      "fixture": "path-policy",
+      "files": 6,
+      "strictPassed": true,
+      "removedPrefix": false,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) sensitive basenames, extensions, case and nested exclusions [0.20ms]\n(pass) allowed examples, ordinary paths and suffix boundaries [0.04ms]\n(pass) case variants exhaustive ASCII combinations [0.35ms]\n\n 3 pass\n 0 fail\n 167 expect() calls\nRan 3 tests across 1 file. [2.00ms]\n"
+        },
+        "candidate": "/** Shared lexical exclusions for workspace access and acceptance preflight.\n * Comparisons use toLowerCase so a Turkish locale cannot map ASCII I to dotless ı and skip .git or id_rsa. */\nexport const HARD_IGNORES = new Set(['.git', '.next', '.turbo', '.zhivex-harness', 'coverage', 'dist', 'node_modules']);\nexport const isSensitiveName = (name: string) => {\n  const normalized = name.toLowerCase();\n  return normalized === '.env' || (normalized.startsWith('.env.') && normalized !== '.env.example') ||\n    normalized === '.npmrc' || normalized === 'id_rsa' || normalized === 'id_ed25519' ||\n    ['.key','.pem','.p12','.pfx'].some(extension => normalized.endsWith(extension));\n};\nexport const isHardIgnored = (relativePath: string) => relativePath.split('/').some(segment => HARD_IGNORES.has(segment.toLowerCase()) || isSensitiveName(segment));\n"
+      }
+    },
+    {
+      "pair": 3,
+      "model": "gpt-6-luna",
+      "variant": "before",
+      "fixture": "text-integrity",
+      "files": 4,
+      "strictPassed": true,
+      "removedPrefix": false,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) all text control boundaries and line labels [1.42ms]\n(pass) byte scanner preserves UTF8 continuation bytes [1.11ms]\n(pass) host bypass and error boundary unchanged [0.49ms]\n\n 3 pass\n 0 fail\n 644 expect() calls\nRan 3 tests across 1 file. [12.00ms]\n"
+        },
+        "candidate": "import { HarnessWorkspaceError } from \"../runtime/errors.js\";\n\nexport interface ControlHit {\n  line: number;\n  label: string;\n}\n\nconst controlLabel = (code: number) => code === 0 ? \"NUL byte\" : `U+${code.toString(16).padStart(4, \"0\")}`;\n\n/** C0 controls other than tab, LF, and CR, plus DEL and Unicode C1 controls. */\nexport const firstDisallowedControl = (text: string): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < text.length; index += 1) {\n    const code = text.charCodeAt(index);\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f || (code >= 0x80 && code <= 0x9f)) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\n/** Raw C0/DEL bytes. UTF-8 continuation bytes are left alone. */\nexport const firstDisallowedControlBytes = (bytes: Uint8Array): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < bytes.length; index += 1) {\n    const code = bytes[index] ?? 0;\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\nexport const refuseControlMessage = (hit: ControlHit) =>\n  `Refusing to write a control byte into a text file: ${hit.label} at L${hit.line}. The file was not changed. Remove the control byte.`;\n\nexport const binaryAfterEditMessage = (hit: ControlHit) =>\n  `file is binary after edit: ${hit.label} at L${hit.line}. The edit was reverted. Read the file again before retrying.`;\n\n/**\n * Text edits refuse NUL and other control bytes unless the host passes\n * allowControlBytes. That switch is not part of the model tool schema.\n * afterWrite is the publication check; tests replace it to prove the rollback path.\n */\nexport const textGuards = {\n  beforeWrite(content: string, allowControlBytes: boolean): void {\n    if (allowControlBytes) return;\n    const problem = firstDisallowedControl(content);\n    if (problem) throw new HarnessWorkspaceError(refuseControlMessage(problem));\n  },\n  afterWrite(bytes: Uint8Array, allowControlBytes: boolean): ControlHit | undefined {\n    if (allowControlBytes) return undefined;\n    return firstDisallowedControlBytes(bytes);\n  }\n};\n"
+      }
+    },
+    {
+      "pair": 3,
+      "model": "gpt-6-luna",
+      "variant": "after",
+      "fixture": "text-integrity",
+      "files": 4,
+      "strictPassed": true,
+      "removedPrefix": false,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) all text control boundaries and line labels [0.34ms]\n(pass) byte scanner preserves UTF8 continuation bytes [0.22ms]\n(pass) host bypass and error boundary unchanged [0.12ms]\n\n 3 pass\n 0 fail\n 644 expect() calls\nRan 3 tests across 1 file. [4.00ms]\n"
+        },
+        "candidate": "import { HarnessWorkspaceError } from \"../runtime/errors.js\";\n\nexport interface ControlHit {\n  line: number;\n  label: string;\n}\n\nconst controlLabel = (code: number) => code === 0 ? \"NUL byte\" : `U+${code.toString(16).padStart(4, \"0\")}`;\n\n/** C0 controls other than tab, LF, and CR, plus DEL and Unicode C1 controls. */\nexport const firstDisallowedControl = (text: string): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < text.length; index += 1) {\n    const code = text.charCodeAt(index);\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f || (code >= 0x80 && code <= 0x9f)) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\n/** Raw C0/DEL bytes. UTF-8 continuation bytes are left alone. */\nexport const firstDisallowedControlBytes = (bytes: Uint8Array): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < bytes.length; index += 1) {\n    const code = bytes[index] ?? 0;\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\nexport const refuseControlMessage = (hit: ControlHit) =>\n  `Refusing to write a control byte into a text file: ${hit.label} at L${hit.line}. The file was not changed. Remove the control byte.`;\n\nexport const binaryAfterEditMessage = (hit: ControlHit) =>\n  `file is binary after edit: ${hit.label} at L${hit.line}. The edit was reverted. Read the file again before retrying.`;\n\n/**\n * Text edits refuse NUL and other control bytes unless the host passes\n * allowControlBytes. That switch is not part of the model tool schema.\n * afterWrite is the publication check; tests replace it to prove the rollback path.\n */\nexport const textGuards = {\n  beforeWrite(content: string, allowControlBytes: boolean): void {\n    if (allowControlBytes) return;\n    const problem = firstDisallowedControl(content);\n    if (problem) throw new HarnessWorkspaceError(refuseControlMessage(problem));\n  },\n  afterWrite(bytes: Uint8Array, allowControlBytes: boolean): ControlHit | undefined {\n    if (allowControlBytes) return undefined;\n    return firstDisallowedControlBytes(bytes);\n  }\n};\n"
+      }
+    },
+    {
+      "pair": 4,
+      "model": "gpt-6-luna",
+      "variant": "after",
+      "fixture": "text-integrity",
+      "files": 6,
+      "strictPassed": true,
+      "removedPrefix": false,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) all text control boundaries and line labels [0.28ms]\n(pass) byte scanner preserves UTF8 continuation bytes [0.16ms]\n(pass) host bypass and error boundary unchanged [0.10ms]\n\n 3 pass\n 0 fail\n 644 expect() calls\nRan 3 tests across 1 file. [2.00ms]\n"
+        },
+        "candidate": "import { HarnessWorkspaceError } from \"../runtime/errors.js\";\n\nexport interface ControlHit {\n  line: number;\n  label: string;\n}\n\nconst controlLabel = (code: number) => code === 0 ? \"NUL byte\" : `U+${code.toString(16).padStart(4, \"0\")}`;\n\n/** C0 controls other than tab, LF, and CR, plus DEL and Unicode C1 controls. */\nexport const firstDisallowedControl = (text: string): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < text.length; index += 1) {\n    const code = text.charCodeAt(index);\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f || (code >= 0x80 && code <= 0x9f)) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\n/** Raw C0/DEL bytes. UTF-8 continuation bytes are left alone. */\nexport const firstDisallowedControlBytes = (bytes: Uint8Array): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < bytes.length; index += 1) {\n    const code = bytes[index] ?? 0;\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\nexport const refuseControlMessage = (hit: ControlHit) =>\n  `Refusing to write a control byte into a text file: ${hit.label} at L${hit.line}. The file was not changed. Remove the control byte.`;\n\nexport const binaryAfterEditMessage = (hit: ControlHit) =>\n  `file is binary after edit: ${hit.label} at L${hit.line}. The edit was reverted. Read the file again before retrying.`;\n\n/**\n * Text edits refuse NUL and other control bytes unless the host passes\n * allowControlBytes. That switch is not part of the model tool schema.\n * afterWrite is the publication check; tests replace it to prove the rollback path.\n */\nexport const textGuards = {\n  beforeWrite(content: string, allowControlBytes: boolean): void {\n    if (allowControlBytes) return;\n    const problem = firstDisallowedControl(content);\n    if (problem) throw new HarnessWorkspaceError(refuseControlMessage(problem));\n  },\n  afterWrite(bytes: Uint8Array, allowControlBytes: boolean): ControlHit | undefined {\n    if (allowControlBytes) return undefined;\n    return firstDisallowedControlBytes(bytes);\n  }\n};\n"
+      }
+    },
+    {
+      "pair": 4,
+      "model": "gpt-6-luna",
+      "variant": "before",
+      "fixture": "text-integrity",
+      "files": 6,
+      "strictPassed": false,
+      "removedPrefix": true,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) all text control boundaries and line labels [0.32ms]\n(pass) byte scanner preserves UTF8 continuation bytes [0.20ms]\n(pass) host bypass and error boundary unchanged [0.11ms]\n\n 3 pass\n 0 fail\n 644 expect() calls\nRan 3 tests across 1 file. [3.00ms]\n"
+        },
+        "candidate": "import { HarnessWorkspaceError } from \"../runtime/errors.js\";\n\nexport interface ControlHit {\n  line: number;\n  label: string;\n}\n\nconst controlLabel = (code: number) => code === 0 ? \"NUL byte\" : `U+${code.toString(16).padStart(4, \"0\")}`;\n\n/** C0 controls other than tab, LF, and CR, plus DEL and Unicode C1 controls. */\nexport const firstDisallowedControl = (text: string): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < text.length; index += 1) {\n    const code = text.charCodeAt(index);\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f || (code >= 0x80 && code <= 0x9f)) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\n/** Raw C0/DEL bytes. UTF-8 continuation bytes are left alone. */\nexport const firstDisallowedControlBytes = (bytes: Uint8Array): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < bytes.length; index += 1) {\n    const code = bytes[index] ?? 0;\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\nexport const refuseControlMessage = (hit: ControlHit) =>\n  `Refusing to write a control byte into a text file: ${hit.label} at L${hit.line}. The file was not changed. Remove the control byte.`;\n\nexport const binaryAfterEditMessage = (hit: ControlHit) =>\n  `file is binary after edit: ${hit.label} at L${hit.line}. The edit was reverted. Read the file again before retrying.`;\n\n/**\n * Text edits refuse NUL and other control bytes unless the host passes\n * allowControlBytes. That switch is not part of the model tool schema.\n * afterWrite is the publication check; tests replace it to prove the rollback path.\n */\nexport const textGuards = {\n  beforeWrite(content: string, allowControlBytes: boolean): void {\n    if (allowControlBytes) return;\n    const problem = firstDisallowedControl(content);\n    if (problem) throw new HarnessWorkspaceError(refuseControlMessage(problem));\n  },\n  afterWrite(bytes: Uint8Array, allowControlBytes: boolean): ControlHit | undefined {\n    if (allowControlBytes) return undefined;\n    return firstDisallowedControlBytes(bytes);\n  }\n};\n"
+      }
+    },
+    {
+      "pair": 5,
+      "model": "gpt-6.1-sol",
+      "variant": "before",
+      "fixture": "path-policy",
+      "files": 4,
+      "strictPassed": true,
+      "removedPrefix": false,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) sensitive basenames, extensions, case and nested exclusions [0.17ms]\n(pass) allowed examples, ordinary paths and suffix boundaries [0.05ms]\n(pass) case variants exhaustive ASCII combinations [0.37ms]\n\n 3 pass\n 0 fail\n 167 expect() calls\nRan 3 tests across 1 file. [2.00ms]\n"
+        },
+        "candidate": "/** Shared lexical exclusions for workspace access and acceptance preflight.\n * Comparisons use toLowerCase so a Turkish locale cannot map ASCII I to dotless ı and skip .git or id_rsa. */\nexport const HARD_IGNORES = new Set(['.git', '.next', '.turbo', '.zhivex-harness', 'coverage', 'dist', 'node_modules']);\nexport const isSensitiveName = (name: string) => {\n  const normalized = name.toLowerCase();\n  return normalized === '.env' || (normalized.startsWith('.env.') && normalized !== '.env.example') ||\n    normalized === '.npmrc' || normalized === 'id_rsa' || normalized === 'id_ed25519' ||\n    ['.key','.pem','.p12','.pfx'].some(extension => normalized.endsWith(extension));\n};\nexport const isHardIgnored = (relativePath: string) => relativePath.split('/').some(segment => HARD_IGNORES.has(segment.toLowerCase()) || isSensitiveName(segment));\n"
+      }
+    },
+    {
+      "pair": 5,
+      "model": "gpt-6.1-sol",
+      "variant": "after",
+      "fixture": "path-policy",
+      "files": 4,
+      "strictPassed": true,
+      "removedPrefix": false,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) sensitive basenames, extensions, case and nested exclusions [0.16ms]\n(pass) allowed examples, ordinary paths and suffix boundaries [0.04ms]\n(pass) case variants exhaustive ASCII combinations [0.36ms]\n\n 3 pass\n 0 fail\n 167 expect() calls\nRan 3 tests across 1 file. [2.00ms]\n"
+        },
+        "candidate": "/** Shared lexical exclusions for workspace access and acceptance preflight.\n * Comparisons use toLowerCase so a Turkish locale cannot map ASCII I to dotless ı and skip .git or id_rsa. */\nexport const HARD_IGNORES = new Set(['.git', '.next', '.turbo', '.zhivex-harness', 'coverage', 'dist', 'node_modules']);\nexport const isSensitiveName = (name: string) => {\n  const normalized = name.toLowerCase();\n  return normalized === '.env' || (normalized.startsWith('.env.') && normalized !== '.env.example') ||\n    normalized === '.npmrc' || normalized === 'id_rsa' || normalized === 'id_ed25519' ||\n    ['.key','.pem','.p12','.pfx'].some(extension => normalized.endsWith(extension));\n};\nexport const isHardIgnored = (relativePath: string) => relativePath.split('/').some(segment => HARD_IGNORES.has(segment.toLowerCase()) || isSensitiveName(segment));\n"
+      }
+    },
+    {
+      "pair": 6,
+      "model": "gpt-6.1-sol",
+      "variant": "after",
+      "fixture": "path-policy",
+      "files": 6,
+      "strictPassed": true,
+      "removedPrefix": false,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) sensitive basenames, extensions, case and nested exclusions [0.16ms]\n(pass) allowed examples, ordinary paths and suffix boundaries [0.04ms]\n(pass) case variants exhaustive ASCII combinations [0.39ms]\n\n 3 pass\n 0 fail\n 167 expect() calls\nRan 3 tests across 1 file. [2.00ms]\n"
+        },
+        "candidate": "/** Shared lexical exclusions for workspace access and acceptance preflight.\n * Comparisons use toLowerCase so a Turkish locale cannot map ASCII I to dotless ı and skip .git or id_rsa. */\nexport const HARD_IGNORES = new Set(['.git', '.next', '.turbo', '.zhivex-harness', 'coverage', 'dist', 'node_modules']);\nexport const isSensitiveName = (name: string) => {\n  const normalized = name.toLowerCase();\n  return normalized === '.env' || (normalized.startsWith('.env.') && normalized !== '.env.example') ||\n    normalized === '.npmrc' || normalized === 'id_rsa' || normalized === 'id_ed25519' ||\n    ['.key','.pem','.p12','.pfx'].some(extension => normalized.endsWith(extension));\n};\nexport const isHardIgnored = (relativePath: string) => relativePath.split('/').some(segment => HARD_IGNORES.has(segment.toLowerCase()) || isSensitiveName(segment));\n"
+      }
+    },
+    {
+      "pair": 6,
+      "model": "gpt-6.1-sol",
+      "variant": "before",
+      "fixture": "path-policy",
+      "files": 6,
+      "strictPassed": true,
+      "removedPrefix": false,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) sensitive basenames, extensions, case and nested exclusions [0.16ms]\n(pass) allowed examples, ordinary paths and suffix boundaries [0.04ms]\n(pass) case variants exhaustive ASCII combinations [0.37ms]\n\n 3 pass\n 0 fail\n 167 expect() calls\nRan 3 tests across 1 file. [2.00ms]\n"
+        },
+        "candidate": "/** Shared lexical exclusions for workspace access and acceptance preflight.\n * Comparisons use toLowerCase so a Turkish locale cannot map ASCII I to dotless ı and skip .git or id_rsa. */\nexport const HARD_IGNORES = new Set(['.git', '.next', '.turbo', '.zhivex-harness', 'coverage', 'dist', 'node_modules']);\nexport const isSensitiveName = (name: string) => {\n  const normalized = name.toLowerCase();\n  return normalized === '.env' || (normalized.startsWith('.env.') && normalized !== '.env.example') ||\n    normalized === '.npmrc' || normalized === 'id_rsa' || normalized === 'id_ed25519' ||\n    ['.key','.pem','.p12','.pfx'].some(extension => normalized.endsWith(extension));\n};\nexport const isHardIgnored = (relativePath: string) => relativePath.split('/').some(segment => HARD_IGNORES.has(segment.toLowerCase()) || isSensitiveName(segment));\n"
+      }
+    },
+    {
+      "pair": 7,
+      "model": "gpt-6.1-sol",
+      "variant": "before",
+      "fixture": "text-integrity",
+      "files": 4,
+      "strictPassed": true,
+      "removedPrefix": false,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) all text control boundaries and line labels [0.33ms]\n(pass) byte scanner preserves UTF8 continuation bytes [0.18ms]\n(pass) host bypass and error boundary unchanged [0.11ms]\n\n 3 pass\n 0 fail\n 644 expect() calls\nRan 3 tests across 1 file. [2.00ms]\n"
+        },
+        "candidate": "import { HarnessWorkspaceError } from \"../runtime/errors.js\";\n\nexport interface ControlHit {\n  line: number;\n  label: string;\n}\n\nconst controlLabel = (code: number) => code === 0 ? \"NUL byte\" : `U+${code.toString(16).padStart(4, \"0\")}`;\n\n/** C0 controls other than tab, LF, and CR, plus DEL and Unicode C1 controls. */\nexport const firstDisallowedControl = (text: string): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < text.length; index += 1) {\n    const code = text.charCodeAt(index);\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f || (code >= 0x80 && code <= 0x9f)) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\n/** Raw C0/DEL bytes. UTF-8 continuation bytes are left alone. */\nexport const firstDisallowedControlBytes = (bytes: Uint8Array): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < bytes.length; index += 1) {\n    const code = bytes[index] ?? 0;\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\nexport const refuseControlMessage = (hit: ControlHit) =>\n  `Refusing to write a control byte into a text file: ${hit.label} at L${hit.line}. The file was not changed. Remove the control byte.`;\n\nexport const binaryAfterEditMessage = (hit: ControlHit) =>\n  `file is binary after edit: ${hit.label} at L${hit.line}. The edit was reverted. Read the file again before retrying.`;\n\n/**\n * Text edits refuse NUL and other control bytes unless the host passes\n * allowControlBytes. That switch is not part of the model tool schema.\n * afterWrite is the publication check; tests replace it to prove the rollback path.\n */\nexport const textGuards = {\n  beforeWrite(content: string, allowControlBytes: boolean): void {\n    if (allowControlBytes) return;\n    const problem = firstDisallowedControl(content);\n    if (problem) throw new HarnessWorkspaceError(refuseControlMessage(problem));\n  },\n  afterWrite(bytes: Uint8Array, allowControlBytes: boolean): ControlHit | undefined {\n    if (allowControlBytes) return undefined;\n    return firstDisallowedControlBytes(bytes);\n  }\n};\n"
+      }
+    },
+    {
+      "pair": 7,
+      "model": "gpt-6.1-sol",
+      "variant": "after",
+      "fixture": "text-integrity",
+      "files": 4,
+      "strictPassed": true,
+      "removedPrefix": false,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) all text control boundaries and line labels [0.30ms]\n(pass) byte scanner preserves UTF8 continuation bytes [0.17ms]\n(pass) host bypass and error boundary unchanged [0.10ms]\n\n 3 pass\n 0 fail\n 644 expect() calls\nRan 3 tests across 1 file. [2.00ms]\n"
+        },
+        "candidate": "import { HarnessWorkspaceError } from \"../runtime/errors.js\";\n\nexport interface ControlHit {\n  line: number;\n  label: string;\n}\n\nconst controlLabel = (code: number) => code === 0 ? \"NUL byte\" : `U+${code.toString(16).padStart(4, \"0\")}`;\n\n/** C0 controls other than tab, LF, and CR, plus DEL and Unicode C1 controls. */\nexport const firstDisallowedControl = (text: string): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < text.length; index += 1) {\n    const code = text.charCodeAt(index);\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f || (code >= 0x80 && code <= 0x9f)) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\n/** Raw C0/DEL bytes. UTF-8 continuation bytes are left alone. */\nexport const firstDisallowedControlBytes = (bytes: Uint8Array): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < bytes.length; index += 1) {\n    const code = bytes[index] ?? 0;\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\nexport const refuseControlMessage = (hit: ControlHit) =>\n  `Refusing to write a control byte into a text file: ${hit.label} at L${hit.line}. The file was not changed. Remove the control byte.`;\n\nexport const binaryAfterEditMessage = (hit: ControlHit) =>\n  `file is binary after edit: ${hit.label} at L${hit.line}. The edit was reverted. Read the file again before retrying.`;\n\n/**\n * Text edits refuse NUL and other control bytes unless the host passes\n * allowControlBytes. That switch is not part of the model tool schema.\n * afterWrite is the publication check; tests replace it to prove the rollback path.\n */\nexport const textGuards = {\n  beforeWrite(content: string, allowControlBytes: boolean): void {\n    if (allowControlBytes) return;\n    const problem = firstDisallowedControl(content);\n    if (problem) throw new HarnessWorkspaceError(refuseControlMessage(problem));\n  },\n  afterWrite(bytes: Uint8Array, allowControlBytes: boolean): ControlHit | undefined {\n    if (allowControlBytes) return undefined;\n    return firstDisallowedControlBytes(bytes);\n  }\n};\n"
+      }
+    },
+    {
+      "pair": 8,
+      "model": "gpt-6.1-sol",
+      "variant": "after",
+      "fixture": "text-integrity",
+      "files": 6,
+      "strictPassed": true,
+      "removedPrefix": false,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) all text control boundaries and line labels [0.28ms]\n(pass) byte scanner preserves UTF8 continuation bytes [0.17ms]\n(pass) host bypass and error boundary unchanged [0.10ms]\n\n 3 pass\n 0 fail\n 644 expect() calls\nRan 3 tests across 1 file. [2.00ms]\n"
+        },
+        "candidate": "import { HarnessWorkspaceError } from \"../runtime/errors.js\";\n\nexport interface ControlHit {\n  line: number;\n  label: string;\n}\n\nconst controlLabel = (code: number) => code === 0 ? \"NUL byte\" : `U+${code.toString(16).padStart(4, \"0\")}`;\n\n/** C0 controls other than tab, LF, and CR, plus DEL and Unicode C1 controls. */\nexport const firstDisallowedControl = (text: string): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < text.length; index += 1) {\n    const code = text.charCodeAt(index);\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f || (code >= 0x80 && code <= 0x9f)) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\n/** Raw C0/DEL bytes. UTF-8 continuation bytes are left alone. */\nexport const firstDisallowedControlBytes = (bytes: Uint8Array): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < bytes.length; index += 1) {\n    const code = bytes[index] ?? 0;\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\nexport const refuseControlMessage = (hit: ControlHit) =>\n  `Refusing to write a control byte into a text file: ${hit.label} at L${hit.line}. The file was not changed. Remove the control byte.`;\n\nexport const binaryAfterEditMessage = (hit: ControlHit) =>\n  `file is binary after edit: ${hit.label} at L${hit.line}. The edit was reverted. Read the file again before retrying.`;\n\n/**\n * Text edits refuse NUL and other control bytes unless the host passes\n * allowControlBytes. That switch is not part of the model tool schema.\n * afterWrite is the publication check; tests replace it to prove the rollback path.\n */\nexport const textGuards = {\n  beforeWrite(content: string, allowControlBytes: boolean): void {\n    if (allowControlBytes) return;\n    const problem = firstDisallowedControl(content);\n    if (problem) throw new HarnessWorkspaceError(refuseControlMessage(problem));\n  },\n  afterWrite(bytes: Uint8Array, allowControlBytes: boolean): ControlHit | undefined {\n    if (allowControlBytes) return undefined;\n    return firstDisallowedControlBytes(bytes);\n  }\n};\n"
+      }
+    },
+    {
+      "pair": 8,
+      "model": "gpt-6.1-sol",
+      "variant": "before",
+      "fixture": "text-integrity",
+      "files": 6,
+      "strictPassed": true,
+      "removedPrefix": false,
+      "audited": {
+        "passed": true,
+        "context": true,
+        "tests": {
+          "passed": true,
+          "exit": 0,
+          "output": "bun test v1.4.3 (c6da4a4d3)\n\ncandidate.test.ts:\n(pass) all text control boundaries and line labels [0.28ms]\n(pass) byte scanner preserves UTF8 continuation bytes [0.17ms]\n(pass) host bypass and error boundary unchanged [0.12ms]\n\n 3 pass\n 0 fail\n 644 expect() calls\nRan 3 tests across 1 file. [2.00ms]\n"
+        },
+        "candidate": "import { HarnessWorkspaceError } from \"../runtime/errors.js\";\n\nexport interface ControlHit {\n  line: number;\n  label: string;\n}\n\nconst controlLabel = (code: number) => code === 0 ? \"NUL byte\" : `U+${code.toString(16).padStart(4, \"0\")}`;\n\n/** C0 controls other than tab, LF, and CR, plus DEL and Unicode C1 controls. */\nexport const firstDisallowedControl = (text: string): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < text.length; index += 1) {\n    const code = text.charCodeAt(index);\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f || (code >= 0x80 && code <= 0x9f)) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\n/** Raw C0/DEL bytes. UTF-8 continuation bytes are left alone. */\nexport const firstDisallowedControlBytes = (bytes: Uint8Array): ControlHit | undefined => {\n  let line = 1;\n  for (let index = 0; index < bytes.length; index += 1) {\n    const code = bytes[index] ?? 0;\n    if (code === 0x0a) {\n      line += 1;\n      continue;\n    }\n    if (code === 0x09 || code === 0x0d) continue;\n    if (code < 0x20 || code === 0x7f) return { line, label: controlLabel(code) };\n  }\n  return undefined;\n};\n\nexport const refuseControlMessage = (hit: ControlHit) =>\n  `Refusing to write a control byte into a text file: ${hit.label} at L${hit.line}. The file was not changed. Remove the control byte.`;\n\nexport const binaryAfterEditMessage = (hit: ControlHit) =>\n  `file is binary after edit: ${hit.label} at L${hit.line}. The edit was reverted. Read the file again before retrying.`;\n\n/**\n * Text edits refuse NUL and other control bytes unless the host passes\n * allowControlBytes. That switch is not part of the model tool schema.\n * afterWrite is the publication check; tests replace it to prove the rollback path.\n */\nexport const textGuards = {\n  beforeWrite(content: string, allowControlBytes: boolean): void {\n    if (allowControlBytes) return;\n    const problem = firstDisallowedControl(content);\n    if (problem) throw new HarnessWorkspaceError(refuseControlMessage(problem));\n  },\n  afterWrite(bytes: Uint8Array, allowControlBytes: boolean): ControlHit | undefined {\n    if (allowControlBytes) return undefined;\n    return firstDisallowedControlBytes(bytes);\n  }\n};\n"
+      }
+    }
+  ]
+}

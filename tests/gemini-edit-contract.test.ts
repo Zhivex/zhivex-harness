@@ -3,11 +3,11 @@ import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
 import { tool } from "@zhivex-ai/agents";
-import { createProviderModel } from "../src/runtime/config.js";
-import { editProposalInputSchema } from "../src/workspace/edit-contracts.js";
-import { createEditProposal } from "../src/workspace/edit-contracts.js";
+import { createProviderModel } from "../packages/core/src/runtime/config.js";
+import { editProposalInputSchema } from "../packages/core/src/workspace/edit-contracts.js";
+import { createEditProposal } from "../packages/core/src/workspace/edit-contracts.js";
 
 for (const existing of [false, true]) test(`Gemini 3.7 streamed ${existing ? "update" : "creation"} preserves schema, signed continuation and durable approval`, async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "zhx-gemini-contract-"));

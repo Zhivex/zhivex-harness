@@ -10,10 +10,10 @@ import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { serializeJsonValue } from "@zhivex-ai/core";
 import { z } from "zod";
 
-import { benchmarkApprovalDiagnosticSchema } from "../src/runtime/error-diagnostics.js";
-import type { HarnessProvider } from "../src/runtime/config.js";
-import type { HarnessOciRuntimeAdapter } from "../src/execution/execution-environment.js";
-import type { TimeToSafeFixDriverResult, TimeToSafeFixGoal } from "../src/runtime/time-to-safe-fix.js";
+import { benchmarkApprovalDiagnosticSchema } from "../packages/core/src/runtime/error-diagnostics.js";
+import type { HarnessProvider } from "../packages/core/src/runtime/config.js";
+import type { HarnessOciRuntimeAdapter } from "../packages/core/src/execution/execution-environment.js";
+import type { TimeToSafeFixDriverResult, TimeToSafeFixGoal } from "../packages/core/src/runtime/time-to-safe-fix.js";
 import type { TimeToSafeFixDriverRequest } from "./time-to-safe-fix-driver-contract.js";
 import {
   buildTimeToSafeFixEfficiency,

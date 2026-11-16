@@ -3,13 +3,13 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { AgentRunStore, McpClient } from '@zhivex-ai/core';
-import { resolveHarnessConfig } from '../src/runtime/config.js';
-import { openHarnessPersistence } from '../src/persistence/operations.js';
-import { createJournaledMcpClient } from '../src/persistence/mcp-execution-journal.js';
-import { McpStdioClientError } from '../src/integrations/mcp-stdio-client.js';
-import type { McpStdioLaunchProposal } from '../src/integrations/mcp-stdio-admission.js';
-import { createMcpReconciliationAuthority } from '../src/persistence/mcp-reconciliation.js';
-import { reserveMcpResources } from '../src/persistence/mcp-resource-journal.js';
+import { resolveHarnessConfig } from '../packages/core/src/runtime/config.js';
+import { openHarnessPersistence } from '../packages/core/src/persistence/operations.js';
+import { createJournaledMcpClient } from '../packages/core/src/persistence/mcp-execution-journal.js';
+import { McpStdioClientError } from '../packages/core/src/integrations/mcp-stdio-client.js';
+import type { McpStdioLaunchProposal } from '../packages/core/src/integrations/mcp-stdio-admission.js';
+import { createMcpReconciliationAuthority } from '../packages/core/src/persistence/mcp-reconciliation.js';
+import { reserveMcpResources } from '../packages/core/src/persistence/mcp-resource-journal.js';
 const digest = `sha256:${'a'.repeat(64)}`;
 const proposal: McpStdioLaunchProposal = { schemaVersion: 1, serverId: 'docs', boundary: 'oci', image: `example/server@${digest}`,
   executable: '/server', args: [], protocolVersion: '2025-11-25', workingDirectory: '.', snapshotDigest: digest,

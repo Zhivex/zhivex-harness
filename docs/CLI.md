@@ -1,5 +1,7 @@
 # CLI reference
 
+> Las rutas históricas `reports/unification/…` citadas en este documento pertenecen al [archivo interno](INTERNAL_ARCHIVE.md); los originales se conservaron fuera del árbol publicable.
+
 ## Tasks, help and profile updates
 
 Append `--help` to a command even when it already includes a task or options:
@@ -794,8 +796,8 @@ hash checks identity; it is not proof that a person reviewed the selection.
 State export preserves retained captures and completed restore records and
 refuses pending restore authority. Export/import never prune to fit capacity.
 Import accepts an empty destination or an identical prior import, not a merge
-with changed checkpoint history. These administrative retention commands run
-locally; Desktop can continue using the same retained checkpoints afterward.
+with changed checkpoint history. Retention can run locally or through the shared
+host with --area code / --service; Desktop observes the same retained records.
 
 ### Inspect the configured policy
 
@@ -857,3 +859,165 @@ pack. See [Audit pack](AUDIT_PACK.md).
 ## Experimental project memory (unreleased)
 
 `zhx memory` supports `remember`, `list`, `read`, `update`, `forget`, `suggest`, `accept`, `context`, `clear`, `enable` and `disable`. Content is one quoted argument. Updates, acceptance and forgetting require the current revision. `--source` supplies a provenance label; `--no-memory` disables curated retrieval and SDK memory loading/capture for a local run/chat/resume invocation. Existing workspace/tenant/user/namespace flags select scope. See [Project memory](PROJECT_MEMORY.md) for bounds, review, deletion semantics and next-release pairing.
+
+## Host de aplicación compartido
+
+`zhx application status` consulta el coordinador sin iniciarlo. `zhx application start` lo descubre o inicia en segundo plano con el mismo runtime Node de la CLI instalada. `zhx application stop --yes` solicita detener el servicio completo: afecta a todos sus clientes y detiene tareas y servicios de fondo. Las revisiones pendientes y conversaciones se conservan. El resultado `stop-requested` es un acuse de solicitud, no una prueba de que todas las tareas hayan terminado de cerrar.
+
+`--application-directory <dir>` selecciona el directorio privado compartido; por defecto los comandos `application` y `--area` usan `~/.zhx-app`. `--area assistant|code` conecta run/resume/chat/policy/sessions al runtime seleccionado en ese host. Es compatible con stdin, `--session`, JSON y JSONL donde esos comandos ya los admiten. Cerrar una sesión CLI no cierra el host persistente.
+
+```sh
+zhx application start --json
+zhx sessions list --area assistant --json
+printf 'Revisa mi tarea' | zhx run --area assistant --jsonl -
+zhx chat --area code
+zhx application status --json
+zhx application stop --yes --json
+```
+
+El perfil Assistant y el proyecto Code deben estar configurados; si faltan, la CLI informa el requisito sin fabricar una conexión. El alta y la selección desde CLI se describen a continuación. No se pueden combinar estas opciones con `--service` ni sobrescribir configuración del motor mediante flags de proveedor, workspace o permisos. Los comandos anteriores conservan su comportamiento cuando no se pide el modo compartido; no se declara todavía paridad de toda la CLI ni retiro de entrypoints históricos.
+
+### Agentes, conexiones y proyectos compartidos
+
+Los comandos siguientes usan el coordinador y aceptan `--application-directory <dir>` y `--json`:
+
+| Comando | Efecto |
+| --- | --- |
+| `zhx agents list` | Lista perfiles y el borrador compartido, sin credenciales. |
+| `zhx agents create "Nombre"` | Crea un borrador. Rechaza otro borrador existente en vez de sobrescribirlo. |
+| `zhx connections configure -` | Lee JSON de proveedor por stdin, valida acceso y lo guarda para el borrador en el llavero. |
+| `zhx connections list` | Lista IDs, modelos y agentes que usan cada conexión; nunca las claves. |
+| `zhx connections use <id>` | Reutiliza una conexión en el borrador actual. |
+| `zhx agents tools -` | Configura módulos del borrador mediante JSON por stdin y devuelve la configuración guardada. |
+| `zhx agents start` | Activa el borrador configurado. |
+| `zhx agents select <id>` | Selecciona un perfil existente, respetando tareas y revisiones pendientes. |
+| `zhx agents rename <id> "Nombre"` | Renombra un perfil. |
+| `zhx agents model <id> <modelo>` | Cambia el modelo mediante las validaciones y bindings del core. |
+| `zhx agents discard --yes` | Descarta el borrador compartido. |
+| `zhx agents delete <id> --yes` | Elimina el perfil y sus datos de runtime/conversaciones según el comportamiento existente del gestor; no es sólo ocultarlo. |
+| `zhx projects list` | Lista repositorios registrados y selección activa. |
+| `zhx projects context` | Lee el modelo configurado, fuentes y skills del contexto cargado por el host Code activo. |
+| `zhx projects open <raíz-Git> <connectionId>` | Registra/abre el repositorio con la conexión elegida. |
+| `zhx projects select <id>` | Cambia al proyecto registrado, manteniendo el aislamiento. |
+
+La creación es deliberadamente por pasos: un fallo de validación deja un borrador recuperable. No se reintenta automáticamente una mutación con resultado incierto. Las operaciones se serializan en el coordinador con las acciones de Electron, y los bloqueos de actividad siguen perteneciendo al core.
+
+El JSON para un proveedor compatible admite `baseURL`, `model`, `apiKey`, `apiMode` y `allowInsecureLocalhost`; los proveedores Muse/Meta y Qwen usan el esquema existente del core. Entregarlo por stdin evita incluir claves en argumentos o historial de comandos. El consumidor debe proporcionar ese stdin desde una fuente privada; los resultados y errores de la CLI nunca reproducen su contenido. La validación consulta el proveedor configurado.
+
+Los documentos JSON nuevos son `application-agents`, `application-connections` y `application-projects`, todos con `schemaVersion: 1`. Un host antiguo sin la capacidad de administración devuelve una instrucción para detenerlo y reiniciarlo explícitamente, sin intentar modificar sus stores con otra versión. Las automatizaciones y OAuth desde la nueva CLI todavía requieren trabajo; esta cobertura no declara completa la etapa 6.
+
+### Tareas y recordatorios personales
+
+`zhx personal tasks [offset]` consulta las tareas pendientes del Assistant activo, de 20 en 20. La respuesta incluye `total` y `nextOffset` (null al terminar). `zhx personal reminders` consulta sus últimos 100 recordatorios, con canal, zona horaria y estado persistido. Ambos aceptan `--application-directory <dir>` y `--json`, descubren/inician el mismo coordinador que Electron y no crean sesiones ni invocan al modelo.
+
+```sh
+zhx personal tasks --json
+zhx personal tasks 20 --json
+zhx personal reminders --json
+```
+
+Los documentos JSON `application-tasks` y `application-reminders` incluyen `projectId` y `enabled`. `enabled: false` indica que el agente no tiene el módulo personal habilitado; no representa una consulta exitosa de un módulo vacío. Sin un agente activo listo, el comando falla con un error de configuración. El core rechaza una selección que cambie entre descubrimiento y lectura. No se acepta `--area code`, `--service` ni flags de proveedor. Para crear o modificar datos se conserva el flujo de herramientas revisadas desde la conversación, por ejemplo `zhx run --area assistant`.
+
+Para crear un agente con tareas y recordatorios desde la CLI, después de configurar su conexión y antes de `agents start`:
+
+```sh
+printf '%s' '{"daily":true,"proactive":false}' | zhx agents tools - --json
+zhx agents start --json
+zhx personal tasks --json
+```
+
+`agents tools` reemplaza la configuración de módulos del borrador. Requiere un borrador existente y respeta un OAuth pendiente. Admite `daily`, `proactive` y las referencias de entorno `web`/`github` validadas por el core. Esas integraciones requieren las credenciales en el entorno del proceso propietario del coordinador; exportarlas después en otro terminal no cambia un servicio ya iniciado. No se aceptan claves secretas dentro de este JSON. Un error de validación conserva la configuración anterior. La respuesta `application-agents.draft.tools` permite comprobar lo guardado antes de iniciar el agente.
+
+El alta del módulo personal desde el paquete Node instalado está verificada en `reports/unification/cli-modules/report.json`, junto con dos agentes, dos proyectos y un único coordinador. No certifica credenciales live de web/GitHub ni la configuración de OAuth. La CLI de automatizaciones se describe a continuación.
+
+### Automatizaciones compartidas
+
+`zhx automations status --json` devuelve `application-automation`: `projectId`, disponibilidad del scheduler, vinculación de Telegram, `digest`, horario, preferencias y últimas ocurrencias. Usa el mismo coordinador que Electron. `available: false` significa que el agente carece del scheduler; `state: null` no significa una rutina vacía.
+
+Para cambiarlo, revisar primero ese estado y preparar un archivo JSON con la identidad y digest obtenidos:
+
+```json
+{
+  "projectId": "<projectId revisado>",
+  "change": {
+    "action": "configure",
+    "expectedDigest": "<digest revisado>",
+    "localTime": "08:30",
+    "timeZone": "America/Argentina/Buenos_Aires"
+  }
+}
+```
+
+```sh
+zhx automations status --json
+zhx automations apply - --yes --json < reviewed-automation.json
+```
+
+`configure` y `resume` autorizan entregas futuras al Telegram vinculado y requieren esa vinculación. No ejecutan un resumen inmediato. `pause` pausa el horario; `delete` elimina el horario conservando preferencias; `forget` olvida todas las preferencias del scheduler y pausa el horario. Estas cuatro acciones sólo aceptan `action` y `expectedDigest` dentro de `change`. Pausar/eliminar no retira un envío que ya empezó.
+
+Todos los cambios requieren `--yes`, stdin JSON y el digest revisado: no se obtiene una revisión nueva automáticamente para sustituir una obsoleta. Si cambia el agente activo o la configuración, se rechaza el cambio. Ante respuesta incierta, consultar `status` y revisar el resultado antes de emitir otra modificación. No hay reenvío automático. Ambos comandos aceptan `--application-directory <dir>`; no admiten `--area`, `--service`, configuración de proveedor ni JSONL. Errores de configuración usan exit code 2; el documento JSON de error conserva el contrato común sin exponer mensajes internos.
+
+La validación de `tests/automation-cli.test.ts` utiliza el scheduler y SQLite reales con vinculación/fuente simuladas, sin enviar mensajes. El mismo test puede probar un consumidor Node instalado mediante `ZHX_CLI_TEST_ENTRY=<ruta absoluta a dist/zhx.js>`. Esta cobertura no certifica cuentas externas ni recepción de Telegram.
+
+### Checkpoints en el host compartido
+
+`checkpoints list|capture|inspect|prepare|review|apply|recover|storage|prune-review|prune-apply` admite `--area code` (descubrimiento y arranque del coordinador), `--application-directory <dir>` y, alternativamente, `--service <credentials.json>` para un host explícito. Los archivos, stores y comprobaciones de revisión pertenecen al host; la CLI no abre una segunda copia del estado ni requiere acceso local a los archivos del proyecto.
+
+```sh
+zhx checkpoints list <sessionId> --area code --json
+zhx checkpoints capture <sessionId> <turnId> src/file.ts --area code --json
+zhx checkpoints inspect <checkpointId> --session <sessionId> --area code --json
+zhx checkpoints prepare <checkpointId> --session <sessionId> --area code --json
+zhx checkpoints review <operationId> --session <sessionId> --area code --json
+zhx checkpoints apply <operationId> <reviewedProposalId> --session <sessionId> --area code --json
+zhx checkpoints recover <operationId> <existingForkSessionId> --session <sessionId> --area code --json
+```
+
+`list` y `capture` toman la conversación del argumento posicional. Las otras operaciones requieren `--session` explícito: no buscan una operación en otras conversaciones. La conversación y sus runs deben cumplir los requisitos de terminalidad del core. `apply` conserva el digest pasado por el operador tras revisar el diff; no lo sustituye por una revisión nueva. El host rechaza un digest incorrecto, bytes cambiados, pertenencia a otra conversación o revisión concurrente. La conversación original se conserva. Ante una respuesta incierta, consultar `review` y el diario antes de repetir; una restauración completada devuelve su derivación existente.
+
+La salida mantiene los documentos de checkpoints del modo local y su `schemaVersion: 1`. `previewStatus: unavailable` significa que el diff no puede reconstruirse con los archivos actuales; no representa un diff vacío. Los conflictos usan exit code 1; argumentos inválidos, 2. No se acepta `--yes` como sustituto del digest, ni `--workspace`, `--state-dir` o flags de proveedor para configurar un host existente.
+
+`storage`, `prune-review` y `prune-apply` también usan el host compartido. Operan sobre el scope del proyecto seleccionado y no aceptan `--session`. Consultar `storage`, seleccionar IDs exactos como `checkpoint:<id>` y `restore:<id>`, revisar `prune-review` y pasar su `planId` a `prune-apply`. El plan enlaza todo el inventario: cualquier cambio posterior exige otra revisión. El borrado es transaccional y sólo afecta los registros seleccionados; conserva archivos y conversaciones. No puede eliminar restauraciones pendientes ni checkpoints referenciados por operaciones que se conservan. Un resultado incierto se reconcilia consultando `storage` antes de emitir otro comando. No usar el modo local para modificar los stores de un host activo. Las pruebas están en `tests/service-checkpoints.test.ts` y el recorrido instalado en `packages/desktop/scripts/smoke-cli-coordinator.mjs`.
+
+Cuando el llavero no se puede leer, `zhx application status --json` puede informar
+`status: running`, `assistantLocked: true` y `assistantError`: el coordinador está
+respondiendo, pero el perfil personal todavía no está disponible. `agents list`
+y `connections list` fallan con exit code 2; no devuelven una lista vacía que pueda
+confundirse con un perfil nuevo. El límite de lectura del core no concede acceso
+al llavero ni cancela por sí mismo una llamada nativa bloqueada.
+
+### Notas del Assistant compartido
+
+```sh
+zhx personal notes --json
+zhx personal notes 20 --json
+zhx personal search-notes "reunión" --json
+zhx personal search-notes "reunión" 20 --json
+zhx personal note <note-uuid> --json
+```
+
+Estos comandos usan el mismo agente activo y las mismas notas que Electron. Admiten `--application-directory <dir>` y requieren un host con capacidad `application.notes`; no abren stores propios. `notes` pagina de a 20 y devuelve `total` y `nextOffset`. `search-notes` busca en título y contenido, con una consulta de hasta 200 caracteres. `note` lee un UUID del agente seleccionado; un ID inexistente devuelve error. La respuesta JSON tiene `kind: application-notes`, `enabled`, `projectId`, lista y paginación, más `note` cuando se pidió un ID. Si el módulo no está habilitado, se devuelve `enabled: false`.
+
+Son lecturas: no admiten `--yes`, no guardan ni borran notas. Las modificaciones siguen disponibles mediante las herramientas revisadas de la conversación compartida. La CLI valida parámetros antes de descubrir o iniciar el host y rechaza `--area`/`--service` en estos comandos para evitar una selección ambigua.
+
+### Contexto de Code compartido
+
+`zhx projects context --application-directory <directorio> --json` descubre el coordinador y lee el mismo bundle que Context en Electron. Devuelve `application-code-context` versión 1 con projectId, modelo configurado, habilitación, fingerprint, manifiesto, fuentes y skills disponibles. No expone cuerpos de archivos ni configuración de credenciales. Sin `--json`, la salida pasa por el saneamiento de terminal habitual.
+
+La consulta no recarga archivos, modifica el modelo ni inicia un runtime Code separado. Requiere un proyecto activo listo y la capacidad `application.code-context`; un host anterior recibe un error de configuración recuperable mediante actualización/reinicio explícitos. Si cambia el proyecto entre descubrimiento y consulta, el core rechaza el scope anterior. No acepta `--area`, `--service`, argumentos adicionales ni JSONL.
+
+Evidencia de CLI instalada y paridad con Electron: `reports/unification/code-context-cli/report.json`.
+
+### Conexión del proyecto Code activo
+
+`zhx projects connection <projectId> <connectionId> --application-directory <directorio> --json` aplica una conexión guardada al proyecto activo usando el mismo caso de uso que Electron. Rechaza trabajo activo o revisiones pendientes; conserva conversaciones y no transmite claves a la terminal. Los IDs se obtienen con `projects list` y `connections list`.
+
+## Terminal unificada y nombres de compatibilidad
+
+`zhx` es la entrada canónica. `zhivex-harness` usa el mismo ejecutable y `zhivex-code` delega sus comandos normales en la CLI del core. El wrapper conserva su versión de paquete y ayuda identificable; las indicaciones de comandos nuevos usan `zhx`. La consola incluye `/task`, `/budget`, `/pricing`, `/checkpoint`, `/theme` y revisión visual de Code.
+
+Para compartir el host con Electron usar `zhx chat --area code` o `--area assistant`, con `--application-directory` cuando corresponda. Las opciones de runtime se configuran en el host; no se aceptan overrides locales de autoaprobación en modo compartido. Los comandos directos históricos siguen disponibles sin Electron para conservar sus stores, flags y contratos.
+
+`--auto-approve manual|auto-edits|auto-limits` y `--auto-approve-allow <tool>` conservan la política local opt-in de Code en chat/run/review/resume directos. No sustituyen la revisión explícita requerida por el core ni autorizan entrega Git.
+
+`zhivex-code web`, `--web` y `zhivex-code project` rechazan la interfaz retirada e indican usar Electron o `zhx projects --help`. Para conversar desde la terminal, usar `zhx chat --area code`. La limpieza del código no migra ni elimina registros personales; ver [migración de la aplicación](APPLICATION_MIGRATION.md). La [matriz histórica de fase 6](INTERNAL_ARCHIVE.md) describe el estado anterior a la retirada.

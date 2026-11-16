@@ -1,0 +1,15 @@
+{
+  "name": "@zhivex-internal/core-workspace",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun run --cwd ../.. build",
+    "typecheck": "bun run --cwd ../.. typecheck",
+    "test": "bun run --cwd ../.. test"
+  },
+  "version": "1.7.0",
+  "engines": {
+    "node": ">=22.13.0",
+    "bun": ">=1.4.0"
+  }
+}

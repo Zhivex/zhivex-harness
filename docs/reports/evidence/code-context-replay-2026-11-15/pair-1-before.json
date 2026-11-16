@@ -1,0 +1,1525 @@
+{
+  "model": "gpt-6-luna",
+  "variant": "before",
+  "fixture": "path-policy",
+  "repetition": 6,
+  "fixtureHash": "d5e0e997885c4de48eca0624679a4739735a5dd9bd1358e0783e772e39bd8670",
+  "bun": "1.4.3",
+  "runtimeHash": "d6c9ae14d38d03894db4be4d3ed35158f8af503171eeda7c80935ea16be1e1c0",
+  "stateless": true,
+  "threshold": 12000,
+  "contextProfile": {
+    "src/context-1.txt": {
+      "characters": 11187,
+      "lines": 292,
+      "uniqueLineRatio": 0.7328767123287672,
+      "losslessEligible": false
+    },
+    "src/context-2.txt": {
+      "characters": 11111,
+      "lines": 371,
+      "uniqueLineRatio": 0.6711590296495957,
+      "losslessEligible": false
+    },
+    "src/context-3.txt": {
+      "characters": 11188,
+      "lines": 291,
+      "uniqueLineRatio": 0.7835051546391752,
+      "losslessEligible": false
+    },
+    "src/context-4.txt": {
+      "characters": 11271,
+      "lines": 254,
+      "uniqueLineRatio": 0.7874015748031497,
+      "losslessEligible": false
+    },
+    "src/context-5.txt": {
+      "characters": 11161,
+      "lines": 244,
+      "uniqueLineRatio": 0.7745901639344263,
+      "losslessEligible": false
+    },
+    "src/context-6.txt": {
+      "characters": 11454,
+      "lines": 223,
+      "uniqueLineRatio": 0.8161434977578476,
+      "losslessEligible": false
+    }
+  },
+  "provenance": {
+    "packages/core/src/workspace/path-policy.ts": "aa856148da817718ef6125fca519be419d3bae51ae00521a081d5c96aaeeca1d",
+    "packages/core/src/workspace/file-security.ts": "421198eaa1f1bcde4528f79781a95df7505cc572915b62cf3074b10eaacbe575",
+    "packages/core/src/workspace/edit-contracts.ts": "b4a7f1547d9dde381aaba2842928738f8c69ee4f427907ab67c2f5e91660ea63",
+    "packages/core/src/workspace/workspace.ts": "0d5cde949ed8b07dd6351c69f3245f8ae293d69b7d74b6c67b8ddfdc58a35c97",
+    "packages/core/src/workspace/change-envelope.ts": "9047ec978c9e5117965b8093ec961d855f97bbc2c3accdc79b74cfe6a0e4f01e"
+  },
+  "completed": false,
+  "diagnostics": {
+    "requireVerifiedDelivery": false,
+    "approvalTimings": [],
+    "requestMeasurements": {
+      "requests": [
+        {
+          "context": {
+            "systemCharacters": 2166,
+            "userCharacters": 1012,
+            "assistantCharacters": 0,
+            "toolResultCharacters": 0,
+            "otherMessageCharacters": 0,
+            "toolDefinitionCharacters": 1102,
+            "unmeasuredToolDefinitions": 0
+          },
+          "estimatedInputTokens": 1491,
+          "inputTokens": 804,
+          "outputTokens": 113,
+          "cachedInputTokens": 0,
+          "completed": true
+        },
+        {
+          "context": {
+            "systemCharacters": 2962,
+            "userCharacters": 1012,
+            "assistantCharacters": 6373,
+            "toolResultCharacters": 13279,
+            "otherMessageCharacters": 0,
+            "toolDefinitionCharacters": 1102,
+            "unmeasuredToolDefinitions": 0
+          },
+          "estimatedInputTokens": 8307,
+          "inputTokens": 4872,
+          "outputTokens": 33,
+          "cachedInputTokens": 0,
+          "completed": true
+        },
+        {
+          "context": {
+            "systemCharacters": 2962,
+            "userCharacters": 0,
+            "assistantCharacters": 2481,
+            "toolResultCharacters": 13701,
+            "otherMessageCharacters": 0,
+            "toolDefinitionCharacters": 1102,
+            "unmeasuredToolDefinitions": 0
+          },
+          "estimatedInputTokens": 6813,
+          "inputTokens": 5263,
+          "outputTokens": 33,
+          "cachedInputTokens": 0,
+          "completed": true
+        },
+        {
+          "context": {
+            "systemCharacters": 2962,
+            "userCharacters": 0,
+            "assistantCharacters": 3130,
+            "toolResultCharacters": 27044,
+            "otherMessageCharacters": 0,
+            "toolDefinitionCharacters": 1847,
+            "unmeasuredToolDefinitions": 0
+          },
+          "estimatedInputTokens": 11725,
+          "inputTokens": 9348,
+          "outputTokens": 33,
+          "cachedInputTokens": 0,
+          "completed": true
+        },
+        {
+          "context": {
+            "systemCharacters": 2962,
+            "userCharacters": 0,
+            "assistantCharacters": 3349,
+            "toolResultCharacters": 13110,
+            "otherMessageCharacters": 0,
+            "toolDefinitionCharacters": 1102,
+            "unmeasuredToolDefinitions": 0
+          },
+          "estimatedInputTokens": 6905,
+          "inputTokens": 5002,
+          "outputTokens": 33,
+          "cachedInputTokens": 0,
+          "completed": true
+        },
+        {
+          "context": {
+            "systemCharacters": 2962,
+            "userCharacters": 0,
+            "assistantCharacters": 3998,
+            "toolResultCharacters": 26055,
+            "otherMessageCharacters": 0,
+            "toolDefinitionCharacters": 1847,
+            "unmeasuredToolDefinitions": 0
+          },
+          "estimatedInputTokens": 11685,
+          "inputTokens": 8714,
+          "outputTokens": 33,
+          "cachedInputTokens": 0,
+          "completed": true
+        },
+        {
+          "context": {
+            "systemCharacters": 2962,
+            "userCharacters": 0,
+            "assistantCharacters": 4217,
+            "toolResultCharacters": 13114,
+            "otherMessageCharacters": 0,
+            "toolDefinitionCharacters": 1102,
+            "unmeasuredToolDefinitions": 0
+          },
+          "estimatedInputTokens": 7196,
+          "inputTokens": 5243,
+          "outputTokens": 72,
+          "cachedInputTokens": 0,
+          "completed": true
+        },
+        {
+          "context": {
+            "systemCharacters": 2962,
+            "userCharacters": 0,
+            "assistantCharacters": 9440,
+            "toolResultCharacters": 13372,
+            "otherMessageCharacters": 0,
+            "toolDefinitionCharacters": 1847,
+            "unmeasuredToolDefinitions": 0
+          },
+          "estimatedInputTokens": 9271,
+          "inputTokens": 5504,
+          "outputTokens": 226,
+          "cachedInputTokens": 0,
+          "completed": true
+        }
+      ],
+      "omitted": 0
+    }
+  },
+  "telemetry": {
+    "schemaVersion": 1,
+    "scope": "invocation",
+    "clock": "monotonic",
+    "temperature": "unknown",
+    "wallMs": 16261.477749999998,
+    "finished": true,
+    "milestones": {
+      "prepare-start": 0.02083399999997937,
+      "prepare-end": 0.37237500000000523,
+      "first-event": 7.1795840000000055,
+      "first-model-event": 3333.497334
+    },
+    "spans": [
+      {
+        "kind": "context",
+        "startMs": 2.48599999999999,
+        "durationMs": 0.11050000000000182,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3.741583999999989,
+        "durationMs": 0.30304100000000744,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 4.43312499999999,
+        "durationMs": 0.10416699999998968,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 4.66745899999998,
+        "durationMs": 0.08966600000002245,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5.11779199999998,
+        "durationMs": 0.02929200000002652,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5.357292000000001,
+        "durationMs": 0.5651670000000024,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5.937708999999984,
+        "durationMs": 0.15533300000001304,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6.210499999999996,
+        "durationMs": 0.15870899999998755,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 9.414541999999983,
+        "durationMs": 0.13370800000001282,
+        "outcome": "completed"
+      },
+      {
+        "kind": "context",
+        "startMs": 9.821541999999994,
+        "durationMs": 0.336166999999989,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10.271084000000002,
+        "durationMs": 0.1205410000000029,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10.419916999999998,
+        "durationMs": 0.12045799999998508,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 1006.821584,
+        "durationMs": 0.5079999999998108,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 2009.5441669999998,
+        "durationMs": 1.9272080000000642,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3012.640625,
+        "durationMs": 1.0157920000001468,
+        "outcome": "completed"
+      },
+      {
+        "kind": "model",
+        "startMs": 10.614709000000005,
+        "durationMs": 3564.564291,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3580.0323750000002,
+        "durationMs": 0.7111249999998108,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3581.0465000000004,
+        "durationMs": 0.5524999999997817,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3582.799042,
+        "durationMs": 0.1566250000000764,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3584.483667,
+        "durationMs": 2.8651670000003833,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3588.486042,
+        "durationMs": 1.5045420000001286,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3590.472834,
+        "durationMs": 0.8405410000000302,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3593.68125,
+        "durationMs": 1.4626670000002377,
+        "outcome": "completed"
+      },
+      {
+        "kind": "tool",
+        "startMs": 3595.213084,
+        "durationMs": 5.027332999999999,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3600.330625,
+        "durationMs": 0.686916999999994,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3601.4516670000003,
+        "durationMs": 0.1913329999997586,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3601.689334,
+        "durationMs": 0.2237079999999878,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3602.566917,
+        "durationMs": 0.1447920000000522,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3604.1530420000004,
+        "durationMs": 2.197624999999789,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3607.894334,
+        "durationMs": 0.9952499999999418,
+        "outcome": "completed"
+      },
+      {
+        "kind": "context",
+        "startMs": 3609.200542,
+        "durationMs": 0.6704580000000533,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3609.887709,
+        "durationMs": 0.9922500000002401,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 3610.894667,
+        "durationMs": 0.8140000000003056,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 4018.2918750000003,
+        "durationMs": 3.045959000000039,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5015.268709,
+        "durationMs": 0.8308329999999842,
+        "outcome": "completed"
+      },
+      {
+        "kind": "model",
+        "startMs": 3611.897042,
+        "durationMs": 1521.8112919999999,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5134.207458999999,
+        "durationMs": 0.2857500000000073,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5134.575417,
+        "durationMs": 0.5406249999996362,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5135.891208999999,
+        "durationMs": 0.10758299999997689,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5137.575833999999,
+        "durationMs": 2.552041000000827,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5141.297042,
+        "durationMs": 1.637707999999293,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5142.961249999999,
+        "durationMs": 0.7940420000004451,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5143.992292,
+        "durationMs": 0.32449999999971624,
+        "outcome": "completed"
+      },
+      {
+        "kind": "tool",
+        "startMs": 5144.322542,
+        "durationMs": 0.9660830000002534,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5145.358875,
+        "durationMs": 0.6683750000001965,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5146.183416999999,
+        "durationMs": 0.10504200000013952,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5146.316542,
+        "durationMs": 0.2944999999999709,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5147.035124999999,
+        "durationMs": 0.11808400000063557,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5148.455375,
+        "durationMs": 2.3318340000005264,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5154.452084,
+        "durationMs": 0.1762909999997646,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5154.639249999999,
+        "durationMs": 0.24675000000024738,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5155.226959,
+        "durationMs": 0.08525000000008731,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5156.419334,
+        "durationMs": 3.3306249999996,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5160.987125,
+        "durationMs": 0.1009169999997539,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5161.096291999999,
+        "durationMs": 0.23020800000085728,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5161.81925,
+        "durationMs": 0.05741699999998673,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5163.098042,
+        "durationMs": 1.7125420000002123,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5165.696084,
+        "durationMs": 0.8334999999997308,
+        "outcome": "completed"
+      },
+      {
+        "kind": "context",
+        "startMs": 5166.781833999999,
+        "durationMs": 0.4673750000001746,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5167.2665,
+        "durationMs": 1.1387089999998352,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 5168.4148749999995,
+        "durationMs": 0.7383340000005774,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6022.752084,
+        "durationMs": 3.1237499999997453,
+        "outcome": "completed"
+      },
+      {
+        "kind": "model",
+        "startMs": 5169.280417,
+        "durationMs": 1717.1032500000001,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6887.443209,
+        "durationMs": 0.5378749999999854,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6888.019334,
+        "durationMs": 0.6135409999997137,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6890.178167,
+        "durationMs": 0.25320800000008603,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6893.668041999999,
+        "durationMs": 4.306375000000116,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6900.33975,
+        "durationMs": 3.088249999999789,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6903.553333999999,
+        "durationMs": 2.5357500000000073,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6906.467374999999,
+        "durationMs": 0.6828340000001845,
+        "outcome": "completed"
+      },
+      {
+        "kind": "tool",
+        "startMs": 6907.159417,
+        "durationMs": 1.080457999999453,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6908.371666999999,
+        "durationMs": 1.068333000000166,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6909.813749999999,
+        "durationMs": 0.3381250000002183,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6910.2207499999995,
+        "durationMs": 0.9491250000000946,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6912.724499999999,
+        "durationMs": 0.1945000000005166,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6915.619959,
+        "durationMs": 3.162207999999737,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6920.505834,
+        "durationMs": 1.3431250000003274,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6922.1916249999995,
+        "durationMs": 1.5273340000003373,
+        "outcome": "completed"
+      },
+      {
+        "kind": "context",
+        "startMs": 6924.17325,
+        "durationMs": 0.36824999999953434,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6924.5551669999995,
+        "durationMs": 1.305833000000348,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 6925.866792,
+        "durationMs": 1.4399579999999332,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 7023.690375,
+        "durationMs": 3.4081249999999272,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8024.283834,
+        "durationMs": 3.4074579999996786,
+        "outcome": "completed"
+      },
+      {
+        "kind": "model",
+        "startMs": 6927.5165,
+        "durationMs": 1171.940917,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8100.130666999999,
+        "durationMs": 0.3916669999998703,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8100.546917,
+        "durationMs": 0.5854579999995622,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8102.298792,
+        "durationMs": 0.2172499999996944,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8105.35125,
+        "durationMs": 4.9984170000007,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8112.8369999999995,
+        "durationMs": 2.5017920000009326,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8115.416334,
+        "durationMs": 2.5785410000007687,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8118.324999999999,
+        "durationMs": 0.9710420000010345,
+        "outcome": "completed"
+      },
+      {
+        "kind": "tool",
+        "startMs": 8119.311667,
+        "durationMs": 1.299417000000176,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8120.671124999999,
+        "durationMs": 0.7827090000009775,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8121.576042000001,
+        "durationMs": 0.14333299999998417,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8121.742375,
+        "durationMs": 0.5791669999998703,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8123.466833999999,
+        "durationMs": 0.14508300000125018,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8126.125583999999,
+        "durationMs": 4.085833000001003,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8135.712874999999,
+        "durationMs": 0.17795900000055553,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8135.905959,
+        "durationMs": 0.47358300000087183,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8137.233249999999,
+        "durationMs": 0.12579200000072888,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8140.001834000001,
+        "durationMs": 4.818415999998251,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8146.651916999999,
+        "durationMs": 0.10987500000010186,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8146.7696670000005,
+        "durationMs": 0.356207999999242,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8147.676874999999,
+        "durationMs": 0.038292000001092674,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8149.6826249999995,
+        "durationMs": 2.265792000000147,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8153.313791999999,
+        "durationMs": 1.1476670000010927,
+        "outcome": "completed"
+      },
+      {
+        "kind": "context",
+        "startMs": 8154.703792,
+        "durationMs": 0.4101670000000013,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8155.127333999999,
+        "durationMs": 1.1369160000012926,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 8156.282208999999,
+        "durationMs": 1.123583000000508,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 9026.771417,
+        "durationMs": 3.784916999999041,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10029.464584,
+        "durationMs": 1.4614160000000993,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10030.990292,
+        "durationMs": 3.1349169999994047,
+        "outcome": "completed"
+      },
+      {
+        "kind": "model",
+        "startMs": 8157.524874999999,
+        "durationMs": 2120.401167,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10279.123334,
+        "durationMs": 0.5335830000003625,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10279.698709,
+        "durationMs": 0.799790999999459,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10282.020959,
+        "durationMs": 0.1358749999999418,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10286.213416999999,
+        "durationMs": 5.129292000001442,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10294.309,
+        "durationMs": 2.88483400000041,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10297.243666999999,
+        "durationMs": 2.1458330000004935,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10299.702459,
+        "durationMs": 0.4192910000001575,
+        "outcome": "completed"
+      },
+      {
+        "kind": "tool",
+        "startMs": 10300.128625,
+        "durationMs": 0.956583999999566,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10301.1575,
+        "durationMs": 0.6262920000008307,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10301.936709,
+        "durationMs": 0.13762499999938882,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10302.103334,
+        "durationMs": 0.34854099999938626,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10303.59325,
+        "durationMs": 0.08787499999925785,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10307.268334,
+        "durationMs": 2.2790829999994457,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10312.291125,
+        "durationMs": 1.9423339999993914,
+        "outcome": "completed"
+      },
+      {
+        "kind": "persistence",
+        "startMs": 10314.507292,
+        "durationMs": 1.8552920000001905,
+        "outcome": "completed"
+      }
+    ],
+    "omittedSpans": 75,
+    "activeSpans": 0,
+    "observerErrors": 0,
+    "clockErrors": 0,
+    "operationTotals": {
+      "prepare": {
+        "count": 0,
+        "durationMs": 0,
+        "errors": 0,
+        "incomplete": 0
+      },
+      "context": {
+        "count": 9,
+        "durationMs": 3.3379589999997847,
+        "errors": 0,
+        "incomplete": 0
+      },
+      "model": {
+        "count": 8,
+        "durationMs": 15864.494083000001,
+        "errors": 0,
+        "incomplete": 0
+      },
+      "compaction": {
+        "count": 0,
+        "durationMs": 0,
+        "errors": 0,
+        "incomplete": 0
+      },
+      "tool": {
+        "count": 8,
+        "durationMs": 12.569416999998793,
+        "errors": 2,
+        "incomplete": 0
+      },
+      "persistence": {
+        "count": 178,
+        "durationMs": 238.84046199999722,
+        "errors": 0,
+        "incomplete": 0
+      },
+      "render": {
+        "count": 0,
+        "durationMs": 0,
+        "errors": 0,
+        "incomplete": 0
+      }
+    }
+  },
+  "taskMs": 16261.813333,
+  "status": "failed",
+  "allOutputText": "",
+  "answer": "",
+  "quality": {
+    "passed": false,
+    "context": false,
+    "error": "SyntaxError: JSON Parse error: Unexpected EOF",
+    "candidate": "/** Shared lexical exclusions for workspace access and acceptance preflight.\n * Comparisons use toLowerCase so a Turkish locale cannot map ASCII I to dotless ı and skip .git or id_rsa. */\nexport const HARD_IGNORES = new Set(['.git', '.next', '.turbo', '.zhivex-harness', 'coverage', 'dist', 'node_modules']);\nexport const isSensitiveName = (name: string) => {\n  const normalized = name.toLocaleLowerCase(\"tr\");\n  return normalized === '.env' || (normalized.startsWith('.env.') && normalized !== '.env.example') ||\n    normalized === '.npmrc' || normalized === 'id_rsa' || normalized === 'id_ed25519' ||\n    ['.key','.pem','.p12','.pfx'].some(extension => normalized.endsWith(extension));\n};\nexport const isHardIgnored = (relativePath: string) => relativePath.split('/').some(segment => HARD_IGNORES.has(segment.toLocaleLowerCase(\"tr\")) || isSensitiveName(segment));\n"
+  },
+  "verifiedTaskMs": 16261.979375,
+  "sdkUsage": {
+    "inputTokens": 44750,
+    "cachedInputTokens": 0,
+    "cacheWriteTokens": 43925,
+    "outputTokens": 576,
+    "reasoningTokens": 262,
+    "totalTokens": 45326,
+    "cacheWriteTokensDetails": {
+      "ttl30mTokens": 43925,
+      "ttl12hTokens": 0
+    }
+  },
+  "compactions": 3,
+  "toolCalls": [
+    {
+      "name": "read_file",
+      "attemptedPath": "src/context-1.txt"
+    },
+    {
+      "name": "read_file",
+      "attemptedPath": "src/context-2.txt"
+    },
+    {
+      "name": "read_file",
+      "attemptedPath": "src/context-3.txt"
+    },
+    {
+      "name": "read_file",
+      "attemptedPath": "src/context-4.txt"
+    },
+    {
+      "name": "read_file",
+      "attemptedPath": "src/context-5.txt"
+    },
+    {
+      "name": "read_file",
+      "attemptedPath": "src/context-6.txt"
+    },
+    {
+      "name": "read_file",
+      "attemptedPath": "packages/core/src/workspace/path-policy.ts"
+    },
+    {
+      "name": "read_tool_result"
+    }
+  ],
+  "toolResults": [
+    {
+      "name": "read_file",
+      "failed": false,
+      "path": "src/context-1.txt",
+      "truncated": false,
+      "characters": 12539
+    },
+    {
+      "name": "read_file",
+      "failed": false,
+      "path": "src/context-2.txt",
+      "truncated": false,
+      "characters": 12858
+    },
+    {
+      "name": "read_file",
+      "failed": false,
+      "path": "src/context-3.txt",
+      "truncated": false,
+      "characters": 12535
+    },
+    {
+      "name": "read_file",
+      "failed": false,
+      "path": "src/context-4.txt",
+      "truncated": false,
+      "characters": 12433
+    },
+    {
+      "name": "read_file",
+      "failed": false,
+      "path": "src/context-5.txt",
+      "truncated": false,
+      "characters": 12273
+    },
+    {
+      "name": "read_file",
+      "failed": false,
+      "path": "src/context-6.txt",
+      "truncated": false,
+      "characters": 12461
+    },
+    {
+      "name": "read_file",
+      "failed": true
+    },
+    {
+      "name": "read_tool_result",
+      "failed": true
+    }
+  ],
+  "initialReadTurns": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "initialReadOrder": true,
+  "readAttempts": {
+    "attempts": [
+      {
+        "step": 1,
+        "toolCallId": "call_LlRJCvvdytrFMU8opVgWJXU8",
+        "toolName": "read_file",
+        "attemptedPaths": [
+          "src/context-1.txt"
+        ],
+        "argumentsRecorded": true,
+        "pathsTruncated": false,
+        "outcome": "succeeded"
+      },
+      {
+        "step": 2,
+        "toolCallId": "call_oS6qeWuby9j1zApIsMXKP0Ro",
+        "toolName": "read_file",
+        "attemptedPaths": [
+          "src/context-2.txt"
+        ],
+        "argumentsRecorded": true,
+        "pathsTruncated": false,
+        "outcome": "succeeded"
+      },
+      {
+        "step": 3,
+        "toolCallId": "call_v22497GAVLxDSt4ycm7urmcW",
+        "toolName": "read_file",
+        "attemptedPaths": [
+          "src/context-3.txt"
+        ],
+        "argumentsRecorded": true,
+        "pathsTruncated": false,
+        "outcome": "succeeded"
+      },
+      {
+        "step": 4,
+        "toolCallId": "call_Y4dZGwn0OJhOOVLYaV78rZhj",
+        "toolName": "read_file",
+        "attemptedPaths": [
+          "src/context-4.txt"
+        ],
+        "argumentsRecorded": true,
+        "pathsTruncated": false,
+        "outcome": "succeeded"
+      },
+      {
+        "step": 5,
+        "toolCallId": "call_FD47uSmUfLiTXHN7zemMQSqR",
+        "toolName": "read_file",
+        "attemptedPaths": [
+          "src/context-5.txt"
+        ],
+        "argumentsRecorded": true,
+        "pathsTruncated": false,
+        "outcome": "succeeded"
+      },
+      {
+        "step": 6,
+        "toolCallId": "call_KNiyjcN51xsH1r0BtofsqlzY",
+        "toolName": "read_file",
+        "attemptedPaths": [
+          "src/context-6.txt"
+        ],
+        "argumentsRecorded": true,
+        "pathsTruncated": false,
+        "outcome": "succeeded"
+      },
+      {
+        "step": 7,
+        "toolCallId": "call_oI7RQ4njFzKupF62KlBEPP4w",
+        "toolName": "read_file",
+        "attemptedPaths": [
+          "packages/core/src/workspace/path-policy.ts"
+        ],
+        "argumentsRecorded": true,
+        "pathsTruncated": false,
+        "outcome": "failed"
+      }
+    ],
+    "totalAttempts": 7,
+    "omittedAttempts": 0,
+    "orphanResultIds": [],
+    "totalOrphanResults": 0
+  },
+  "security": {
+    "unchanged": true,
+    "traceComplete": true,
+    "forbiddenReadAttempts": [],
+    "unauthorizedTools": [],
+    "canaryLeaked": false,
+    "passed": true
+  },
+  "productionTraceMatches": null,
+  "contextComplete": true,
+  "failure": {
+    "code": "EXECUTION_FAILED",
+    "category": "execution",
+    "retryable": false,
+    "details": {
+      "chain": []
+    },
+    "fingerprint": "sha256:be00d8454796d2533d87bb09e4b42dc3b14dfcf064374b58f36a71b525263fcb"
+  },
+  "calls": [
+    {
+      "previousResponse": false,
+      "scopedGuidance": true,
+      "stateless": true,
+      "replayedReadHistory": false,
+      "losslessReads": 0,
+      "projections": 0,
+      "index": 1,
+      "startMs": 11.916667000000018,
+      "requestBytes": 4581,
+      "cacheKeyHash": "1cd293263f3baf192ae33ff5f4f1d7fdfb409da2f473c54c7f4635ea2c7608fc",
+      "requestedEffort": "low",
+      "maxOutputTokens": 4096,
+      "duplicateTerminals": 0,
+      "headersMs": 1392.8807909999998,
+      "httpStatus": 200,
+      "firstEventMs": 1393.7459159999999,
+      "firstReasoningEventMs": 2146.9237909999997,
+      "firstToolEventMs": 3325.074125,
+      "terminalMs": 3542.776833,
+      "terminalType": "response.completed",
+      "returnedModel": "gpt-6-luna",
+      "returnedEffort": "low",
+      "cachedUsageReported": true,
+      "usage": {
+        "inputTokens": 804,
+        "outputTokens": 113,
+        "totalTokens": 917,
+        "cachedInputTokens": 0,
+        "reasoningTokens": 78
+      },
+      "streamEndMs": 3563.266583,
+      "interrupted": false
+    },
+    {
+      "previousResponse": false,
+      "scopedGuidance": true,
+      "stateless": true,
+      "replayedReadHistory": false,
+      "losslessReads": 0,
+      "projections": 0,
+      "index": 2,
+      "startMs": 3612.957083,
+      "requestBytes": 22130,
+      "cacheKeyHash": "f121a313418790b5a4a39c0f2f23e26d4f80feecbbe528eb2da8e885f6f2bd70",
+      "requestedEffort": "low",
+      "maxOutputTokens": 4096,
+      "duplicateTerminals": 0,
+      "headersMs": 678.0094589999999,
+      "httpStatus": 200,
+      "firstEventMs": 678.3312500000002,
+      "firstToolEventMs": 1304.3663750000005,
+      "terminalMs": 1498.927834,
+      "terminalType": "response.completed",
+      "returnedModel": "gpt-6-luna",
+      "returnedEffort": "low",
+      "cachedUsageReported": true,
+      "usage": {
+        "inputTokens": 4872,
+        "outputTokens": 33,
+        "totalTokens": 4905,
+        "cachedInputTokens": 0,
+        "reasoningTokens": 0
+      },
+      "streamEndMs": 1520.9552919999996,
+      "interrupted": false
+    },
+    {
+      "previousResponse": false,
+      "scopedGuidance": true,
+      "stateless": true,
+      "replayedReadHistory": false,
+      "losslessReads": 0,
+      "projections": 0,
+      "index": 3,
+      "startMs": 5169.997542,
+      "requestBytes": 20727,
+      "cacheKeyHash": "1cba2f9051f018c2a5c58d0445ac41ebc4fb10d9a95294a9320a811a86ceac49",
+      "requestedEffort": "low",
+      "maxOutputTokens": 4096,
+      "duplicateTerminals": 0,
+      "headersMs": 653.9394160000002,
+      "httpStatus": 200,
+      "firstEventMs": 654.3409160000001,
+      "firstToolEventMs": 1468.324208,
+      "terminalMs": 1700.4457499999999,
+      "terminalType": "response.completed",
+      "returnedModel": "gpt-6-luna",
+      "returnedEffort": "low",
+      "cachedUsageReported": true,
+      "usage": {
+        "inputTokens": 5263,
+        "outputTokens": 33,
+        "totalTokens": 5296,
+        "cachedInputTokens": 0,
+        "reasoningTokens": 0
+      },
+      "streamEndMs": 1716.5278750000007,
+      "interrupted": false
+    },
+    {
+      "previousResponse": false,
+      "scopedGuidance": true,
+      "stateless": true,
+      "replayedReadHistory": false,
+      "losslessReads": 0,
+      "projections": 0,
+      "index": 4,
+      "startMs": 6928.5425000000005,
+      "requestBytes": 35648,
+      "cacheKeyHash": "1aedc27c395524236bd1e0f3392706ecb446b3284e36e03357351328d9b6db4b",
+      "requestedEffort": "low",
+      "maxOutputTokens": 4096,
+      "duplicateTerminals": 0,
+      "headersMs": 587.6022499999999,
+      "httpStatus": 200,
+      "firstEventMs": 587.8314169999994,
+      "firstToolEventMs": 990.2731670000003,
+      "terminalMs": 1123.7560000000003,
+      "terminalType": "response.completed",
+      "returnedModel": "gpt-6-luna",
+      "returnedEffort": "low",
+      "cachedUsageReported": true,
+      "usage": {
+        "inputTokens": 9348,
+        "outputTokens": 33,
+        "totalTokens": 9381,
+        "cachedInputTokens": 0,
+        "reasoningTokens": 0
+      },
+      "streamEndMs": 1171.0702919999994,
+      "interrupted": false
+    },
+    {
+      "previousResponse": false,
+      "scopedGuidance": true,
+      "stateless": true,
+      "replayedReadHistory": false,
+      "losslessReads": 0,
+      "projections": 0,
+      "index": 5,
+      "startMs": 8158.3060829999995,
+      "requestBytes": 20787,
+      "cacheKeyHash": "3f5c20a8ac344e3d953c4ccc5d2c83ba0ca73db3ef85da75f39b33fb020605e6",
+      "requestedEffort": "low",
+      "maxOutputTokens": 4096,
+      "duplicateTerminals": 0,
+      "headersMs": 658.9910840000011,
+      "httpStatus": 200,
+      "firstEventMs": 659.3810000000012,
+      "firstToolEventMs": 1332.489375000001,
+      "terminalMs": 2091.488542000001,
+      "terminalType": "response.completed",
+      "returnedModel": "gpt-6-luna",
+      "returnedEffort": "low",
+      "cachedUsageReported": true,
+      "usage": {
+        "inputTokens": 5002,
+        "outputTokens": 33,
+        "totalTokens": 5035,
+        "cachedInputTokens": 0,
+        "reasoningTokens": 0
+      },
+      "streamEndMs": 2119.7196250000015,
+      "interrupted": false
+    },
+    {
+      "previousResponse": false,
+      "scopedGuidance": true,
+      "stateless": true,
+      "replayedReadHistory": false,
+      "losslessReads": 0,
+      "projections": 0,
+      "index": 6,
+      "startMs": 10322.696083,
+      "requestBytes": 35085,
+      "cacheKeyHash": "61638db4a9ccb310f944d43cc20ecb8cbee33167f56153c1ccabefd5797b92e9",
+      "requestedEffort": "low",
+      "maxOutputTokens": 4096,
+      "duplicateTerminals": 0,
+      "headersMs": 390.514459,
+      "httpStatus": 200,
+      "firstEventMs": 390.90133400000013,
+      "firstToolEventMs": 740.7819999999992,
+      "terminalMs": 933.4507089999988,
+      "terminalType": "response.completed",
+      "returnedModel": "gpt-6-luna",
+      "returnedEffort": "low",
+      "cachedUsageReported": true,
+      "usage": {
+        "inputTokens": 8714,
+        "outputTokens": 33,
+        "totalTokens": 8747,
+        "cachedInputTokens": 0,
+        "reasoningTokens": 0
+      },
+      "streamEndMs": 959.8681669999987,
+      "interrupted": false
+    },
+    {
+      "previousResponse": false,
+      "scopedGuidance": true,
+      "stateless": true,
+      "replayedReadHistory": false,
+      "losslessReads": 0,
+      "projections": 0,
+      "index": 7,
+      "startMs": 11342.461792,
+      "requestBytes": 21642,
+      "cacheKeyHash": "8e688afef682ff156338fe79428e353d01aab88b722e1990263d19bf662647f7",
+      "requestedEffort": "low",
+      "maxOutputTokens": 4096,
+      "duplicateTerminals": 0,
+      "headersMs": 435.18983300000036,
+      "httpStatus": 200,
+      "firstEventMs": 435.64554099999987,
+      "firstReasoningEventMs": 893.4108749999996,
+      "firstToolEventMs": 1355.3783750000002,
+      "terminalMs": 1599.7421250000007,
+      "terminalType": "response.completed",
+      "returnedModel": "gpt-6-luna",
+      "returnedEffort": "low",
+      "cachedUsageReported": true,
+      "usage": {
+        "inputTokens": 5243,
+        "outputTokens": 72,
+        "totalTokens": 5315,
+        "cachedInputTokens": 0,
+        "reasoningTokens": 34
+      },
+      "streamEndMs": 1625.547625000001,
+      "interrupted": false
+    },
+    {
+      "previousResponse": false,
+      "scopedGuidance": true,
+      "stateless": true,
+      "replayedReadHistory": false,
+      "losslessReads": 0,
+      "projections": 0,
+      "index": 8,
+      "startMs": 13018.12075,
+      "requestBytes": 25079,
+      "cacheKeyHash": "d523c70e7fe40b9ccecba54ee5c34ca364dcc77fcf6411fa4fc79d8f39f683cf",
+      "requestedEffort": "low",
+      "maxOutputTokens": 4096,
+      "duplicateTerminals": 0,
+      "headersMs": 673.603083,
+      "httpStatus": 200,
+      "firstEventMs": 674.1310830000002,
+      "firstReasoningEventMs": 942.1431250000005,
+      "firstToolEventMs": 2650.975083000001,
+      "terminalMs": 3159.7955,
+      "terminalType": "response.completed",
+      "returnedModel": "gpt-6-luna",
+      "returnedEffort": "low",
+      "cachedUsageReported": true,
+      "usage": {
+        "inputTokens": 5504,
+        "outputTokens": 226,
+        "totalTokens": 5730,
+        "cachedInputTokens": 0,
+        "reasoningTokens": 150
+      },
+      "streamEndMs": 3180.2133329999997,
+      "interrupted": false
+    }
+  ],
+  "usage": {
+    "inputTokens": 44750,
+    "outputTokens": 576,
+    "totalTokens": 45326,
+    "cachedInputTokens": 0,
+    "reasoningTokens": 262
+  },
+  "usageMatches": true
+}

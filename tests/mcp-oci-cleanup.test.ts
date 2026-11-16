@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { removeDockerMcpBoundary } from '../src/execution/mcp-oci-channel.js';
+import { removeDockerMcpBoundary } from '../packages/core/src/execution/mcp-oci-channel.js';
 
 const id = 'a'.repeat(64);
 test('failed graceful stop still removes the isolated boundary', async () => {

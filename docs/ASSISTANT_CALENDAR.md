@@ -6,7 +6,7 @@ durable approvals and execution. No Google endpoints are added to the engine.
 
 ## Connect and run
 
-Prepare the local candidate and build Assistant following its [README](../packages/assistant/README.md).
+Prepare the local candidate and build Assistant following its [README](ASSISTANT_ELECTRON.md).
 In Google Cloud, enable Calendar API, configure consent (and a test user
 if applicable) and create an OAuth client of type **Desktop app**. This uses
 [OAuth for installed applications](https://developers.google.com/identity/protocols/oauth2/native-app)
@@ -26,18 +26,14 @@ Set these environment variables:
 
 With the host stopped:
 
-```sh
-bun run --cwd packages/assistant start --directory "$HOME/.zhx-cal" --owner local-owner --calendar-connect
-```
+Use the shared application through Electron or the commands documented in [CLI](CLI.md). The standalone Assistant launcher has been retired.
 
 Open the printed URL in your browser and complete consent. Requested scopes are
 `openid`, `email` and `calendar.events`. Do not send codes, tokens or the key to
 Telegram. The flow expires in ten minutes; it does not offer a public remote callback.
 Then start the host with the same directory, owner and credentials:
 
-```sh
-bun run --cwd packages/assistant start --directory "$HOME/.zhx-cal" --owner local-owner --provider openai --calendar --calendar-id primary --telegram-owner 123456789
-```
+Use the shared application through Electron or the commands documented in [CLI](CLI.md). The standalone Assistant launcher has been retired.
 
 Replace the ID with the owner's ID and complete local Telegram linking.
 `--calendar-id` is fixed in the host profile; its default is `primary`.
@@ -100,7 +96,7 @@ A policy requiring explicit host review cannot be bypassed through Telegram.
 
 ## Evidence
 
-`packages/assistant/tests/calendar.test.ts` covers OAuth/PKCE/state, simulated refresh
+`tests/assistant/calendar.test.ts` covers OAuth/PKCE/state, simulated refresh
 and revocation, encryption and wrong keys, rejection of other accounts, expired/tampered
 proposals, ETags and 412 races, lost responses before/after PATCH,
 journal recovery and absence of resends. The integrated test uses the real host,

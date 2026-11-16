@@ -1,7 +1,7 @@
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { readRegularFileNoFollow } from "../../src/workspace/file-security.js";
-import type { HarnessExecutionSession, HarnessOciExecutionEnvironment } from "../../src/execution/execution-environment.js";
+import { readRegularFileNoFollow } from "../../packages/core/src/workspace/file-security.js";
+import type { HarnessExecutionSession, HarnessOciExecutionEnvironment } from "../../packages/core/src/execution/execution-environment.js";
 import type { AgentRunState } from "@zhivex-ai/agents";
 
 /** Capture the run's actual scope, including an explicitly unscoped run.

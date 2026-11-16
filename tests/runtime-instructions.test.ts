@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test";
 import { wrapLanguageModel, type ModelMessage } from "@zhivex-ai/core";
-import { DEFAULT_PROVIDER_REGISTRY } from "../src/providers/providers.js";
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { createCheckpointTokenCap } from "../src/runtime/runtime-policy.js";
-import { createOciDelivery, OCI_DELIVERY_KEY } from "../src/runtime/oci-delivery.js";
+import { DEFAULT_PROVIDER_REGISTRY } from "../packages/core/src/providers/providers.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { createCheckpointTokenCap } from "../packages/core/src/runtime/runtime-policy.js";
+import { createOciDelivery, OCI_DELIVERY_KEY } from "../packages/core/src/runtime/oci-delivery.js";
 
 for (const kind of ["budget", "oci"] as const) for (const mode of ["generate", "stream"] as const) {
   test(`${kind} ${mode} host instructions remain valid after Anthropic tool results`, async () => {
@@ -40,8 +40,8 @@ for (const kind of ["budget", "oci"] as const) for (const mode of ["generate", "
 }
 
 import { mkdtemp, rm } from "node:fs/promises";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { withFreshSystemInstructions } from "../src/runtime/runtime-instructions.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { withFreshSystemInstructions } from "../packages/core/src/runtime/runtime-instructions.js";
 
 test("fresh conversation correction keeps system instructions before loaded memory", async () => {
   const root = await mkdtemp('/tmp/har-fresh-instructions-');

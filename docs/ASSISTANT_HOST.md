@@ -1,7 +1,7 @@
 # Assistant phase 1: profiles and persistent local host
 
 Implemented on 2026-11-10. Requires the local candidate; not published. See
-[Assistant setup](../packages/assistant/README.md) for Bun commands.
+[Assistant setup](ASSISTANT_ELECTRON.md) for Bun commands.
 
 Phase 2 adds [Telegram](ASSISTANT_TELEGRAM.md) through `--telegram-owner`
 and `ASSISTANT_TELEGRAM_BOT_TOKEN`; the recovery guarantees described here

@@ -10,7 +10,7 @@ import {
   digestChangeEnvelopeArtifact,
   verifyChangeEnvelope,
   type CreateChangeEnvelopeInput
-} from "../src/workspace/change-envelope.js";
+} from "../packages/core/src/workspace/change-envelope.js";
 
 const digest = (character: string) => `sha256:${character.repeat(64)}`;
 

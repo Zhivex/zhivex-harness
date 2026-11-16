@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { link, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { discoverHarnessScopedContext, validateHarnessScopedContext } from "../src/context/scoped-context.js";
+import { discoverHarnessScopedContext, validateHarnessScopedContext } from "../packages/core/src/context/scoped-context.js";
 
 const fixture = async (run: (workspace: { root: string }) => Promise<void>) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-scoped-"));

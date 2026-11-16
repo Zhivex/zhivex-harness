@@ -1,6 +1,6 @@
 import {test,expect} from 'bun:test';
-import {nextTaskAcceptanceLedger} from '../src/runtime/task-acceptance-record.js';
-import {withTaskAcceptanceDelivery,assertTaskAcceptanceImport,taskAcceptanceDeliveryDiagnostic,confirmTaskAcceptanceImport,taskAcceptanceOutcome,taskAcceptanceChecks} from '../src/runtime/task-acceptance-delivery.js';
+import {nextTaskAcceptanceLedger} from '../packages/core/src/runtime/task-acceptance-record.js';
+import {withTaskAcceptanceDelivery,assertTaskAcceptanceImport,taskAcceptanceDeliveryDiagnostic,confirmTaskAcceptanceImport,taskAcceptanceOutcome,taskAcceptanceChecks} from '../packages/core/src/runtime/task-acceptance-delivery.js';
 test('persisted scope rejection survives a new observation context only for the same contract revision',async()=>{
   const contract={schemaVersion:1,taskId:'edit',allowedWritePaths:['allowed.txt'],protectedFiles:[],requiredChecks:[{id:'test',kind:'argv',command:'node',args:['--test'],purpose:'Test',execution:{backend:'oci',approval:'required',network:'none'}}],humanReview:[]};
   const ledger=nextTaskAcceptanceLedger(undefined,contract),current=ledger.revisions[0]!;

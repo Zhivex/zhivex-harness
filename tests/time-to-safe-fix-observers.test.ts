@@ -3,8 +3,8 @@ import type { LanguageModel } from "@zhivex-ai/agents";
 import { channel } from "node:diagnostics_channel";
 import { observeBenchmarkFetch, observeBenchmarkModel } from "../scripts/time-to-safe-fix-model-observer.js";
 import { benchmarkSnapshot, beginBenchmarkSpan, updateBenchmarkSpan, configureBenchmarkBudget, markBenchmarkTimeout } from "../scripts/time-to-safe-fix-progress.js";
-import { observeOciPhase } from "../src/execution/oci-observability.js";
-import { benchmarkProgressSchema } from "../src/runtime/error-diagnostics.js";
+import { observeOciPhase } from "../packages/core/src/execution/oci-observability.js";
+import { benchmarkProgressSchema } from "../packages/core/src/runtime/error-diagnostics.js";
 
 test("model attempts record HTTP status and first text latency without retaining content", async () => {
   const original = globalThis.fetch;

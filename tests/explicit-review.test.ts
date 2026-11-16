@@ -4,10 +4,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { AgentApprovalResponse, AgentRunState } from '@zhivex-ai/core';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { bindHostPolicyIdentity } from '../src/approvals/host-policy-identity.js';
-import { consumeExplicitReviewResponses, issueExplicitReviewResponses, issueAutomaticApprovalResponses, issueObservedApprovalResponses } from '../src/approvals/explicit-review.js';
-import { createHarness, runHarness } from '../src/runtime/harness.js';
-import { terminalApprovalResolver } from '../src/cli/presentation.js';
+import { bindHostPolicyIdentity } from '../packages/core/src/approvals/host-policy-identity.js';
+import { consumeExplicitReviewResponses, issueExplicitReviewResponses, issueAutomaticApprovalResponses, issueObservedApprovalResponses } from '../packages/core/src/approvals/explicit-review.js';
+import { createHarness, runHarness } from '../packages/core/src/runtime/harness.js';
+import { terminalApprovalResolver } from '../packages/core/src/cli/presentation.js';
 
 const responses: AgentApprovalResponse[] = [{ provider: 'openai', approvalRequestId: 'a', approve: true }];
 const snapshot = () => ({ runId: 'r', status: 'waiting_approval', revision: 4, scope: { tenantId: 'local' },

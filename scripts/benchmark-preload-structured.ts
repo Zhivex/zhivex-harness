@@ -10,7 +10,7 @@ import { sanitizeOperationalError } from "./release-diagnostics.js";
 import { createOpenAICallMeter, type MeasuredCall } from "./benchmarks/openai-call-meter.js";
 import { hardFixtures, gradeHardAnswer } from "./benchmarks/hard-preload-fixtures.js";
 import { outputSchema, validateOutputSchema } from "./benchmarks/preload-output-schema.js";
-import type { TaskTelemetrySnapshot } from "../src/runtime/task-telemetry.js";
+import type { TaskTelemetrySnapshot } from "../packages/core/src/runtime/task-telemetry.js";
 
 const required = (name: string) => { const at = process.argv.indexOf(name); assert(at >= 0 && process.argv[at + 1], `Missing ${name}`); return process.argv[at + 1]!; };
 const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
@@ -26,8 +26,8 @@ async function worker() {
   const fixture = hardFixtures.find(f => f.id === required("--fixture"))!; assert(fixture);
   const output = required("--output");
   const runtime = await import(pathToFileURL(path.resolve(required("--runtime"))).href) as
-    Pick<typeof import("../src/runtime/harness.js"), "createHarness" | "runHarnessTask"> &
-    Pick<typeof import("../src/client/service-events.js"), "openHarnessActivityStore">;
+    Pick<typeof import("../packages/core/src/runtime/harness.js"), "createHarness" | "runHarnessTask"> &
+    Pick<typeof import("../packages/core/src/client/service-events.js"), "openHarnessActivityStore">;
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-preload-"));
   const sample: SchemaSample = { variant, fixture: fixture.id, runtime: process.version, calls: [] };
   const assigned = outputSchema(fixture.id);

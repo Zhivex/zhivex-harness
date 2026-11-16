@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../src/integrations/mcp-stdio-admission.js';
+import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../packages/core/src/integrations/mcp-stdio-admission.js';
 const hash = `sha256:${'a'.repeat(64)}`;
 const proposal = (): McpStdioLaunchProposal => ({ schemaVersion: 1, serverId: 'docs', boundary: 'oci',
   image: `local/server@${hash}`, executable: '/usr/bin/node', args: ['/app/server.mjs'],

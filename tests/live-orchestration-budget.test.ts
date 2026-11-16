@@ -2,8 +2,8 @@ import { expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import type { HarnessDelegationContract } from "../src/runtime/delegation-contracts.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import type { HarnessDelegationContract } from "../packages/core/src/runtime/delegation-contracts.js";
 
 const contract: HarnessDelegationContract = {
   taskId: "release-review", profile: "reviewer", prompt: "Review both lines",

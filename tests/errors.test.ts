@@ -20,12 +20,12 @@ import {
   openCliSessionStore,
   resolveHarnessConfig,
   validateStateDirectory
-} from "../src/index.js";
+} from "../packages/core/src/index.js";
 import {
   annotateCliStreamError,
   cliStreamErrorSequence,
   terminalErrorMessage
-} from "../src/cli.js";
+} from "../packages/core/src/cli.js";
 
 describe("stable HarnessError taxonomy", () => {
   test("types configuration, workspace, provider, and state-conflict boundaries", async () => {

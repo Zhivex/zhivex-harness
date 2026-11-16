@@ -1,0 +1,498 @@
+{
+  "stopReason": "planned-completion",
+  "attempts": 16,
+  "reportedTokens": 1079356,
+  "groups": [
+    {
+      "model": "gpt-6-luna",
+      "variants": [
+        {
+          "variant": "before",
+          "attempts": 4,
+          "correct": 3,
+          "unknownReceipts": 0,
+          "inputTokens": 264846,
+          "outputTokens": 1555,
+          "cachedInputTokens": 0,
+          "totalTokens": 266401,
+          "estimatedKnownUSD": 0.0272621,
+          "usdPerCorrectTask": 0.009087366666666668,
+          "tokensPerCorrectTask": 88800.33333333333,
+          "meanTaskMs": 12991.281749999998,
+          "meanVerifiedTaskMs": 13006.77597925,
+          "longestRequestInputTokens": 23551,
+          "calls": 26,
+          "losslessRequests": 0,
+          "statelessCalls": 26,
+          "compactions": 0,
+          "details": [
+            {
+              "task": "path-policy",
+              "files": 4,
+              "accepted": true,
+              "completed": true,
+              "context": true,
+              "tests": true,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 45178,
+              "taskMs": 13726.655332999999
+            },
+            {
+              "task": "path-policy",
+              "files": 6,
+              "accepted": true,
+              "completed": true,
+              "context": true,
+              "tests": true,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 87488,
+              "taskMs": 13745.892458
+            },
+            {
+              "task": "text-integrity",
+              "files": 4,
+              "accepted": true,
+              "completed": true,
+              "context": true,
+              "tests": true,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 45420,
+              "taskMs": 9413.644667
+            },
+            {
+              "task": "text-integrity",
+              "files": 6,
+              "accepted": false,
+              "completed": true,
+              "context": false,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 88315,
+              "taskMs": 15078.934541999999,
+              "gradeError": "SyntaxError: JSON Parse error: Unexpected identifier \"I\""
+            }
+          ]
+        },
+        {
+          "variant": "after",
+          "attempts": 4,
+          "correct": 4,
+          "unknownReceipts": 0,
+          "inputTokens": 266110,
+          "outputTokens": 1580,
+          "cachedInputTokens": 0,
+          "totalTokens": 267690,
+          "estimatedKnownUSD": 0.027401,
+          "usdPerCorrectTask": 0.00685025,
+          "tokensPerCorrectTask": 66922.5,
+          "meanTaskMs": 10797.714021,
+          "meanVerifiedTaskMs": 10820.0268335,
+          "longestRequestInputTokens": 23660,
+          "calls": 25,
+          "losslessRequests": 0,
+          "statelessCalls": 25,
+          "compactions": 0,
+          "details": [
+            {
+              "task": "path-policy",
+              "files": 4,
+              "accepted": true,
+              "completed": true,
+              "context": true,
+              "tests": true,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 44543,
+              "taskMs": 10016.726834000001
+            },
+            {
+              "task": "path-policy",
+              "files": 6,
+              "accepted": true,
+              "completed": true,
+              "context": true,
+              "tests": true,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 88094,
+              "taskMs": 12215.631416999999
+            },
+            {
+              "task": "text-integrity",
+              "files": 4,
+              "accepted": true,
+              "completed": true,
+              "context": true,
+              "tests": true,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 45263,
+              "taskMs": 9005.738542
+            },
+            {
+              "task": "text-integrity",
+              "files": 6,
+              "accepted": true,
+              "completed": true,
+              "context": true,
+              "tests": true,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 89790,
+              "taskMs": 11952.759291
+            }
+          ]
+        }
+      ],
+      "allAttemptTokenSavingPercent": -0.48385704257867257,
+      "costPerCorrectSavingPercent": 24.617876099053284,
+      "latency": {
+        "pairs": 4,
+        "beforeMeanMs": 13006.77597925,
+        "afterMeanMs": 10820.0268335,
+        "beforeMedianMs": 13756.296146,
+        "afterMedianMs": 11006.918875,
+        "meanReductionMs": 2186.7491457500005,
+        "medianReductionMs": 2318.675458500001,
+        "meanReduction95CI": [
+          967.3401870000016,
+          3406.1581044999994
+        ],
+        "geometricAfterBeforeRatio": 0.8381061698407708,
+        "ratio95CI": [
+          0.7615352085552204,
+          0.9223762001205398
+        ],
+        "fasterPairs": 4
+      },
+      "pairs": [
+        {
+          "pair": 1,
+          "task": "path-policy",
+          "files": 4,
+          "beforeAccepted": true,
+          "afterAccepted": true,
+          "beforeTokens": 45178,
+          "afterTokens": 44543,
+          "beforeVerifiedMs": 13746.037167,
+          "afterVerifiedMs": 10039.300500000001
+        },
+        {
+          "pair": 2,
+          "task": "path-policy",
+          "files": 6,
+          "beforeAccepted": true,
+          "afterAccepted": true,
+          "beforeTokens": 87488,
+          "afterTokens": 88094,
+          "beforeVerifiedMs": 13766.555125,
+          "afterVerifiedMs": 12234.783749999999
+        },
+        {
+          "pair": 3,
+          "task": "text-integrity",
+          "files": 4,
+          "beforeAccepted": true,
+          "afterAccepted": true,
+          "beforeTokens": 45420,
+          "afterTokens": 45263,
+          "beforeVerifiedMs": 9434.394833,
+          "afterVerifiedMs": 9031.485834
+        },
+        {
+          "pair": 4,
+          "task": "text-integrity",
+          "files": 6,
+          "beforeAccepted": false,
+          "afterAccepted": true,
+          "beforeTokens": 88315,
+          "afterTokens": 89790,
+          "beforeVerifiedMs": 15080.116791999999,
+          "afterVerifiedMs": 11974.53725
+        }
+      ]
+    },
+    {
+      "model": "gpt-6.1-sol",
+      "variants": [
+        {
+          "variant": "before",
+          "attempts": 4,
+          "correct": 4,
+          "unknownReceipts": 0,
+          "inputTokens": 262037,
+          "outputTokens": 986,
+          "cachedInputTokens": 0,
+          "totalTokens": 263023,
+          "estimatedKnownUSD": 0.533934,
+          "usdPerCorrectTask": 0.1334835,
+          "tokensPerCorrectTask": 65755.75,
+          "meanTaskMs": 10658.1124585,
+          "meanVerifiedTaskMs": 10678.60722925,
+          "longestRequestInputTokens": 23465,
+          "calls": 24,
+          "losslessRequests": 0,
+          "statelessCalls": 24,
+          "compactions": 0,
+          "details": [
+            {
+              "task": "path-policy",
+              "files": 4,
+              "accepted": true,
+              "completed": true,
+              "context": true,
+              "tests": true,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 43803,
+              "taskMs": 9734.798959
+            },
+            {
+              "task": "path-policy",
+              "files": 6,
+              "accepted": true,
+              "completed": true,
+              "context": true,
+              "tests": true,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 86954,
+              "taskMs": 12130.360667
+            },
+            {
+              "task": "text-integrity",
+              "files": 4,
+              "accepted": true,
+              "completed": true,
+              "context": true,
+              "tests": true,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 44371,
+              "taskMs": 8750.586875
+            },
+            {
+              "task": "text-integrity",
+              "files": 6,
+              "accepted": true,
+              "completed": true,
+              "context": true,
+              "tests": true,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 87895,
+              "taskMs": 12016.703333
+            }
+          ]
+        },
+        {
+          "variant": "after",
+          "attempts": 4,
+          "correct": 3,
+          "unknownReceipts": 0,
+          "inputTokens": 281208,
+          "outputTokens": 1034,
+          "cachedInputTokens": 0,
+          "totalTokens": 282242,
+          "estimatedKnownUSD": 0.572756,
+          "usdPerCorrectTask": 0.19091866666666668,
+          "tokensPerCorrectTask": 94080.66666666667,
+          "meanTaskMs": 10662.521114500001,
+          "meanVerifiedTaskMs": 10685.8266875,
+          "longestRequestInputTokens": 23613,
+          "calls": 25,
+          "losslessRequests": 0,
+          "statelessCalls": 25,
+          "compactions": 0,
+          "details": [
+            {
+              "task": "path-policy",
+              "files": 4,
+              "accepted": true,
+              "completed": true,
+              "context": true,
+              "tests": true,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 44247,
+              "taskMs": 9054.231042000001
+            },
+            {
+              "task": "path-policy",
+              "files": 6,
+              "accepted": true,
+              "completed": true,
+              "context": true,
+              "tests": true,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 87694,
+              "taskMs": 11783.89975
+            },
+            {
+              "task": "text-integrity",
+              "files": 4,
+              "accepted": false,
+              "completed": true,
+              "context": true,
+              "tests": true,
+              "security": {
+                "passed": false,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 61666,
+              "taskMs": 10726.760624999999
+            },
+            {
+              "task": "text-integrity",
+              "files": 6,
+              "accepted": true,
+              "completed": true,
+              "context": true,
+              "tests": true,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 88635,
+              "taskMs": 11085.193041
+            }
+          ]
+        }
+      ],
+      "allAttemptTokenSavingPercent": -7.3069655505412,
+      "costPerCorrectSavingPercent": -43.02791481094419,
+      "latency": {
+        "pairs": 4,
+        "beforeMeanMs": 10678.60722925,
+        "afterMeanMs": 10685.8266875,
+        "beforeMedianMs": 10895.1664585,
+        "afterMedianMs": 10931.486958,
+        "meanReductionMs": -7.219458249999661,
+        "medianReductionMs": 511.2178750000003,
+        "meanReduction95CI": [
+          -1316.2501982499998,
+          801.9688960000003
+        ],
+        "geometricAfterBeforeRatio": 1.0056290323982775,
+        "ratio95CI": [
+          0.9267992220086384,
+          1.1441695494360462
+        ],
+        "fasterPairs": 3
+      },
+      "pairs": [
+        {
+          "pair": 5,
+          "task": "path-policy",
+          "files": 4,
+          "beforeAccepted": true,
+          "afterAccepted": true,
+          "beforeTokens": 43803,
+          "afterTokens": 44247,
+          "beforeVerifiedMs": 9752.887417,
+          "afterVerifiedMs": 9077.699084
+        },
+        {
+          "pair": 6,
+          "task": "path-policy",
+          "files": 6,
+          "beforeAccepted": true,
+          "afterAccepted": true,
+          "beforeTokens": 86954,
+          "afterTokens": 87694,
+          "beforeVerifiedMs": 12149.881167,
+          "afterVerifiedMs": 11802.633749999999
+        },
+        {
+          "pair": 7,
+          "task": "text-integrity",
+          "files": 4,
+          "beforeAccepted": true,
+          "afterAccepted": false,
+          "beforeTokens": 44371,
+          "afterTokens": 61666,
+          "beforeVerifiedMs": 8774.214833,
+          "afterVerifiedMs": 10754.277875
+        },
+        {
+          "pair": 8,
+          "task": "text-integrity",
+          "files": 6,
+          "beforeAccepted": true,
+          "afterAccepted": true,
+          "beforeTokens": 87895,
+          "afterTokens": 88635,
+          "beforeVerifiedMs": 12037.4455,
+          "afterVerifiedMs": 11108.696041
+        }
+      ]
+    }
+  ],
+  "estimatedKnownUSD": 1.1613531,
+  "pricing": {
+    "date": "2026-11-15",
+    "source": "https://developers.openai.com/api/docs/pricing",
+    "tier": "Standard short context",
+    "rates": {
+      "gpt-6-luna": {
+        "input": 0.1,
+        "output": 0.5,
+        "cached": 0.01
+      },
+      "gpt-6.1-sol": {
+        "input": 2,
+        "output": 10,
+        "cached": 0.1
+      }
+    }
+  },
+  "costDefinition": "All attempts (including failures) divided by accepted completed tasks. Null if no successes or unknown usage. Public-rate estimate, not invoice. Verification latency includes isolated Bun tests."
+}

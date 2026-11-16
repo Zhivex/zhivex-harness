@@ -1,7 +1,7 @@
 import {test,expect} from "bun:test";
 import {createQwen} from "@zhivex-ai/qwen";
-import {withQwenHostedPolicy} from "../src/providers/qwen-hosted-policy.js";
-import {modelReasoningEfforts} from "../src/providers/reasoning.js";
+import {withQwenHostedPolicy} from "../packages/core/src/providers/qwen-hosted-policy.js";
+import {modelReasoningEfforts} from "../packages/core/src/providers/reasoning.js";
 
 for (const streaming of [false,true]) test(`Kimi K3 uses documented thinking-only Chat route, stream=${streaming}`,async()=>{
  const bodies: Record<string,unknown>[]=[];const urls:string[]=[];

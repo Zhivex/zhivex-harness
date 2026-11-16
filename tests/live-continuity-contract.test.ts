@@ -1,6 +1,6 @@
 import {expect,test} from 'bun:test';
 import {continuityPhaseShouldRetry, createContinuityEvidence, continuityGateOutcome, selectContinuityProviders} from '../scripts/live-continuity-contract.js';
-import { HarnessProviderError } from '../src/runtime/errors.js';
+import { HarnessProviderError } from '../packages/core/src/runtime/errors.js';
 import { diagnosticFingerprint, sanitizeOperationalError } from '../scripts/release-diagnostics.js';
 const providers=['openai','qwen','meta','gemini','anthropic','vertex'];
 test('continuity preserves historical defaults and admits explicit announced routes',()=>{

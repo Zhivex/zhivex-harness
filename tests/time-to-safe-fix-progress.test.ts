@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { spawn } from "node:child_process";
 import path from "node:path";
-import { benchmarkProgressSchema, sanitizedErrorDetails } from "../src/runtime/error-diagnostics.js";
+import { benchmarkProgressSchema, sanitizedErrorDetails } from "../packages/core/src/runtime/error-diagnostics.js";
 
 test("driver checkpoints track phases and events without event payloads", async () => {
   const module = path.resolve(import.meta.dir, "../scripts/time-to-safe-fix-progress.ts");

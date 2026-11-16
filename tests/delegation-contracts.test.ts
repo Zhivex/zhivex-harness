@@ -7,9 +7,9 @@ import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { getAgentBudgetStatus } from "@zhivex-ai/agents";
 import { type ModelGenerateInput, type ModelMessage, type ToolCall } from "@zhivex-ai/core";
 import { z } from "zod";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { delegationPrompt, normalizeDelegationContracts, withDelegationContracts } from "../src/runtime/delegation-contracts.js";
-import { sanitizedErrorDetails } from "../src/runtime/error-diagnostics.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { delegationPrompt, normalizeDelegationContracts, withDelegationContracts } from "../packages/core/src/runtime/delegation-contracts.js";
+import { sanitizedErrorDetails } from "../packages/core/src/runtime/error-diagnostics.js";
 
 const contract = { taskId: "review", profile: "reviewer" as const, prompt: "Review target.txt", allowedReadPaths: ["target.txt"], requiredOutput: "ACCEPTED" };
 const usage = { inputTokens: 3, outputTokens: 2, totalTokens: 5 };

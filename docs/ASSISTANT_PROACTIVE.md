@@ -130,11 +130,7 @@ con la misma cuenta, hilo, referencia y remitente se rechaza.
 
 ## Validación
 
-```sh
-bun run --cwd packages/assistant typecheck
-bun run --cwd packages/assistant test
-bun run --cwd packages/assistant smoke:daily-web
-```
+Use the shared application through Electron or the commands documented in [CLI](CLI.md). The standalone Assistant launcher has been retired.
 
 Las pruebas cubren deduplicación y reinicios, silencio, cupo, fallos parciales,
 conflictos con paginación, cancelación en vuelo, cierre de seguimientos, aislamiento

@@ -1,0 +1,32 @@
+{
+  "model": "qwen4-max",
+  "passed": true,
+  "validation": "Live packaged Electron acceptance, completed with native accessibility inspection",
+  "platform": "darwin-arm64",
+  "runtime": {
+    "desktopVersion": "0.1.0-alpha.1",
+    "harnessVersion": "1.7.0",
+    "harnessArtifactSha256": "006a39e66c8b16505e0d51124b89e2ab3b3d7a577a59b78e6629dce3287a65ac",
+    "electronVersion": "44.9.3"
+  },
+  "workspace": "/private/tmp/zhx-qwen4-ui-dHRbks/repo",
+  "checks": {
+    "selectedModelInUI": true,
+    "unchangedBeforeApproval": true,
+    "approvalDisabledUntilViewed": true,
+    "explicitApprovalSubmitted": true,
+    "exactFileContentAfterApproval": "APPROVED_QWEN4_WRITE\n",
+    "fileSha256": "d09f3942423ca46323f7c670b9f726eda3264f1de87d5f40a36d230f379ba890",
+    "nativeUIFinalStatus": "Response complete",
+    "nativeUITools": [
+      "Read file Completed",
+      "Edit file Completed",
+      "Read file Completed"
+    ],
+    "nativeUIRecordedModel": "qwen4-max"
+  },
+  "approvalScreenshot": "/private/tmp/zhx-qwen4-ui-dHRbks/electron-approval.png",
+  "automatedTestLimitation": "The automated wait timed out on the Changes page. Native UI inspection found the task completed; clicking Workspace displayed Response complete and the completed read/edit/read tools. The script was adjusted to navigate explicitly; that adjustment was not rerun.",
+  "cleanup": "The isolated test application required forced termination after its task completed; temporary keychain entry cleanup ran in the test finally block.",
+  "supersededBy": "qwen4-max-electron-packaged-approval-ui-2026-11-16.json"
+}

@@ -1,7 +1,7 @@
 # Historical reports
 
 Internal UX notes, candidate preparation and HU tracking live in the
-[Notion archive](INTERNAL_ARCHIVE.md). Its migration manifest retains original
+[Notion archive](https://app.notion.com/p/418777b104f681959506f9aba73e2b12). Its migration manifest retains original
 paths, source hashes and immutable Git links for technical evidence. Local-only
 working notes are not a shared or durable archive.
 Keep final acceptance, release, security and consolidated campaign evidence here,
@@ -16,6 +16,17 @@ upstream tracebacks are anonymized in this repository copy; evaluation outcomes
 and recorded artifact hashes are unchanged.
 
 ## Release and archive navigation
+
+- [Restored context efficiency](RESTORED_CONTEXT_EFFICIENCY_2026-11-15.md): eight paired real-model repairs retain 8/8 accepted tasks per arm while reducing tokens 8.04–8.29% and cost per accepted task 7.93–7.95%; exact reversible line-prefix encoding.
+- [Compaction read continuity and failed-read traces](COMPACTION_READ_REPLAY_2026-11-15.md): final runtime accepts 4/4 real-model pressure repairs versus 0/4, with wire-only replay, bounded cache, durable traces and all intermediate failures retained.
+
+- [Programming repairs with long non-repetitive context](CODE_CONTEXT_VALIDATION_2026-11-15.md): 24 real-model attempts, executable Bun tests, cost per accepted task, no general token savings and compaction failures.
+
+- [Corrected context transport and lossless reads](CONTEXT_LIVE_FIXES_2026-11-15.md): 16/16 correct paired tasks, real token savings and cost per correct task; four held-out budget checks.
+
+- [Live context efficiency validation, 2026-11-15](CONTEXT_LIVE_VALIDATION_2026-11-15.md): real OpenAI usage, continuation mismatch, bounded recovery failures and preserved unsuccessful experiments.
+
+- [Context efficiency, 2026-11-15](CONTEXT_EFFICIENCY_2026-11-15.md): recoverable read projection, aligned compaction estimates, scoped refresh and revision-index benchmarks.
 
 - [Low versus default reasoning with native JSON Schema](PRELOAD_SCHEMA_EFFORT_2026-11-14.md): eight paired trials with preload and 4,096 output tokens, latency/token savings and semantic quality failures.
 
@@ -34,8 +45,8 @@ and recorded artifact hashes are unchanged.
 - [Harness 1.6.3 / Code 0.4.2 preparation](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/RELEASE_1_6_3_CODE_0_4_2.md) and [verified publication](PUBLICATION_1_6_3_CODE_0_4_2.md): distinct preparation and protected release artifacts.
 - [Web limits design QA](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/WEB_LIMITS_DESIGN_QA.md): original visual and offline validation snapshot.
 - [Web workspace flow audit](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/WEB_FLOW_AUDIT.md): historical UI changes, session diagnosis and SDK proposals.
-- [Code compact terminal flow](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/CODE_COMPACT_FLOW.md): original implementation and installed validation snapshot; current usage is in the [Code guide](../../packages/code/README.md).
-- [Assistant web design QA](../../packages/assistant/web/design-qa.md): retained with its desktop and mobile captures beside the implementation.
+- [Code compact terminal flow](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/CODE_COMPACT_FLOW.md): original implementation and installed validation snapshot; current usage is in the [Code guide](../../packages/cli/README.md).
+- [Unification and UX archive](../INTERNAL_ARCHIVE.md): private originals, captures, plans and migration tooling, with verified archive hashes.
 
 The 2026-11-13 migration moves thirteen internal narratives to Notion; their
 originals remain available through frozen Git links in the archive index.
@@ -109,7 +120,7 @@ Protocols remain in the [benchmark guide](../../benchmarks/README.md) and [Time-
 ## Consolidated desktop acceptance and archived working notes
 
 - [Acceptance audit, September 21](HAR_HU_13_35_ACCEPTANCE_AUDIT_2026-09-21.md) and [criterion-level evidence](HAR_HU_13_35_ACCEPTANCE_AUDIT_2026-09-21.json) preserve the final HU13–35 assessment and its limits. These are dated snapshots, not current user guides.
-- [Desktop guide](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/README.md) documents current setup, behavior and validation commands.
+- [Desktop guide](https://github.com/Zhivex/zhivex-harness/blob/main/packages/desktop/README.md) documents current setup, behavior and validation commands.
 - [RC13 dossier](security/RC13_SECURITY_REVIEW.md) and [RC14 dossier](security/RC14_SECURITY_REVIEW.md) retain the preparatory drafts separately from the final review in `security-reviews/rc14-review.json`.
 
 Incremental HU plans, component reports and screenshots were consolidated out of

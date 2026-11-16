@@ -14,12 +14,12 @@ import {
   migrateHarnessConfigInput,
   resolveHarnessConfig,
   type HarnessConfigInput
-} from "../src/runtime/config.js";
-import { inspectHarnessRun, openHarnessPersistence } from "../src/persistence/operations.js";
-import { openCliSessionStore, type CliSession } from "../src/persistence/sessions.js";
-import { createHarnessStateBackup } from "../src/persistence/state-backup.js";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { HARNESS_VERSION } from "../src/version.js";
+} from "../packages/core/src/runtime/config.js";
+import { inspectHarnessRun, openHarnessPersistence } from "../packages/core/src/persistence/operations.js";
+import { openCliSessionStore, type CliSession } from "../packages/core/src/persistence/sessions.js";
+import { createHarnessStateBackup } from "../packages/core/src/persistence/state-backup.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { HARNESS_VERSION } from "../packages/core/src/version.js";
 
 interface HistoricalFixture {
   schemaVersion: number;

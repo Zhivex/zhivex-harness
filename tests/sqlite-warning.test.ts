@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { installSqliteExperimentalWarningFilter } from "../src/persistence/sqlite-database.js";
+import { installSqliteExperimentalWarningFilter } from "../packages/core/src/persistence/sqlite-database.js";
 
 test("the sqlite experimental warning is dropped and other warnings remain", async () => {
   installSqliteExperimentalWarningFilter();

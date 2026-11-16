@@ -3,9 +3,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { openHarnessPersistence, type HarnessPersistence } from "../src/persistence/operations.js";
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { UsageLedger, usagePricingSchema, type UsageAccountingOptions } from "../src/runtime/usage-ledger.js";
+import { openHarnessPersistence, type HarnessPersistence } from "../packages/core/src/persistence/operations.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { UsageLedger, usagePricingSchema, type UsageAccountingOptions } from "../packages/core/src/runtime/usage-ledger.js";
 
 const roots: string[] = [], ledgers: UsageLedger[] = [], persistence: HarnessPersistence[] = [];
 afterEach(async () => { for (const ledger of ledgers.splice(0)) ledger.close(); for (const store of persistence.splice(0)) store.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); });

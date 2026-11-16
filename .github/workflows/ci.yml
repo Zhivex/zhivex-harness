@@ -51,8 +51,11 @@ jobs:
       - name: Install immutable root dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
+      - name: Install standard SQLite for macOS Bun tests
+        run: brew list sqlite >/dev/null 2>&1 || brew install sqlite
+
       - name: Install immutable desktop dependencies
-        run: bun install --cwd desktop --frozen-lockfile --ignore-scripts
+        run: bun install --cwd packages/desktop --frozen-lockfile --ignore-scripts
 
       - name: Prepare installed Harness candidate for Desktop
         run: bun run prepare:desktop
@@ -60,29 +63,30 @@ jobs:
       - name: Install pinned Electron runtime
         run: |
           for attempt in 1 2 3; do
-            node desktop/node_modules/electron/install.js && exit 0
+            node packages/desktop/node_modules/electron/install.js && exit 0
             if [ "$attempt" -eq 3 ]; then exit 1; fi
             sleep $((attempt * 10))
           done
 
       - name: Audit desktop dependencies
-        run: bun run ../scripts/audit-dependencies.ts
-        working-directory: desktop
+        run: bun run ../../scripts/audit-dependencies.ts
+        working-directory: packages/desktop
 
       - name: Validate desktop source and security regressions
         run: |
+          bun run workspace:check
           bun run architecture:check
-          bun run --cwd desktop typecheck
-          bun test desktop/tests
+          bun run --cwd packages/desktop typecheck
+          bun test --preload ./tests/preload-sqlite.ts packages/desktop/tests
 
       - name: Package and exercise the desktop application
         run: |
-          bun run --cwd desktop package
-          bun run --cwd desktop smoke:packaged --empty-start
-          bun run --cwd desktop smoke:restart:packaged
-          bun run --cwd desktop smoke:restart:packaged --effect-crash
-          bun run --cwd desktop smoke:restart:packaged --active-close
-          bun run --cwd desktop smoke:worktrees:packaged
+          bun run --cwd packages/desktop package
+          bun run packages/desktop/scripts/smoke-phase-five.mjs --packaged
+          bun run packages/desktop/scripts/smoke-bundled-core.mjs
+          bun run packages/desktop/scripts/smoke-mac-verifier.ts
+          bun run packages/desktop/scripts/smoke-application-swap.ts
+          bun test --preload ./tests/preload-sqlite.ts tests/application-offline-migration.test.ts tests/historical-migrations.test.ts
 
       - name: Verify desktop build produced no tracked changes
         run: git diff --exit-code
@@ -119,8 +123,12 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
+      - name: Install standard SQLite for macOS Bun tests
+        if: runner.os == 'macOS'
+        run: brew list sqlite >/dev/null 2>&1 || brew install sqlite
+
       - name: Install desktop test dependencies
-        run: bun install --cwd desktop --frozen-lockfile --ignore-scripts
+        run: bun install --cwd packages/desktop --frozen-lockfile --ignore-scripts
 
       - name: Prepare installed Harness candidate for Desktop tests
         run: bun run prepare:desktop
@@ -129,7 +137,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           for attempt in 1 2 3; do
-            node desktop/node_modules/electron/install.js && exit 0
+            node packages/desktop/node_modules/electron/install.js && exit 0
             if [ "$attempt" -eq 3 ]; then exit 1; fi
             sleep $((attempt * 10))
           done
@@ -200,7 +208,6 @@ jobs:
       - name: Prepare independent packages and contributor tests
         run: |
           bun install --frozen-lockfile --ignore-scripts
-          bun install --cwd packages/web --frozen-lockfile --ignore-scripts
           bun run dev:code
           bun run typecheck:code
           bun run test:code

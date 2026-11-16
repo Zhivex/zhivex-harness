@@ -1,0 +1,6 @@
+{
+  "homeReadBlocked": true,
+  "outsideWriteBlocked": true,
+  "networkBlocked": true,
+  "noCredentials": true
+}

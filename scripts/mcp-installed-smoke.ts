@@ -2,7 +2,7 @@ import { copyFile, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { runPortableProcess } from '../src/execution/process-runtime.js';
+import { runPortableProcess } from '../packages/core/src/execution/process-runtime.js';
 const checkout = path.resolve(import.meta.dir, '..');
 const root = await mkdtemp(path.join(tmpdir(), 'zhx-installed-mcp-'));
 const artifact = path.join(root, 'harness.tgz');

@@ -135,3 +135,29 @@ Build the driver with `bun build scripts/benchmark-preload-structured.ts --targe
 [The schema-effort report](https://github.com/Zhivex/zhivex-harness/blob/1ea4b734cbb362ad2c5b2656f5aef7ae5dc4fd23/docs/reports/PRELOAD_SCHEMA_EFFORT_2026-11-14.md) compares `default` and `low` with the same strict schema, runtime preload and 4,096-token output cap. `scripts/benchmark-preload-schema-effort.ts` fixes eight pairs balanced within two fixtures, one request per task, a 100,000-token ceiling and fresh cache keys. The meter validates both effort and schema before network access.
 
 Build with `bun build scripts/benchmark-preload-schema-effort.ts --target node --packages external --outfile <campaign.mjs>` and use a frozen runtime exporting `createHarness`, `runHarnessTask` and `openHarnessActivityStore`. Launch explicitly with `bun --env-file=.env <campaign.mjs> --live --runtime <runtime.mjs> --directory <fresh-directory>`; Node workers incur new API consumption. Offline analysis: `bun scripts/analyze-preload-schema-effort.ts <campaign.json> <summary.json>`. Failed and incomplete answers remain in all-attempt comparisons. Historical cohorts are not pooled and production defaults remain unchanged.
+
+
+## Context efficiency (offline)
+
+Run `bun run benchmark:context-efficiency` for paired comparisons of historical
+read message estimates, result lookup across revisions, and scoped instruction
+refresh. It uses temporary fixtures, three warmups and 25 alternating pairs,
+and checks exact page recovery and identical instruction output. No provider
+calls are made. Timing thresholds are benchmark-only; see the
+[report](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/CONTEXT_EFFICIENCY_2026-11-15.md) for limitations and evidence.
+
+
+## Live context projection validation
+
+The [live report](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/CONTEXT_LIVE_VALIDATION_2026-11-15.md) records
+negative certification findings, reported usage, latency and exact context checks
+for OpenAI Luna/Sol. `scripts/benchmark-context-live.ts` requires `--live`;
+`--stateless` selects a separate provider configuration. Keep failed tasks and
+unknown usage in the ledger. The offline savings must not be presented as a
+verified quality-preserving production speedup.
+
+The [corrected follow-up](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/CONTEXT_LIVE_FIXES_2026-11-15.md) preserves the failed campaigns and adds lossless reads, full-history transport, 16/16 correct A/B tasks and cost per correct task. Use `scripts/benchmark-context-live-fixed.ts --live` for the corrected comparison and `scripts/analyze-context-live-cost.ts` for priced accounting. Savings are workload-specific; Sol latency improvement is not established.
+
+The [long code-context follow-up](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/CODE_CONTEXT_VALIDATION_2026-11-15.md) tests repairs of real repository modules with non-repetitive source and forced compaction. It does **not** reproduce general token savings and preserves zero-success pressure results. Drivers: `scripts/benchmark-code-context-live.ts` and `scripts/benchmark-code-context-pressure.ts`; both require `--live`.
+
+The [read-replay correction](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/COMPACTION_READ_REPLAY_2026-11-15.md) preserves the failed code-context campaigns and reports 4/4 accepted final pressure repairs versus 0/4. Use `scripts/benchmark-code-context-replay-final.ts --live` and `scripts/analyze-code-context-replay.ts`. Working evidence is preserved on the wire; raw token savings are not claimed.

@@ -30,7 +30,7 @@ try {
   assert.equal(permissions, 2);
   assert.equal(JSON.stringify(notifications).includes('CLIENT_ENV_CANARY'), false);
   assert.ok(JSON.stringify(notifications).includes('MCP completed'));
-  process.stderr.write(JSON.stringify({ status: 'passed', client: '@agentclientprotocol/sdk@2.1.0', permissions }) + '\n');
+  process.stderr.write(JSON.stringify({ status: 'passed', client: '@agentclientprotocol/sdk@2.7.0', permissions }) + '\n');
   process.exit(0);
 } catch {
   process.stderr.write('ACP SDK interoperability failed\n');

@@ -4,10 +4,10 @@ import path from "node:path";
 import os from "node:os";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { createContextRuntime, SCOPED_CONTEXT_KEY } from "../src/runtime/context-runtime.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { createContextRuntime, SCOPED_CONTEXT_KEY } from "../packages/core/src/runtime/context-runtime.js";
 import { wrapLanguageModel } from "@zhivex-ai/core";
-import { createProgressMonitor, PROGRESS_MONITOR_KEY } from "../src/runtime/progress-monitor.js";
+import { createProgressMonitor, PROGRESS_MONITOR_KEY } from "../packages/core/src/runtime/progress-monitor.js";
 
 test("runtime discovers guidance after a read and refreshes edited guidance on resume", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "scoped-runtime-"));

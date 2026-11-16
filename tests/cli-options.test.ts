@@ -4,8 +4,8 @@ import {
   CLI_COMMAND_OPTION_CONTRACTS,
   CLI_OPTION_DEFINITIONS,
   CLI_OPTION_NAMES
-} from "../src/cli/cli-options.js";
-import { CliUsageError, parseCliArgs } from "../src/cli.js";
+} from "../packages/core/src/cli/cli-options.js";
+import { CliUsageError, parseCliArgs } from "../packages/core/src/cli.js";
 
 describe("command-specific CLI option contract", () => {
   test("publishes verified delivery without the removed agent profile option", () => {

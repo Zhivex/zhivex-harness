@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { createHarnessMcpTools, createHttpMcpClient, normalizeHarnessMcpConfiguration, type HarnessMcpHttpOptions } from "../src/integrations/mcp.js";
+import { createHarnessMcpTools, createHttpMcpClient, normalizeHarnessMcpConfiguration, type HarnessMcpHttpOptions } from "../packages/core/src/integrations/mcp.js";
 
 const uri = "docs://architecture";
 const config = (overrides: Record<string, unknown> = {}) => normalizeHarnessMcpConfiguration({ schemaVersion: 1,

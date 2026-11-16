@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { mkdtemp, mkdir, writeFile, symlink, link, rm } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
-import { readDependency } from "../src/tools/dependency-read.js";
+import { readDependency } from "../packages/core/src/tools/dependency-read.js";
 
 async function fixture(run: (root: string, pkg: string) => Promise<void>) {
   const root = await mkdtemp(path.join(os.tmpdir(), "dependency-inspection-"));

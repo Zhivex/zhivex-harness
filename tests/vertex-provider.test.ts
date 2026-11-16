@@ -2,9 +2,9 @@ import { expect, test } from "bun:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { DEFAULT_PROVIDER_REGISTRY as registry, BUILTIN_PROVIDER_REGISTRATIONS, createProviderRegistry } from "../src/providers/providers.js";
-import { createVertexModel } from "../src/providers/vertex-auth.js";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { DEFAULT_PROVIDER_REGISTRY as registry, BUILTIN_PROVIDER_REGISTRATIONS, createProviderRegistry } from "../packages/core/src/providers/providers.js";
+import { createVertexModel } from "../packages/core/src/providers/vertex-auth.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
 
 const env = { GOOGLE_CLOUD_PROJECT: "fixture-project", VERTEX_LOCATION: "global" };
 // A model accepted by the SDK on both fixture routes, to reach the resume guard.

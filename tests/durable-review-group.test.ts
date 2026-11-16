@@ -4,8 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness } from "../src/runtime/harness.js";
-import { runHarnessDurableReviewGroup, inspectHarnessReviewGroup, cancelHarnessReviewGroup } from "../src/runtime/durable-review-group.js";
+import { createHarness } from "../packages/core/src/runtime/harness.js";
+import { runHarnessDurableReviewGroup, inspectHarnessReviewGroup, cancelHarnessReviewGroup } from "../packages/core/src/runtime/durable-review-group.js";
 
 const response = { messages: [{ role: "assistant" as const, parts: [{ type: "text" as const, text: "evidence" }] }], text: "evidence", finishReason: "stop" as const,
   usage: { inputTokens: 3, outputTokens: 2, totalTokens: 5 } };
@@ -195,7 +195,7 @@ test("durable groups share the logical monetary ledger across member calls", asy
 
 
 test("generic root cancellation also closes the durable group's admission", async () => {
-  const { cancelHarnessRun } = await import("../src/persistence/operations.js");
+  const { cancelHarnessRun } = await import("../packages/core/src/persistence/operations.js");
   const f = await fixture();
   try {
     let started!: () => void, release!: () => void;

@@ -299,7 +299,7 @@ That preparation used `@zhivex-ai/code@0.2.0` with the same exact published
 Harness `1.3.0` dependency. Code `0.1.0` was the verified npm `latest` release
 until the separately approved `0.2.0` publication. That candidate added guided
 approval diffs, reviewed checkpoints, per-run estimated budgets and the offline
-first-use tutorial. See the [candidate changelog](https://github.com/Zhivex/zhivex-harness/blob/main/packages/code/CHANGELOG.md)
+first-use tutorial. See the [candidate changelog](https://github.com/Zhivex/zhivex-harness/blob/main/packages/cli/CHANGELOG.md)
 and [release readiness](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/CODE_0_2_0_READINESS_2026-10-03.md).
 
 That was a Code-only release: no Harness version change or new paid six-provider

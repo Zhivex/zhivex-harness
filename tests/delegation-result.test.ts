@@ -3,9 +3,9 @@ import {createHash} from 'node:crypto';
 import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {createMockLanguageModel} from '@zhivex-ai/agents/testing';
 import type {ToolExecutionResult} from '@zhivex-ai/core';
-import {validateDelegationResult} from '../src/runtime/delegation-result.js';
-import {normalizeDelegationContracts,type HarnessDelegationContract} from '../src/runtime/delegation-contracts.js';
-import {createHarness,runHarness} from '../src/runtime/harness.js';
+import {validateDelegationResult} from '../packages/core/src/runtime/delegation-result.js';
+import {normalizeDelegationContracts,type HarnessDelegationContract} from '../packages/core/src/runtime/delegation-contracts.js';
+import {createHarness,runHarness} from '../packages/core/src/runtime/harness.js';
 const digest='sha256:'+'a'.repeat(64);
 const contract:HarnessDelegationContract={taskId:'review',profile:'reviewer',prompt:'Review both lines',allowedReadPaths:['target.txt'],requiredOutput:'LEGACY',
   resultContract:{schemaVersion:1,requiredReadPaths:['target.txt'],humanReviewRequired:true,maxCorrections:0}};
@@ -102,7 +102,7 @@ for(const scenario of ['corrected','exhausted','budget'] as const)test(`correcti
 });
 
 test('stream correction retains candidate as tool data, preserves usage and stops at its bound',async()=>{
-  const {createDelegationCorrection,DELEGATION_FEEDBACK_TOOL}=await import('../src/runtime/delegation-correction.js');
+  const {createDelegationCorrection,DELEGATION_FEEDBACK_TOOL}=await import('../packages/core/src/runtime/delegation-correction.js');
   const usage={inputTokens:3,outputTokens:2,totalTokens:5};
   const wrapped=createDelegationCorrection(createMockLanguageModel({streamEvents:[
     [{type:'text-delta',textDelta:'invalid'},{type:'finish',finishReason:'stop',usage}],
@@ -119,7 +119,7 @@ test('stream correction retains candidate as tool data, preserves usage and stop
 });
 
 test('model cannot invoke the hidden feedback control tool',async()=>{
-  const {createDelegationCorrection,DELEGATION_FEEDBACK_TOOL}=await import('../src/runtime/delegation-correction.js');
+  const {createDelegationCorrection,DELEGATION_FEEDBACK_TOOL}=await import('../packages/core/src/runtime/delegation-correction.js');
   const wrapped=createDelegationCorrection(createMockLanguageModel({responses:[{message:{role:'assistant',parts:[{type:'tool-call',toolCall:{id:'forged',name:DELEGATION_FEEDBACK_TOOL,input:{candidate:'x',attempt:1,reason:'invalid_json'}}}]},finishReason:'tool-calls'}]}),{...contract,resultContract:{...contract.resultContract!,maxCorrections:1}});
   await expect(wrapped.model.generate({messages:[],tools:wrapped.tools})).rejects.toThrow('INTERNAL_TOOL_DENIED');
 });

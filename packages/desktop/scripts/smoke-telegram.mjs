@@ -1,0 +1,60 @@
+// Offline onboarding: installed core and Electron; Telegram HTTP and secret store are fixtures.
+import {startApplicationCoordinator} from '@zhivex-ai/harness/application';
+import {connectCoordinator, connectApplication} from '@zhivex-ai/harness/application/client';
+import {startAssistantHost} from '@zhivex-ai/harness/assistant/host';
+import {createMockLanguageModel} from '@zhivex-ai/agents/testing';
+import {_electron as electron} from 'playwright';
+import {mkdtemp, writeFile, readFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+const root = fileURLToPath(new URL('../../../', import.meta.url)), directory = await mkdtemp('/tmp/zhx-telegram-ui-');
+let stored = null, updates = [], sends = 0, desktop, page;
+const token = '123:' + 't'.repeat(30);
+const integrationFetch = async (input, init) => {
+  const url = String(input), payload = JSON.parse(init.body);
+  if (url.endsWith('/getMe')) return Response.json({ok: true, result: {id: 123, is_bot: true, username: 'fixture_bot'}});
+  if (url.endsWith('/getWebhookInfo')) return Response.json({ok: true, result: {url: ''}});
+  if (url.endsWith('/getUpdates') && payload.timeout) await new Promise(resolve => {const done = () => {clearTimeout(timer); init.signal?.removeEventListener('abort', done); resolve();}; const timer = setTimeout(done, 100); if (init.signal?.aborted) done(); else init.signal?.addEventListener('abort', done, {once: true});});
+  if (url.endsWith('/getUpdates')) return Response.json({ok: true, result: updates.filter(value => value.update_id >= (payload.offset ?? 0))});
+  sends++; throw new Error('Unexpected external operation');
+};
+const owner = await startApplicationCoordinator(directory + '/app', {integrationFetch, secrets: {async read() {return stored;}, async write(value) {stored = value;}}, validateProvider: async () => {}, startHost: input => startAssistantHost({...input, engine: {...input.engine, modelInstance: createMockLanguageModel()}})});
+const client = await connectCoordinator(directory + '/app'); const errors = [];
+try {
+  desktop = await electron.launch({executablePath: path.join(root, 'packages/desktop/out/Zhivex Harness-darwin-arm64/Zhivex Harness.app/Contents/MacOS/Zhivex Harness'), args: ['--assistant-directory', directory + '/app', '--user-data', directory + '/electron'], env: {PATH: '/usr/bin:/bin', HOME: process.env.HOME}});
+  page = await desktop.firstWindow(); page.on('pageerror', error => errors.push(error.message));
+  const button = name => page.getByRole('button', {name, exact: true});
+  await page.getByLabel('Assistant name', {exact: true}).fill('Telegram fixture'); await button('Create assistant').click();
+  await button('Configure optional connections now').click();
+  const verify = async () => {await page.getByLabel('Telegram bot token', {exact: true}).fill(token); await button('Verify Telegram bot').click(); await button('Open Telegram pairing').waitFor();};
+  await verify(); assert.equal(await button('Connect and start').isEnabled(), false);
+  await desktop.evaluate(({shell}) => {shell.openExternal = async url => {globalThis.fixtureOpenedTelegram = url;};});
+  await button('Open Telegram pairing').click();
+  const url = (await client.state()).state.telegram.url;
+  assert.equal(await desktop.evaluate(() => globalThis.fixtureOpenedTelegram), url);
+  let code = new URL(url).searchParams.get('start');
+  updates = [{update_id: 1, message: {message_id: 1, from: {id: 7}, chat: {id: 7, type: 'group'}, text: `/start ${code}`}}];
+  await button('Check private account').click(); await page.getByText('No verified private account yet.', {exact: true}).waitFor();
+  await button('Cancel Telegram pairing').click(); await button('Verify Telegram bot').waitFor();
+  assert.equal(await page.getByLabel('Telegram bot token', {exact: true}).inputValue(), '');
+  await verify(); code = new URL((await client.state()).state.telegram.url).searchParams.get('start');
+  updates = [{update_id: 2, message: {message_id: 2, from: {id: 7}, chat: {id: 7, type: 'private'}, text: `/start ${code}`}}];
+  await button('Check private account').click(); await button('Confirm Telegram account').waitFor();
+  assert.equal(await button('Confirm Telegram account').isEnabled(), false);
+  await page.screenshot({path: directory + '/pairing-review.png'});
+  await page.getByLabel('This is my private Telegram account', {exact: true}).check(); await button('Confirm Telegram account').click();
+  await page.getByText('Telegram is linked in this draft. It will start with the assistant.', {exact: true}).waitFor();
+  assert.equal(JSON.stringify((await client.state()).state).includes(token), false);
+  await page.getByLabel('Provider', {exact: true}).selectOption('custom'); await page.getByLabel('API URL', {exact: true}).fill('https://example.invalid/v1'); await page.getByLabel('Model', {exact: true}).fill('mock'); await page.getByLabel('API key', {exact: true}).fill('fixture-key');
+  await page.getByLabel('Enable tasks and reminders', {exact: true}).check(); await button('Connect and start').click();
+  await button('Automations').click(); await page.getByText('Not configured · Delivery: Telegram · Account linked', {exact: true}).waitFor();
+  const host = await connectApplication((await client.state()).credentialsPath);
+  assert.equal((await client.call('automation', {projectId: host.projectId})).available, true);
+  await page.screenshot({path: directory + '/linked-automations.png'});
+  assert.equal(sends, 0); assert.deepEqual(errors, []);
+  const installed = JSON.parse(await readFile(path.join(root, 'packages/desktop/.harness/installed.json'), 'utf8'));
+  const report = {passed: true, directory, coreArtifactSha256: installed.sha256, checks: ['private pairing required', 'group ignored', 'pending pairing prevents startup', 'cancel clears pairing', 'main opens only current pairing URL', 'explicit account confirmation', 'token absent from public state', 'real Telegram bridge and daily scheduler after startup', 'no external sends'], limitations: ['Telegram HTTP and secret storage are injected fixtures; no real account or native keychain tested here.']};
+  await writeFile(directory + '/report.json', JSON.stringify(report, null, 2)); console.log(JSON.stringify(report, null, 2));
+} catch (error) {if (page) {console.error(await page.locator('body').innerText()); await page.screenshot({path: directory + '/failure.png'});} throw error;}
+finally {await desktop?.close(); await owner.close(); console.log('Artifacts: ' + directory);}

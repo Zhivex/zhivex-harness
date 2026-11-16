@@ -2,7 +2,7 @@ import {expect,test} from 'bun:test';
 import type {JsonValue,GenerateResult,StreamEvent} from '@zhivex-ai/core';
 import {createHash} from 'node:crypto';
 import {createMockLanguageModel} from '@zhivex-ai/agents/testing';
-import * as api from '../src/engine/index.js';
+import * as api from '../packages/core/src/engine/index.js';
 import {ACCEPTANCE_FIXTURES} from '../scripts/acceptance/fixtures.js';
 import {runPilotCase} from '../scripts/acceptance/pilot-case.js';
 const mock=(responses:GenerateResult[])=>createMockLanguageModel({streamEvents:responses.map(r=>[...(r.messages??[]).flatMap(m=>m.parts).flatMap((p):StreamEvent[]=>p.type==='tool-call'?[{type:'tool-call',toolCall:p.toolCall}]:p.type==='text'?[{type:'text-delta',textDelta:p.text}]:[]),{type:'finish',finishReason:r.finishReason!,usage:r.usage!}])});

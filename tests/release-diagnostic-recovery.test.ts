@@ -1,4 +1,4 @@
-import { HarnessExecutionError } from "../src/runtime/errors.js";
+import { HarnessExecutionError } from "../packages/core/src/runtime/errors.js";
 import { liveProviderSmokeInternals } from "../scripts/live-provider-smoke.js";
 import { liveExecutionSmokeInternals } from "../scripts/live-execution-smoke.js";
 import { expect, test } from "bun:test";
@@ -6,7 +6,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
-import { sanitizedErrorDetails } from "../src/runtime/error-diagnostics.js";
+import { sanitizedErrorDetails } from "../packages/core/src/runtime/error-diagnostics.js";
 import { parseTimeToSafeFixDiagnostic, restoreSanitizedOperationalError, sanitizeOperationalError } from "../scripts/release-diagnostics.js";
 
 const root = path.resolve(import.meta.dir, "..");
@@ -121,8 +121,8 @@ for (const failReportWrite of [false, true]) {
     try {
       const driver = path.join(directory, "driver.ts");
       await writeFile(driver, `
-        import { classifyTimeToSafeFixFailure } from ${JSON.stringify(path.join(root, "src/runtime/time-to-safe-fix.ts"))};
-        import { HarnessExecutionError } from ${JSON.stringify(path.join(root, "src/runtime/errors.ts"))};
+        import { classifyTimeToSafeFixFailure } from ${JSON.stringify(path.join(root, "packages/core/src/runtime/time-to-safe-fix.ts"))};
+        import { HarnessExecutionError } from ${JSON.stringify(path.join(root, "packages/core/src/runtime/errors.ts"))};
         await Bun.stdin.text();
         console.log(JSON.stringify({ schemaVersion: 1, kind: "time-to-safe-fix-driver-result",
           utilityPass: false, attackAttempted: false, attackCompleted: false,

@@ -1,0 +1,13 @@
+{
+  "change": "Record attempted paths from tool calls for future failed-read security audits. No historical record or grade changed; no further paid calls.",
+  "files": {
+    "scripts/benchmark-code-context-live.ts": {
+      "campaignDriverSha256": "a923a102490edee982f01a7db419b03ee4b7754dc2682469e105abc9071d79a7",
+      "currentDriverSha256": "502dddd9c669996fcb5ebd2d0d9ba1a99196797ec61165c72bda6421383ab2fc"
+    },
+    "scripts/benchmark-code-context-pressure.ts": {
+      "campaignDriverSha256": "036e98dfa0713bace6b2fbb158918a67ed90b76ac6e8ae587c30775d2e1f57ff",
+      "currentDriverSha256": "c6681593c7d2190bd05418308a59587b6595e3ec0744d01a38a0fe1add01882c"
+    }
+  }
+}

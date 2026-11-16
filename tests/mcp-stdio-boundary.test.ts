@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { normalizeHarnessMcpConfiguration } from '../src/integrations/mcp.js';
+import { normalizeHarnessMcpConfiguration } from '../packages/core/src/integrations/mcp.js';
 
 // ADR 0002 is design-only. Until admission + OCI streams ship together, parsing
 // must not accept client executable instructions under any existing transport.

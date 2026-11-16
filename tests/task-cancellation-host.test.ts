@@ -2,11 +2,11 @@ import { expect, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import { createTextMessage } from '@zhivex-ai/core';
-import { createHarness, runHarnessTask } from '../src/runtime/harness.js';
-import { initializeHarnessTaskBudget, inspectHarnessTaskBudget, requestHarnessTaskCancellation } from '../src/runtime/task-budget-host.js';
-import { cancelHarnessRun } from '../src/persistence/operations.js';
-import { TASK_ACCEPTANCE_EVIDENCE_KEY } from '../src/runtime/task-acceptance-record.js';
-import { taskAcceptanceContractSchema } from '../src/runtime/task-acceptance.js';
+import { createHarness, runHarnessTask } from '../packages/core/src/runtime/harness.js';
+import { initializeHarnessTaskBudget, inspectHarnessTaskBudget, requestHarnessTaskCancellation } from '../packages/core/src/runtime/task-budget-host.js';
+import { cancelHarnessRun } from '../packages/core/src/persistence/operations.js';
+import { TASK_ACCEPTANCE_EVIDENCE_KEY } from '../packages/core/src/runtime/task-acceptance-record.js';
+import { taskAcceptanceContractSchema } from '../packages/core/src/runtime/task-acceptance.js';
 
 const contract = taskAcceptanceContractSchema.parse({ schemaVersion: 1, taskId: 'cancel', allowedWritePaths: ['result.txt'], protectedFiles: [],
   requiredChecks: [{ id: 'test', kind: 'package-script', script: 'test', expectedScript: 'node --version', command: 'npm', args: ['--ignore-scripts', 'run', 'test'], purpose: 'fixture', execution: { backend: 'none', approval: 'required' } }],

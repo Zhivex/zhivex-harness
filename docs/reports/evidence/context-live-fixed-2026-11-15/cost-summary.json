@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 1,
+  "source": "docs/reports/evidence/context-live-fixed-2026-11-15/campaign.json",
+  "stopReason": "planned-completion",
+  "pricing": {
+    "date": "2026-11-15",
+    "source": "https://developers.openai.com/api/docs/pricing",
+    "tier": "Standard short context",
+    "prices": {
+      "gpt-6-luna": {
+        "input": 0.1,
+        "output": 0.5,
+        "cached": 0.01
+      },
+      "gpt-6.1-sol": {
+        "input": 2,
+        "output": 10,
+        "cached": 0.1
+      }
+    }
+  },
+  "costDefinition": "Sum of ALL attempt usage cost (including failures) divided by tasks passing exact context/quality, completion, tool-order and usage checks. Null when no successes or unknown receipts. Reasoning is already included in output. USD is a public-rate estimate, not an invoice.",
+  "groups": [
+    {
+      "model": "gpt-6-luna",
+      "variants": [
+        {
+          "variant": "before",
+          "attempts": 4,
+          "correct": 4,
+          "unknownCalls": 0,
+          "input": 99585,
+          "cached": 0,
+          "output": 762,
+          "tokens": 100347,
+          "estimatedKnownUSD": 0.0103395,
+          "usdPerCorrectTask": 0.002584875,
+          "tokensPerCorrectTask": 25086.75,
+          "meanTaskMs": 9022.46646875,
+          "calls": 23,
+          "fullHistoryCalls": 23,
+          "losslessRequests": 0,
+          "scopedGuidanceCalls": 16,
+          "recoveryCalls": 0,
+          "compactions": 0
+        },
+        {
+          "variant": "after",
+          "attempts": 4,
+          "correct": 4,
+          "unknownCalls": 0,
+          "input": 71361,
+          "cached": 0,
+          "output": 862,
+          "tokens": 72223,
+          "estimatedKnownUSD": 0.0075671,
+          "usdPerCorrectTask": 0.001891775,
+          "tokensPerCorrectTask": 18055.75,
+          "meanTaskMs": 7939.615031249999,
+          "calls": 22,
+          "fullHistoryCalls": 22,
+          "losslessRequests": 13,
+          "scopedGuidanceCalls": 17,
+          "recoveryCalls": 1,
+          "compactions": 0
+        }
+      ],
+      "tokenSavingPercent": 28.026747187260202,
+      "costSavingPercent": 26.813675709657137,
+      "latency": {
+        "pairs": 4,
+        "beforeMeanMs": 9022.46646875,
+        "afterMeanMs": 7939.615031249999,
+        "beforeMedianMs": 8739.234708,
+        "afterMedianMs": 7260.1966875,
+        "meanReductionMs": 1082.8514375,
+        "medianReductionMs": 1460.4255210000001,
+        "meanReduction95CI": [
+          25.26951049999957,
+          1801.5393750000007
+        ],
+        "geometricAfterBeforeRatio": 0.8674643729726083,
+        "ratio95CI": [
+          0.7919962035334698,
+          0.9848357082104527
+        ],
+        "fasterPairs": 3
+      },
+      "everyPairSavesTokens": true,
+      "qualityRegressions": []
+    },
+    {
+      "model": "gpt-6.1-sol",
+      "variants": [
+        {
+          "variant": "before",
+          "attempts": 4,
+          "correct": 4,
+          "unknownCalls": 0,
+          "input": 96135,
+          "cached": 0,
+          "output": 678,
+          "tokens": 96813,
+          "estimatedKnownUSD": 0.19905,
+          "usdPerCorrectTask": 0.0497625,
+          "tokensPerCorrectTask": 24203.25,
+          "meanTaskMs": 8887.05065625,
+          "calls": 20,
+          "fullHistoryCalls": 20,
+          "losslessRequests": 0,
+          "scopedGuidanceCalls": 16,
+          "recoveryCalls": 0,
+          "compactions": 0
+        },
+        {
+          "variant": "after",
+          "attempts": 4,
+          "correct": 4,
+          "unknownCalls": 0,
+          "input": 66375,
+          "cached": 0,
+          "output": 656,
+          "tokens": 67031,
+          "estimatedKnownUSD": 0.13931,
+          "usdPerCorrectTask": 0.0348275,
+          "tokensPerCorrectTask": 16757.75,
+          "meanTaskMs": 8846.053812999999,
+          "calls": 20,
+          "fullHistoryCalls": 20,
+          "losslessRequests": 12,
+          "scopedGuidanceCalls": 16,
+          "recoveryCalls": 0,
+          "compactions": 0
+        }
+      ],
+      "tokenSavingPercent": 30.762397611890968,
+      "costSavingPercent": 30.012559658377302,
+      "latency": {
+        "pairs": 4,
+        "beforeMeanMs": 8887.05065625,
+        "afterMeanMs": 8846.053812999999,
+        "beforeMedianMs": 8847.8808125,
+        "afterMedianMs": 8773.854750499999,
+        "meanReductionMs": 40.996843250000666,
+        "medianReductionMs": -159.5295004999998,
+        "meanReduction95CI": [
+          -528.4019169999995,
+          810.9219472500013
+        ],
+        "geometricAfterBeforeRatio": 0.9979132895419923,
+        "ratio95CI": [
+          0.9162182174609982,
+          1.0650113868612596
+        ],
+        "fasterPairs": 1
+      },
+      "everyPairSavesTokens": true,
+      "qualityRegressions": []
+    }
+  ],
+  "estimatedCampaignUSD": 0.3562666
+}

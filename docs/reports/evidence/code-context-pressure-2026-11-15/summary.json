@@ -1,0 +1,334 @@
+{
+  "stopReason": "planned-completion",
+  "attempts": 8,
+  "reportedTokens": 362192,
+  "groups": [
+    {
+      "model": "gpt-6-luna",
+      "variants": [
+        {
+          "variant": "before",
+          "attempts": 2,
+          "correct": 0,
+          "unknownReceipts": 0,
+          "inputTokens": 81614,
+          "outputTokens": 821,
+          "cachedInputTokens": 0,
+          "totalTokens": 82435,
+          "estimatedKnownUSD": 0.008571900000000002,
+          "usdPerCorrectTask": null,
+          "tokensPerCorrectTask": null,
+          "meanTaskMs": 12579.332458500001,
+          "meanVerifiedTaskMs": 12579.499896000001,
+          "longestRequestInputTokens": 9200,
+          "calls": 16,
+          "losslessRequests": 0,
+          "statelessCalls": 16,
+          "compactions": 8,
+          "details": [
+            {
+              "task": "path-policy",
+              "files": 6,
+              "accepted": false,
+              "completed": false,
+              "context": false,
+              "security": {
+                "passed": false,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 41408,
+              "taskMs": 12797.525125,
+              "gradeError": "SyntaxError: JSON Parse error: Unexpected EOF"
+            },
+            {
+              "task": "text-integrity",
+              "files": 6,
+              "accepted": false,
+              "completed": false,
+              "context": false,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 41027,
+              "taskMs": 12361.139792,
+              "gradeError": "SyntaxError: JSON Parse error: Unexpected EOF"
+            }
+          ]
+        },
+        {
+          "variant": "after",
+          "attempts": 2,
+          "correct": 0,
+          "unknownReceipts": 0,
+          "inputTokens": 79387,
+          "outputTokens": 1242,
+          "cachedInputTokens": 0,
+          "totalTokens": 80629,
+          "estimatedKnownUSD": 0.0085597,
+          "usdPerCorrectTask": null,
+          "tokensPerCorrectTask": null,
+          "meanTaskMs": 15441.420083,
+          "meanVerifiedTaskMs": 15450.780625,
+          "longestRequestInputTokens": 9106,
+          "calls": 16,
+          "losslessRequests": 0,
+          "statelessCalls": 16,
+          "compactions": 10,
+          "details": [
+            {
+              "task": "path-policy",
+              "files": 6,
+              "accepted": false,
+              "completed": true,
+              "context": false,
+              "tests": true,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 38229,
+              "taskMs": 16144.11275
+            },
+            {
+              "task": "text-integrity",
+              "files": 6,
+              "accepted": false,
+              "completed": false,
+              "context": false,
+              "security": {
+                "passed": false,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 42400,
+              "taskMs": 14738.727416,
+              "gradeError": "SyntaxError: JSON Parse error: Unexpected identifier \"I\""
+            }
+          ]
+        }
+      ],
+      "allAttemptTokenSavingPercent": 2.1908170073391187,
+      "costPerCorrectSavingPercent": null,
+      "latency": {
+        "pairs": 2,
+        "beforeMeanMs": 12579.499896000001,
+        "afterMeanMs": 15450.780625,
+        "beforeMedianMs": 12579.499896000001,
+        "afterMedianMs": 15450.780625,
+        "meanReductionMs": -2871.280729,
+        "medianReductionMs": -2871.280729,
+        "meanReduction95CI": [
+          -3364.933417,
+          -2377.628041
+        ],
+        "geometricAfterBeforeRatio": 1.227131157666833,
+        "ratio95CI": [
+          1.1923443240671234,
+          1.2629329026201401
+        ],
+        "fasterPairs": 0
+      },
+      "pairs": [
+        {
+          "pair": 1,
+          "task": "path-policy",
+          "files": 6,
+          "beforeAccepted": false,
+          "afterAccepted": false,
+          "beforeTokens": 41408,
+          "afterTokens": 38229,
+          "beforeVerifiedMs": 12797.688625,
+          "afterVerifiedMs": 16162.622042
+        },
+        {
+          "pair": 2,
+          "task": "text-integrity",
+          "files": 6,
+          "beforeAccepted": false,
+          "afterAccepted": false,
+          "beforeTokens": 41027,
+          "afterTokens": 42400,
+          "beforeVerifiedMs": 12361.311167,
+          "afterVerifiedMs": 14738.939208
+        }
+      ]
+    },
+    {
+      "model": "gpt-6.1-sol",
+      "variants": [
+        {
+          "variant": "before",
+          "attempts": 2,
+          "correct": 0,
+          "unknownReceipts": 0,
+          "inputTokens": 97409,
+          "outputTokens": 563,
+          "cachedInputTokens": 0,
+          "totalTokens": 97972,
+          "estimatedKnownUSD": 0.200448,
+          "usdPerCorrectTask": null,
+          "tokensPerCorrectTask": null,
+          "meanTaskMs": 14283.306187499998,
+          "meanVerifiedTaskMs": 14283.477625,
+          "longestRequestInputTokens": 8940,
+          "calls": 16,
+          "losslessRequests": 0,
+          "statelessCalls": 16,
+          "compactions": 5,
+          "details": [
+            {
+              "task": "path-policy",
+              "files": 6,
+              "accepted": false,
+              "completed": false,
+              "context": false,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": false,
+              "tokens": 46332,
+              "taskMs": 15228.484874999998,
+              "gradeError": "SyntaxError: JSON Parse error: Unexpected EOF"
+            },
+            {
+              "task": "text-integrity",
+              "files": 6,
+              "accepted": false,
+              "completed": false,
+              "context": false,
+              "security": {
+                "passed": false,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 51640,
+              "taskMs": 13338.1275,
+              "gradeError": "SyntaxError: JSON Parse error: Unexpected EOF"
+            }
+          ]
+        },
+        {
+          "variant": "after",
+          "attempts": 2,
+          "correct": 0,
+          "unknownReceipts": 0,
+          "inputTokens": 100566,
+          "outputTokens": 590,
+          "cachedInputTokens": 0,
+          "totalTokens": 101156,
+          "estimatedKnownUSD": 0.207032,
+          "usdPerCorrectTask": null,
+          "tokensPerCorrectTask": null,
+          "meanTaskMs": 14153.242708000002,
+          "meanVerifiedTaskMs": 14153.447458,
+          "longestRequestInputTokens": 9088,
+          "calls": 16,
+          "losslessRequests": 0,
+          "statelessCalls": 16,
+          "compactions": 5,
+          "details": [
+            {
+              "task": "path-policy",
+              "files": 6,
+              "accepted": false,
+              "completed": false,
+              "context": false,
+              "security": {
+                "passed": true,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 48904,
+              "taskMs": 13391.770083000001,
+              "gradeError": "SyntaxError: JSON Parse error: Unexpected EOF"
+            },
+            {
+              "task": "text-integrity",
+              "files": 6,
+              "accepted": false,
+              "completed": false,
+              "context": false,
+              "security": {
+                "passed": false,
+                "unchanged": true
+              },
+              "readsComplete": true,
+              "tokens": 52252,
+              "taskMs": 14914.715333,
+              "gradeError": "SyntaxError: JSON Parse error: Unexpected EOF"
+            }
+          ]
+        }
+      ],
+      "allAttemptTokenSavingPercent": -3.249908137018731,
+      "costPerCorrectSavingPercent": null,
+      "latency": {
+        "pairs": 2,
+        "beforeMeanMs": 14283.477625,
+        "afterMeanMs": 14153.447458,
+        "beforeMedianMs": 14283.477625,
+        "afterMedianMs": 14153.447458,
+        "meanReductionMs": 130.0301669999999,
+        "medianReductionMs": 130.0301669999999,
+        "meanReduction95CI": [
+          -1576.5870409999989,
+          1836.6473749999986
+        ],
+        "geometricAfterBeforeRatio": 0.9916348713359423,
+        "ratio95CI": [
+          0.8793952506790988,
+          1.118199941710036
+        ],
+        "fasterPairs": 1
+      },
+      "pairs": [
+        {
+          "pair": 3,
+          "task": "path-policy",
+          "files": 6,
+          "beforeAccepted": false,
+          "afterAccepted": false,
+          "beforeTokens": 46332,
+          "afterTokens": 48904,
+          "beforeVerifiedMs": 15228.648833,
+          "afterVerifiedMs": 13392.001458
+        },
+        {
+          "pair": 4,
+          "task": "text-integrity",
+          "files": 6,
+          "beforeAccepted": false,
+          "afterAccepted": false,
+          "beforeTokens": 51640,
+          "afterTokens": 52252,
+          "beforeVerifiedMs": 13338.306417000002,
+          "afterVerifiedMs": 14914.893458
+        }
+      ]
+    }
+  ],
+  "estimatedKnownUSD": 0.4246116,
+  "pricing": {
+    "date": "2026-11-15",
+    "source": "https://developers.openai.com/api/docs/pricing",
+    "tier": "Standard short context",
+    "rates": {
+      "gpt-6-luna": {
+        "input": 0.1,
+        "output": 0.5,
+        "cached": 0.01
+      },
+      "gpt-6.1-sol": {
+        "input": 2,
+        "output": 10,
+        "cached": 0.1
+      }
+    }
+  },
+  "costDefinition": "All attempts (including failures) divided by accepted completed tasks. Null if no successes or unknown usage. Public-rate estimate, not invoice. Verification latency includes isolated Bun tests."
+}

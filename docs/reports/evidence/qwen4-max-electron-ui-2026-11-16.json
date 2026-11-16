@@ -1,0 +1,20 @@
+{
+  "model": "qwen4-max",
+  "directory": "/private/tmp/zhx-qwen4-ui-ivFcyx",
+  "ok": true,
+  "checks": [
+    "Qwen provider and qwen4-max selected and connected through onboarding",
+    "Qwen4 model connection selected for Code project",
+    "File tool displayed and exact local receipt returned",
+    "Multiple partial responses rendered before Response complete"
+  ],
+  "tools": [
+    {
+      "name": "read_file",
+      "status": "completed"
+    }
+  ],
+  "partialRenderCount": 8,
+  "finalText": "ZHIVEX\n\nExact contents of receipt.txt (read via the file reading tool, no modifications made):\n\nCopy code\nELECTRON_RECEIPT_91affe68-e14d-4bbb-b690-50282697f3aa\n\n\nWhy verifying actual tool results matters:\n\nTool output is the only real evidence that a file exists and contains what you claim.\nGuessing content risks fabricating data that was never actually there.\nExact receipts, IDs, and hashes must be copied, not reconstructed from memory.\nA truncated or partial read can silently hide missing lines.\nVerification catches stale content changed since an earlier read.\nDigests confirm the bytes you saw match the bytes on disk.\nClaiming a check passed without exit code 0 is a false success report.\nUsers make decisions based on your report, so errors propagate downstream.\nUnverified assumptions compound into larger bugs during multi-step work.\nReading before editing prevents overwriting someone else's changes.\nHonest reporting of failures builds trust; fabricated success destroys it.\nAuditable tool results let others reproduce and confirm your findings.\nRead file\nCompleted\n\nResponse complete\n\nDecisions for this turn",
+  "screenshot": "/private/tmp/zhx-qwen4-ui-ivFcyx/electron-completed.png"
+}

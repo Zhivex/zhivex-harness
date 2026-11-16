@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { createHarness, runHarness } from '../src/runtime/harness.js';
-import { TASK_ACCEPTANCE_KEY, TASK_ACCEPTANCE_EVIDENCE_KEY, nextTaskAcceptanceLedger, persistTaskAcceptanceRevision, readTaskAcceptanceLedger, taskAcceptanceCheckpointStore } from '../src/runtime/task-acceptance-record.js';
+import { createHarness, runHarness } from '../packages/core/src/runtime/harness.js';
+import { TASK_ACCEPTANCE_KEY, TASK_ACCEPTANCE_EVIDENCE_KEY, nextTaskAcceptanceLedger, persistTaskAcceptanceRevision, readTaskAcceptanceLedger, taskAcceptanceCheckpointStore } from '../packages/core/src/runtime/task-acceptance-record.js';
 
 const contract=(requirement='Review readability')=>({schemaVersion:1,taskId:'repair',allowedWritePaths:['src/a.ts'],protectedFiles:[],
   requiredChecks:[{id:'tests',kind:'argv',command:'node',args:['--test'],purpose:'Tests',execution:{backend:'oci',approval:'required',network:'none'}}],

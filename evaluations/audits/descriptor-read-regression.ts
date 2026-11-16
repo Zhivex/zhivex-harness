@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, writeFile, rename, symlink, rm } from "node:fs/promises
 import os from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
-import { readRegularFileNoFollow } from "../../src/file-security.js";
+import { readRegularFileNoFollow } from "../../packages/core/src/file-security.js";
 const root = await mkdtemp(path.join(os.tmpdir(), "zhx-descriptor-"));
 try {
   await mkdir(path.join(root, "parent")); await mkdir(path.join(root, "outside"));

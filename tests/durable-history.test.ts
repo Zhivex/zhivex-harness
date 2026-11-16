@@ -3,12 +3,12 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { openHarnessPersistence, HARNESS_SQLITE_FILE } from "../src/persistence/operations.js";
-import { createHarnessStateBackup, importHarnessStateBackup } from "../src/persistence/state-backup.js";
-import { SqliteDatabase } from "../src/persistence/sqlite-database.js";
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { terminalRunFailure } from "../src/cli/terminal/terminal-ui.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { openHarnessPersistence, HARNESS_SQLITE_FILE } from "../packages/core/src/persistence/operations.js";
+import { createHarnessStateBackup, importHarnessStateBackup } from "../packages/core/src/persistence/state-backup.js";
+import { SqliteDatabase } from "../packages/core/src/persistence/sqlite-database.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { terminalRunFailure } from "../packages/core/src/cli/terminal/terminal-ui.js";
 
 test("long harness run survives compaction, reopen and a portable backup", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-history-"));

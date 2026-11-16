@@ -1,6 +1,6 @@
 import {expect, test} from "bun:test";
 import {ProviderHTTPError} from "@zhivex-ai/core/provider";
-import {annotateMetaRequestError} from "../src/providers/meta-errors.js";
+import {annotateMetaRequestError} from "../packages/core/src/providers/meta-errors.js";
 
 for (const [detail, reason] of [
   [{code:"context_length_exceeded"}, "context length exceeded"],

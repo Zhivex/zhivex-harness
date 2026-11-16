@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Workspace } from '../src/workspace/workspace.js';
-import { prepareMcpWorkspaceSnapshot, discardMcpWorkspaceSnapshot } from '../src/execution/mcp-workspace-snapshot.js';
-import { createDockerMcpWorkspace, type DockerMcpWorkspaceLease } from '../src/execution/mcp-oci-workspace.js';
-import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../src/integrations/mcp-stdio-admission.js';
-import { withAdmittedMcpLaunch } from '../src/integrations/mcp-stdio-launch.js';
-import { openDockerMcpChannel } from '../src/execution/mcp-oci-channel.js';
-import { IsolatedMcpStdioClient } from '../src/integrations/mcp-stdio-client.js';
-import { runPortableProcess } from '../src/execution/process-runtime.js';
+import { Workspace } from '../packages/core/src/workspace/workspace.js';
+import { prepareMcpWorkspaceSnapshot, discardMcpWorkspaceSnapshot } from '../packages/core/src/execution/mcp-workspace-snapshot.js';
+import { createDockerMcpWorkspace, type DockerMcpWorkspaceLease } from '../packages/core/src/execution/mcp-oci-workspace.js';
+import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../packages/core/src/integrations/mcp-stdio-admission.js';
+import { withAdmittedMcpLaunch } from '../packages/core/src/integrations/mcp-stdio-launch.js';
+import { openDockerMcpChannel } from '../packages/core/src/execution/mcp-oci-channel.js';
+import { IsolatedMcpStdioClient } from '../packages/core/src/integrations/mcp-stdio-client.js';
+import { runPortableProcess } from '../packages/core/src/execution/process-runtime.js';
 
 const env = Object.fromEntries(['HOME', 'PATH', 'DOCKER_CONFIG', 'DOCKER_CONTEXT', 'DOCKER_HOST', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH', 'XDG_RUNTIME_DIR']
   .flatMap(key => process.env[key] ? [[key, process.env[key]!]] : []));

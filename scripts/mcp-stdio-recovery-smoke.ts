@@ -1,18 +1,18 @@
-import { launchDockerMcpServer } from '../src/execution/mcp-oci-server.js';
-import { prepareMcpWorkspaceSnapshot } from '../src/execution/mcp-workspace-snapshot.js';
-import { Workspace } from '../src/workspace/workspace.js';
-import { createMcpStdioAdmissionAuthority } from '../src/integrations/mcp-stdio-admission.js';
+import { launchDockerMcpServer } from '../packages/core/src/execution/mcp-oci-server.js';
+import { prepareMcpWorkspaceSnapshot } from '../packages/core/src/execution/mcp-workspace-snapshot.js';
+import { Workspace } from '../packages/core/src/workspace/workspace.js';
+import { createMcpStdioAdmissionAuthority } from '../packages/core/src/integrations/mcp-stdio-admission.js';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { resolveHarnessConfig } from '../src/runtime/config.js';
-import { openHarnessPersistence } from '../src/persistence/operations.js';
-import { reserveMcpResources } from '../src/persistence/mcp-resource-journal.js';
-import { recoverDockerMcpResources } from '../src/execution/mcp-resource-recovery.js';
-import { runPortableProcess } from '../src/execution/process-runtime.js';
-import type { McpStdioLaunchProposal } from '../src/integrations/mcp-stdio-admission.js';
+import { resolveHarnessConfig } from '../packages/core/src/runtime/config.js';
+import { openHarnessPersistence } from '../packages/core/src/persistence/operations.js';
+import { reserveMcpResources } from '../packages/core/src/persistence/mcp-resource-journal.js';
+import { recoverDockerMcpResources } from '../packages/core/src/execution/mcp-resource-recovery.js';
+import { runPortableProcess } from '../packages/core/src/execution/process-runtime.js';
+import type { McpStdioLaunchProposal } from '../packages/core/src/integrations/mcp-stdio-admission.js';
 const env = Object.fromEntries(['HOME', 'PATH', 'DOCKER_CONFIG', 'DOCKER_CONTEXT', 'DOCKER_HOST', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH', 'XDG_RUNTIME_DIR']
   .flatMap(key => process.env[key] ? [[key, process.env[key]!]] : []));
 async function docker(args: string[]) {

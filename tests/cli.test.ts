@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { chmod, mkdtemp, mkdir, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -20,21 +20,31 @@ import {
   runResultDocument,
   summarizeApproval,
   withTemporaryHarnessProfiles
-} from "../src/cli.js";
-import { resolveHarnessConfig, type HarnessSubagentProfile } from "../src/runtime/config.js";
-import { parseCliJsonDocument } from "../src/client/json-contracts.js";
-import { SqliteDatabase } from "../src/persistence/sqlite-database.js";
-import { HARNESS_VERSION } from "../src/version.js";
+} from "../packages/core/src/cli.js";
+import { resolveHarnessConfig, type HarnessSubagentProfile } from "../packages/core/src/runtime/config.js";
+import { parseCliJsonDocument } from "../packages/core/src/client/json-contracts.js";
+import { SqliteDatabase } from "../packages/core/src/persistence/sqlite-database.js";
+import { HARNESS_VERSION } from "../packages/core/src/version.js";
 
 const runCli = async (arguments_: string[], env: Record<string, string> = {}) => {
   const child = Bun.spawn([
     process.execPath,
-    path.resolve(import.meta.dir, "../src/cli.ts"),
+    "--preload",
+    path.resolve(import.meta.dir, "preload-sqlite.ts"),
+    path.resolve(import.meta.dir, "../packages/core/src/cli.ts"),
     ...arguments_
   ], {
     cwd: path.resolve(import.meta.dir, ".."),
     // Process contracts must not depend on the host keychain or its unlock latency.
-    env: { PATH: process.env.PATH ?? "", NO_COLOR: "1", ZHIVEX_HARNESS_CREDENTIAL_STORE: "disabled", ...env },
+    env: {
+      PATH: process.env.PATH ?? "",
+      ...(process.env.HARNESS_TEST_SQLITE_LIBRARY
+        ? { HARNESS_TEST_SQLITE_LIBRARY: process.env.HARNESS_TEST_SQLITE_LIBRARY }
+        : {}),
+      NO_COLOR: "1",
+      ZHIVEX_HARNESS_CREDENTIAL_STORE: "disabled",
+      ...env
+    },
     stdin: "ignore",
     stdout: "pipe",
     stderr: "pipe"
@@ -344,115 +354,123 @@ describe("CLI parsing", () => {
 });
 
 describe("change-envelope CLI", () => {
+  // Each rejection is a separate process contract: do not charge eight CLI
+  // startups against one test deadline on a loaded CI runner.
+  let root: string, inputPath: string, patchPath: string, changedPatchPath: string, envelopePath: string;
+  const digest = (character: string) => `sha256:${character.repeat(64)}`;
+  beforeAll(async () => {
+    root = await mkdtemp(path.join(os.tmpdir(), "zhivex-change-envelope-cli-"));
+    inputPath = path.join(root, "input.json");
+    patchPath = path.join(root, "change.patch");
+    changedPatchPath = path.join(root, "changed.patch");
+    envelopePath = path.join(root, "envelope.json");
+    await writeFile(patchPath, "diff --git a/a.txt b/a.txt\n+governed\n", "utf8");
+    await writeFile(changedPatchPath, "diff --git a/a.txt b/a.txt\n+tampered\n", "utf8");
+    await writeFile(inputPath, `${JSON.stringify({
+      createdAt: "2026-08-20T12:00:00.000Z",
+      expiresAt: "2026-08-21T12:00:00.000Z",
+      base: { workspaceDigest: digest("1"), treeDigest: digest("2") },
+      patch: { patchId: "candidate-42" },
+      fingerprints: {
+        harness: digest("3"),
+        policy: digest("4"),
+        environment: digest("5")
+      },
+      checks: [{
+        checkId: "tests",
+        status: "passed",
+        redacted: true,
+        startedAt: "2026-08-20T11:59:00.000Z",
+        completedAt: "2026-08-20T11:59:01.000Z",
+        durationMs: 1_000,
+        exitCode: 0
+      }]
+    }, null, 2)}\n`, "utf8");
+
+    const created = await runCli(["changes", "create", inputPath, "--patch", patchPath]);
+    expect(created.exitCode).toBe(CLI_EXIT_CODES.success);
+    const envelope = JSON.parse(created.stdout) as { envelopeId: string; patch: { patchDigest: string } };
+    expect(envelope.envelopeId).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(envelope.patch.patchDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
+    await writeFile(envelopePath, created.stdout, "utf8");
+  });
+  afterAll(async () => { if (root) await rm(root, { recursive: true, force: true }); });
+
   test("binds exact patch bytes and fails verification for a different artifact", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-change-envelope-cli-"));
-    const digest = (character: string) => `sha256:${character.repeat(64)}`;
-    try {
-      const inputPath = path.join(root, "input.json");
-      const patchPath = path.join(root, "change.patch");
-      const changedPatchPath = path.join(root, "changed.patch");
-      const envelopePath = path.join(root, "envelope.json");
-      await writeFile(patchPath, "diff --git a/a.txt b/a.txt\n+governed\n", "utf8");
-      await writeFile(changedPatchPath, "diff --git a/a.txt b/a.txt\n+tampered\n", "utf8");
-      await writeFile(inputPath, `${JSON.stringify({
-        createdAt: "2026-08-20T12:00:00.000Z",
-        expiresAt: "2026-08-21T12:00:00.000Z",
-        base: { workspaceDigest: digest("1"), treeDigest: digest("2") },
-        patch: { patchId: "candidate-42" },
-        fingerprints: {
-          harness: digest("3"),
-          policy: digest("4"),
-          environment: digest("5")
-        },
-        checks: [{
-          checkId: "tests",
-          status: "passed",
-          redacted: true,
-          startedAt: "2026-08-20T11:59:00.000Z",
-          completedAt: "2026-08-20T11:59:01.000Z",
-          durationMs: 1_000,
-          exitCode: 0
-        }]
-      }, null, 2)}\n`, "utf8");
+    const verified = await runCli([
+      "changes",
+      "verify",
+      envelopePath,
+      "--patch",
+      patchPath,
+      "--now",
+      "2026-08-20T12:30:00.000Z"
+    ]);
+    expect(verified.exitCode).toBe(CLI_EXIT_CODES.success);
+    expect(JSON.parse(verified.stdout)).toMatchObject({
+      schemaVersion: 1,
+      kind: "change-envelope-verification",
+      valid: true,
+      verificationScope: "integrity-expiration-and-preconditions-only",
+      approvals: { authenticity: "not-verified" }
+    });
 
-      const created = await runCli(["changes", "create", inputPath, "--patch", patchPath]);
-      expect(created.exitCode).toBe(CLI_EXIT_CODES.success);
-      const envelope = JSON.parse(created.stdout) as { envelopeId: string; patch: { patchDigest: string } };
-      expect(envelope.envelopeId).toMatch(/^sha256:[a-f0-9]{64}$/);
-      expect(envelope.patch.patchDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
-      await writeFile(envelopePath, created.stdout, "utf8");
+    const rejected = await runCli([
+      "changes",
+      "verify",
+      envelopePath,
+      "--patch",
+      changedPatchPath,
+      "--now",
+      "2026-08-20T12:30:00.000Z"
+    ]);
+    expect(rejected.exitCode).toBe(CLI_EXIT_CODES.runtimeError);
+    expect(JSON.parse(rejected.stdout).issues).toContainEqual(expect.objectContaining({
+      code: "precondition-mismatch",
+      path: ["patch", "patchDigest"]
+    }));
+  });
 
-      const verified = await runCli([
+  test("rejects symlinked patch artifacts", async () => {
+    const linkedPatchPath = path.join(root, "linked.patch");
+    await symlink(patchPath, linkedPatchPath);
+    const linked = await runCli(["changes", "create", inputPath, "--patch", linkedPatchPath]);
+    expect(linked.exitCode).toBe(CLI_EXIT_CODES.usageError);
+    expect(linked.stderr).toContain("regular non-symlink file");
+  });
+
+  test.each(["input", "patch", "preconditions"] as const)("rejects missing %s artifacts", async label => {
+    const cases = [
+      ["input", ["changes", "create", path.join(root, "missing-input.json"), "--patch", patchPath]],
+      ["patch", ["changes", "create", inputPath, "--patch", path.join(root, "missing.patch")]],
+      ["preconditions", [
         "changes",
         "verify",
         envelopePath,
         "--patch",
         patchPath,
-        "--now",
-        "2026-08-20T12:30:00.000Z"
-      ]);
-      expect(verified.exitCode).toBe(CLI_EXIT_CODES.success);
-      expect(JSON.parse(verified.stdout)).toMatchObject({
-        schemaVersion: 1,
-        kind: "change-envelope-verification",
-        valid: true,
-        verificationScope: "integrity-expiration-and-preconditions-only",
-        approvals: { authenticity: "not-verified" }
-      });
+        "--preconditions",
+        path.join(root, "missing-preconditions.json")
+      ]]
+    ] as const;
+    const arguments_ = cases.find(([name]) => name === label)![1];
+    const missing = await runCli([...arguments_]);
+    expect(missing.exitCode, label).toBe(CLI_EXIT_CODES.usageError);
+    expect(missing.stderr).toContain("Change artifact cannot be read (ENOENT)");
+  });
 
-      const rejected = await runCli([
-        "changes",
-        "verify",
-        envelopePath,
-        "--patch",
-        changedPatchPath,
-        "--now",
-        "2026-08-20T12:30:00.000Z"
-      ]);
-      expect(rejected.exitCode).toBe(CLI_EXIT_CODES.runtimeError);
-      expect(JSON.parse(rejected.stdout).issues).toContainEqual(expect.objectContaining({
-        code: "precondition-mismatch",
-        path: ["patch", "patchDigest"]
-      }));
-
-      const linkedPatchPath = path.join(root, "linked.patch");
-      await symlink(patchPath, linkedPatchPath);
-      const linked = await runCli(["changes", "create", inputPath, "--patch", linkedPatchPath]);
-      expect(linked.exitCode).toBe(CLI_EXIT_CODES.usageError);
-      expect(linked.stderr).toContain("regular non-symlink file");
-
-      for (const [label, arguments_] of [
-        ["input", ["changes", "create", path.join(root, "missing-input.json"), "--patch", patchPath]],
-        ["patch", ["changes", "create", inputPath, "--patch", path.join(root, "missing.patch")]],
-        ["preconditions", [
-          "changes",
-          "verify",
-          envelopePath,
-          "--patch",
-          patchPath,
-          "--preconditions",
-          path.join(root, "missing-preconditions.json")
-        ]]
-      ] as const) {
-        const missing = await runCli([...arguments_]);
-        expect(missing.exitCode, label).toBe(CLI_EXIT_CODES.usageError);
-        expect(missing.stderr).toContain("Change artifact cannot be read (ENOENT)");
+  test("rejects unreadable patch artifacts", async () => {
+    if (process.getuid?.() !== 0) {
+      const unreadablePath = path.join(root, "unreadable.patch");
+      await writeFile(unreadablePath, "unreadable\n", "utf8");
+      await chmod(unreadablePath, 0o000);
+      try {
+        const unreadable = await runCli(["changes", "create", inputPath, "--patch", unreadablePath]);
+        expect(unreadable.exitCode).toBe(CLI_EXIT_CODES.usageError);
+        expect(unreadable.stderr).toContain("Change artifact cannot be read (EACCES)");
+      } finally {
+        await chmod(unreadablePath, 0o600);
       }
-
-      if (process.getuid?.() !== 0) {
-        const unreadablePath = path.join(root, "unreadable.patch");
-        await writeFile(unreadablePath, "unreadable\n", "utf8");
-        await chmod(unreadablePath, 0o000);
-        try {
-          const unreadable = await runCli(["changes", "create", inputPath, "--patch", unreadablePath]);
-          expect(unreadable.exitCode).toBe(CLI_EXIT_CODES.usageError);
-          expect(unreadable.stderr).toContain("Change artifact cannot be read (EACCES)");
-        } finally {
-          await chmod(unreadablePath, 0o600);
-        }
-      }
-    } finally {
-      await rm(root, { recursive: true, force: true });
     }
   });
 });

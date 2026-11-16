@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { runPortableProcess } from "../src/execution/process-runtime.js";
+import { runPortableProcess } from "../packages/core/src/execution/process-runtime.js";
 
 for (const cancellation of ["timeout", "abort"] as const) {
   test.skipIf(process.platform === "win32")(`${cancellation} kills descendants with ignored output and resistant SIGTERM handlers`, async () => {

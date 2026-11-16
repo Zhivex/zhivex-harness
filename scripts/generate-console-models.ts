@@ -1,7 +1,7 @@
 /** Import SDK suggestions without overwriting centrally curated policy or removing historical models. */
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { bundledModelCatalog, modelCatalogSchema } from "../src/models/catalog.js";
+import { bundledModelCatalog, modelCatalogSchema } from "../packages/core/src/models/catalog.js";
 const root = process.argv[2];
 if (!root) throw new Error("Usage: bun scripts/generate-console-models.ts <sdk-checkout>");
 const catalog = structuredClone(bundledModelCatalog);
@@ -18,4 +18,4 @@ for (const provider of catalog.providers) {
   }
 }
 catalog.revision = new Date().toISOString().replace(/[:]/g, "-");
-await Bun.write(new URL("../src/models/catalog.json", import.meta.url), JSON.stringify(modelCatalogSchema.parse(catalog), null, 2) + "\n");
+await Bun.write(new URL("../packages/core/src/models/catalog.json", import.meta.url), JSON.stringify(modelCatalogSchema.parse(catalog), null, 2) + "\n");

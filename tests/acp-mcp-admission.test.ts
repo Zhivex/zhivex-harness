@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { parseAcpMcpDescriptors, proposeAcpMcpLaunches, type AcpMcpHostRule } from '../src/client/acp-mcp-admission.js';
-import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../src/integrations/mcp-stdio-admission.js';
+import { parseAcpMcpDescriptors, proposeAcpMcpLaunches, type AcpMcpHostRule } from '../packages/core/src/client/acp-mcp-admission.js';
+import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../packages/core/src/integrations/mcp-stdio-admission.js';
 const digest = `sha256:${'a'.repeat(64)}`;
 const proposal: McpStdioLaunchProposal = { schemaVersion: 1, serverId: 'docs', boundary: 'oci', image: `example/server@${digest}`,
   executable: '/server', args: [], protocolVersion: '2025-11-25', workingDirectory: '.', snapshotDigest: digest,

@@ -34,16 +34,14 @@ jobs:
         run: |
           bun install --frozen-lockfile --ignore-scripts
           bun run build
-          bun run packages/code/scripts/link-local-engine.ts
-      - name: Install immutable browser build dependencies
-        run: bun install --cwd packages/web --frozen-lockfile --ignore-scripts
+          bun run packages/cli/scripts/link-local-engine.ts --replace
       - name: Types, regression tests and independent build
-        working-directory: packages/code
+        working-directory: packages/cli
         run: |
           bun run typecheck
           bun run test
       - name: npm tarball install and offline terminal journeys
-        working-directory: packages/code
+        working-directory: packages/cli
         run: |
           bun pm pack --cwd ../.. --ignore-scripts --filename "$RUNNER_TEMP/harness-candidate.tgz"
           node scripts/installed-journey.mjs --candidate-engine "$RUNNER_TEMP/harness-candidate.tgz"

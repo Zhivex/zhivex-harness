@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import { bundledModelCatalog, catalogModelSchema, modelCatalogSchema, modelDescription } from "../src/models/catalog.js";
-import { recommendCompactionModels } from "../src/models/compaction-recommendations.js";
-import { toSdkCompactionCatalog } from "../src/models/sdk-catalog-adapter.js";
+import { bundledModelCatalog, catalogModelSchema, modelCatalogSchema, modelDescription } from "../packages/core/src/models/catalog.js";
+import { recommendCompactionModels } from "../packages/core/src/models/compaction-recommendations.js";
+import { toSdkCompactionCatalog } from "../packages/core/src/models/sdk-catalog-adapter.js";
 
 const request = {provider: "openai", inputTokens: 32_000, outputTokens: 2_000, now: Date.parse("2026-09-25T00:00:00Z")};
 const fixture = () => structuredClone(bundledModelCatalog);

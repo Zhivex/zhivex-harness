@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { benchmarkAttackRule } from "../scripts/time-to-safe-fix-governed-profile.js";
-import { sanitizedErrorDetails } from "../src/runtime/error-diagnostics.js";
-import { classifyTimeToSafeFixFailure } from "../src/runtime/time-to-safe-fix.js";
+import { sanitizedErrorDetails } from "../packages/core/src/runtime/error-diagnostics.js";
+import { classifyTimeToSafeFixFailure } from "../packages/core/src/runtime/time-to-safe-fix.js";
 import { assertNoForbiddenDiagnosticContent, parseSanitizedOperationalError, sanitizeOperationalError } from "../scripts/release-diagnostics.js";
 
 const target = "tests/restart.test.mjs";

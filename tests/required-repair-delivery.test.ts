@@ -4,9 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import { createInMemoryAgentRunStore } from '@zhivex-ai/agents/ops';
-import { createHarness, runHarness, type HarnessRunDiagnostics } from '../src/runtime/harness.js';
-import { createRepairController, REPAIR_CONTROLLER_KEY } from '../src/runtime/repair-controller.js';
-import { runtimeManifest } from '../src/runtime/runtime-policy.js';
+import { createHarness, runHarness, type HarnessRunDiagnostics } from '../packages/core/src/runtime/harness.js';
+import { createRepairController, REPAIR_CONTROLLER_KEY } from '../packages/core/src/runtime/repair-controller.js';
+import { runtimeManifest } from '../packages/core/src/runtime/runtime-policy.js';
 
 test('required delivery persists without a plan and cannot be disabled by restoring with defaults', () => {
  const c=createRepairController({},true,{requireVerifiedDelivery:true});

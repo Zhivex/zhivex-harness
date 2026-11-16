@@ -1,0 +1,13 @@
+{
+  "tokensKnown": 706509,
+  "unknownUsageCalls": 1,
+  "tasks": 26,
+  "calls": 165,
+  "returnedModels": [
+    "gpt-6-luna",
+    "gpt-6.1-sol"
+  ],
+  "runtimeHashesVerified": true,
+  "unknownAttemptReserve": 60000,
+  "knownPlusReserve": 766509
+}

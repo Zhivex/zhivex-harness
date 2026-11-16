@@ -5,9 +5,9 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import { createInMemoryAgentRunStore } from '@zhivex-ai/agents/ops';
-import { createHarness } from '../src/runtime/harness.js';
-import { createHarnessClientAdapter, type HarnessClientRunRuntimeOptions } from '../src/client/adapter.js';
-import { inspectHarnessPolicy } from '../src/runtime/policy-inspection.js';
+import { createHarness } from '../packages/core/src/runtime/harness.js';
+import { createHarnessClientAdapter, type HarnessClientRunRuntimeOptions } from '../packages/core/src/client/adapter.js';
+import { inspectHarnessPolicy } from '../packages/core/src/runtime/policy-inspection.js';
 
 async function fixture(run: (c: { harness: Awaited<ReturnType<typeof createHarness>>; connect: (prepareRun: NonNullable<HarnessClientRunRuntimeOptions['prepareRun']>) => Promise<any> }) => Promise<void>) {
   const workspace = await mkdtemp(path.join(tmpdir(), 'client-run-runtime-'));

@@ -2,9 +2,9 @@ import { expect, test } from 'bun:test';
 import { GoogleAuth } from 'google-auth-library';
 import { createInMemoryAgentRunStore } from '@zhivex-ai/agents/ops';
 import { wrapLanguageModel, type ModelGenerateInput } from '@zhivex-ai/core';
-import { createProviderModel } from '../src/runtime/config.js';
-import { TaskBudget } from '../src/runtime/task-budget.js';
-import { isTaskTransportModel } from '../src/runtime/task-transport.js';
+import { createProviderModel } from '../packages/core/src/runtime/config.js';
+import { TaskBudget } from '../packages/core/src/runtime/task-budget.js';
+import { isTaskTransportModel } from '../packages/core/src/runtime/task-transport.js';
 
 // Actual installed SDK adapters, synthetic HTTP and credentials only. These
 // contracts verify dispatch/accounting controls, never provider/model quality.

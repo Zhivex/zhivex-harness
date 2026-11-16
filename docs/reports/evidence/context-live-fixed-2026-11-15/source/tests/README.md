@@ -1,0 +1,1 @@
+These immutable source snapshots retain their original bytes and hashes. The .txt suffix prevents Bun test discovery from executing an incomplete archived checkout. Logical original paths are listed in ../../source-bindings.json.

@@ -1,10 +1,10 @@
 import { test, expect } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
-import { bundledModelCatalog, modelCatalogSchema, catalogModels } from "../src/models/catalog.js";
-import { loadModelCatalog } from "../src/models/catalog-store.js";
-import { consoleModelChoices, navigateConsole } from "../src/cli/console/console-navigation.js";
-import { providerAvailability } from "../src/runtime/config.js";
-import type { ConsoleInput } from "../src/cli/console/console-input.js";
+import { bundledModelCatalog, modelCatalogSchema, catalogModels } from "../packages/core/src/models/catalog.js";
+import { loadModelCatalog } from "../packages/core/src/models/catalog-store.js";
+import { consoleModelChoices, navigateConsole } from "../packages/core/src/cli/console/console-navigation.js";
+import { providerAvailability } from "../packages/core/src/runtime/config.js";
+import type { ConsoleInput } from "../packages/core/src/cli/console/console-input.js";
 
 const fixture = () => structuredClone(bundledModelCatalog);
 test("new OpenAI choices default to GPT-6 Luna while explicit older choices remain selectable", () => {

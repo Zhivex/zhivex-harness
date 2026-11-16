@@ -3,7 +3,7 @@ import { lstat, realpath } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-type HarnessPublicModule = typeof import("../src/index.js");
+type HarnessPublicModule = typeof import("../packages/core/src/index.js");
 
 export type TimeToSafeFixHarnessRuntime = Pick<
   HarnessPublicModule,
@@ -61,7 +61,7 @@ export const loadTimeToSafeFixHarnessRuntime = async (
   env: NodeJS.ProcessEnv = process.env
 ): Promise<TimeToSafeFixHarnessRuntime> => {
   const requestedModule = env.ZHIVEX_SAFE_FIX_HARNESS_RUNTIME?.trim();
-  if (!requestedModule) return validateRuntime(await import("../src/index.js"));
+  if (!requestedModule) return validateRuntime(await import("../packages/core/src/index.js"));
 
   assert(path.isAbsolute(requestedModule), "ZHIVEX_SAFE_FIX_HARNESS_RUNTIME must be an absolute path");
   const suppliedEntry = await lstat(requestedModule);

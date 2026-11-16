@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
-import { compileTaskAcceptanceContract } from '../src/runtime/task-acceptance.js';
-import { validateTaskAcceptanceContract, validateTaskAcceptanceWorkspace } from '../src/runtime/task-acceptance-validation.js';
+import { compileTaskAcceptanceContract } from '../packages/core/src/runtime/task-acceptance.js';
+import { validateTaskAcceptanceContract, validateTaskAcceptanceWorkspace } from '../packages/core/src/runtime/task-acceptance-validation.js';
 import { mkdtemp, mkdir, writeFile, symlink, link, rm } from 'node:fs/promises';
-import { resolveHarnessConfig } from '../src/runtime/config.js';
+import { resolveHarnessConfig } from '../packages/core/src/runtime/config.js';
 import { z } from 'zod';
 
 const fixture = () => ({ schemaVersion:1, taskId:'repair-parser', allowedWritePaths:['src/parser.ts','tests/parser.test.ts'], protectedFiles:['package.json'],

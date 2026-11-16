@@ -1,9 +1,9 @@
-import type { HarnessProvider } from '../src/runtime/config.js';
-import { isRetryableProviderFailure } from '../src/runtime/provider-transient.js';
-import { HarnessConfigError, HarnessExecutionError } from '../src/runtime/errors.js';
+import type { HarnessProvider } from '../packages/core/src/runtime/config.js';
+import { isRetryableProviderFailure } from '../packages/core/src/runtime/provider-transient.js';
+import { HarnessConfigError, HarnessExecutionError } from '../packages/core/src/runtime/errors.js';
 import { diagnosticFingerprint, parseSanitizedOperationalError, sanitizeOperationalError } from './release-diagnostics.js';
 import { createHash } from 'node:crypto';
-import { errorDetailsSchema } from '../src/runtime/error-diagnostics.js';
+import { errorDetailsSchema } from '../packages/core/src/runtime/error-diagnostics.js';
 import type { AgentStreamEvent, TokenUsage } from '@zhivex-ai/core';
 
 const checks = ['completed', 'compacted', 'codename', 'compatibility', 'rejectedApproach', 'objective', 'noTools'] as const;

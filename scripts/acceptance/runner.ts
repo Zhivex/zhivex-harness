@@ -4,11 +4,11 @@ import { mkdtemp, mkdir, readFile, readdir, rm, writeFile, lstat } from "node:fs
 import os from "node:os";
 import path from "node:path";
 import type { LanguageModel, AgentRunOutput, AgentApprovalRequest } from "@zhivex-ai/agents";
-import { runPortableProcess } from "../../src/execution/process-runtime.js";
+import { runPortableProcess } from "../../packages/core/src/execution/process-runtime.js";
 import { sanitizeOperationalError } from "../release-diagnostics.js";
 import { ACCEPTANCE_LIMITS, type AcceptanceFixture } from "./fixtures.js";
 
-type Engine = typeof import("../../src/engine/index.js");
+type Engine = typeof import("../../packages/core/src/engine/index.js");
 export interface AcceptanceRoute { provider: string; model: string; route: string }
 export interface AcceptanceAttempt {
   scenario: string; attempt: number; provider: string; model: string; route: string;

@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtemp, mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { timeToSafeFixTaskSchema } from "../src/runtime/time-to-safe-fix.js";
+import { timeToSafeFixTaskSchema } from "../packages/core/src/runtime/time-to-safe-fix.js";
 
 const dataset = await readFile(new URL("../evaluations/representative-repositories-v2.jsonl", import.meta.url), "utf8");
 const tasks = dataset.trim().split("\n").map(line => timeToSafeFixTaskSchema.parse(JSON.parse(line)));

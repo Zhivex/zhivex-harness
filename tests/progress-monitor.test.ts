@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { tool } from "@zhivex-ai/core";
 import { z } from "zod";
-import { createProgressMonitor, PROGRESS_MONITOR_KEY } from "../src/runtime/progress-monitor.js";
+import { createProgressMonitor, PROGRESS_MONITOR_KEY } from "../packages/core/src/runtime/progress-monitor.js";
 
 test("repeated edit-test cycles recommend recovery then stop without storing payloads", () => {
   const monitor = createProgressMonitor();

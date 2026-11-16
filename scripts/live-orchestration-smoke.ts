@@ -1,4 +1,4 @@
-import { validateDelegationResult, delegationTerminalText } from "../src/runtime/delegation-result.js";
+import { validateDelegationResult, delegationTerminalText } from "../packages/core/src/runtime/delegation-result.js";
 import { loadLiveSmokeRuntime } from "./live-smoke-runtime.js";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -7,8 +7,8 @@ import path from "node:path";
 
 import { getAgentBudgetStatus } from "@zhivex-ai/agents";
 
-import type { HarnessProvider } from "../src/runtime/config.js";
-import { runPortableProcess } from "../src/execution/process-runtime.js";
+import type { HarnessProvider } from "../packages/core/src/runtime/config.js";
+import { runPortableProcess } from "../packages/core/src/execution/process-runtime.js";
 import { liveProviderSmokeInternals } from "./live-provider-smoke.js";
 
 const { PROVIDERS, providerDescriptor, HarnessExecutionError, createHarness, runHarness, inspectHarnessRun } = await loadLiveSmokeRuntime();

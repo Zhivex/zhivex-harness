@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { openHarnessActivityStore } from "../src/client/service-events.js";
-import { openCliSessionStore } from "../src/persistence/sessions.js";
-import { createEditProposal } from "../src/workspace/edit-contracts.js";
-import { Workspace } from "../src/workspace/workspace.js";
-import { createContextRuntime } from "../src/runtime/context-runtime.js";
-import { createHarness, runHarnessTask } from "../src/runtime/harness.js";
-import type { TaskTelemetrySnapshot } from "../src/runtime/task-telemetry.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { openHarnessActivityStore } from "../packages/core/src/client/service-events.js";
+import { openCliSessionStore } from "../packages/core/src/persistence/sessions.js";
+import { createEditProposal } from "../packages/core/src/workspace/edit-contracts.js";
+import { Workspace } from "../packages/core/src/workspace/workspace.js";
+import { createContextRuntime } from "../packages/core/src/runtime/context-runtime.js";
+import { createHarness, runHarnessTask } from "../packages/core/src/runtime/harness.js";
+import type { TaskTelemetrySnapshot } from "../packages/core/src/runtime/task-telemetry.js";
 import { sanitizeOperationalError } from "./release-diagnostics.js";
 
 // Fixtures are temporary, reports contain numeric diagnostics only. --live is

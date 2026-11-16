@@ -576,3 +576,30 @@ permission to edit. Normal tools can reread changed files; existing edit
 validation remains authoritative. Snapshot labels do not establish resistance
 to prompt injection. Preloading irrelevant or large context can increase cost,
 so callers should select only files needed by the task.
+
+## Recoverable historical results and request preparation
+
+`request-projection-v4` also reduces large historical `read_file` and `read_files`
+outputs while retaining the newest tool exchange in full. Original results remain
+in the run store and missing portions can be retrieved with `read_tool_result`.
+These pages are historical data, not fresh file evidence or approval. Failed
+results and results without durable recovery remain complete. If recovery is
+absent or denied by the host tool policy, projection is disabled; approval-gated
+recovery keeps its normal approval flow.
+
+Adaptive compaction measures this recoverable representation, including its
+preview, reference and notice, while summaries and checkpoints retain their
+original sources. A bounded scope/run/revision index avoids repeated hashing;
+changed revisions validate serialized contents before reusing a hash. It does
+not bypass current-store loads, catalog checks or tool policy.
+
+During read batches, new scoped instruction ancestors are validated and recorded
+once. All discovered instructions, including previously absent ones, are refreshed
+before each model request. This removes repeated full refreshes between local
+reads without caching instructions across requests. Strict resume validation,
+no-follow readers and aggregate byte limits remain in force.
+
+This projection version changes the durable fingerprint: finish paused runs with
+their original artifact. See the offline benchmark command
+`bun run benchmark:context-efficiency` and its measured scope in the
+[context efficiency report](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/CONTEXT_EFFICIENCY_2026-11-15.md).

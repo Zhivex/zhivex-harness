@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { openDockerMcpChannel } from '../src/execution/mcp-oci-channel.js';
-import { IsolatedMcpStdioClient } from '../src/integrations/mcp-stdio-client.js';
-import { runPortableProcess } from '../src/execution/process-runtime.js';
+import { openDockerMcpChannel } from '../packages/core/src/execution/mcp-oci-channel.js';
+import { IsolatedMcpStdioClient } from '../packages/core/src/integrations/mcp-stdio-client.js';
+import { runPortableProcess } from '../packages/core/src/execution/process-runtime.js';
 
 const image = process.env.HARNESS_MCP_SMOKE_IMAGE ?? 'node:22-alpine';
 async function docker(args: string[]) {

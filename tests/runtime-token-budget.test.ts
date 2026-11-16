@@ -4,11 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { createCheckpointTokenCap } from "../src/runtime/runtime-policy.js";
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { estimateRequestTokens } from "../src/runtime/model-budget.js";
-import { createEditProposal } from "../src/workspace/edit-contracts.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { createCheckpointTokenCap } from "../packages/core/src/runtime/runtime-policy.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { estimateRequestTokens } from "../packages/core/src/runtime/model-budget.js";
+import { createEditProposal } from "../packages/core/src/workspace/edit-contracts.js";
 
 for (const provider of ["meta", "openai", "qwen"] as const) {
   for (const outputLimit of [4, 2]) {
@@ -174,7 +174,9 @@ test("default runtime compaction tracks consumption within the current invocatio
       { type: "finish", finishReason: "stop", usage: { inputTokens: 10000, outputTokens: 100, totalTokens: 10100 } }]
   ] });
   const harness = await createHarness({ workspace: root, provider: "meta", modelInstance: model,
-    store: createInMemoryAgentRunStore(), subagentProfiles: [] });
+    // Keep recovery unavailable here so the test exercises budget-triggered
+    // compaction, independently of recoverable historical-read projection.
+    store: createInMemoryAgentRunStore(), subagentProfiles: [], toolNames: ["read_file"] });
   try {
     const result = await runHarness(harness, { prompt: "Analyze both files." });
     expect(result.status).toBe("completed");

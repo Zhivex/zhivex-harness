@@ -1,0 +1,419 @@
+{
+  "schemaVersion": 1,
+  "stateless": false,
+  "stopReason": "unknown-usage",
+  "plannedPairs": 8,
+  "attemptedTasks": 14,
+  "reportedTokens": 434516,
+  "groups": [
+    {
+      "model": "gpt-6-luna",
+      "variants": [
+        {
+          "variant": "before",
+          "tasks": 4,
+          "correct": 0,
+          "completed": 4,
+          "knownUsage": 4,
+          "usageMatches": 4,
+          "inputTokens": 95992,
+          "outputTokens": 783,
+          "totalTokens": 96775,
+          "cachedInputTokens": 0,
+          "uncachedInputTokens": 95992,
+          "reasoningTokens": 57,
+          "projectedRequests": 0,
+          "calls": 22,
+          "compactions": 4,
+          "recoveryCalls": 0,
+          "totalTaskMs": 38227.505124,
+          "contextMs": 11.181790999998498,
+          "qualityFields": [
+            {
+              "fixture": "correction",
+              "repetition": 0,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": true,
+                "decision": false,
+                "policy": false,
+                "revision": true
+              }
+            },
+            {
+              "fixture": "correction",
+              "repetition": 1,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": true,
+                "decision": false,
+                "policy": false,
+                "revision": true
+              }
+            },
+            {
+              "fixture": "boundary",
+              "repetition": 0,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": true,
+                "decision": true,
+                "policy": false,
+                "revision": true
+              }
+            },
+            {
+              "fixture": "boundary",
+              "repetition": 1,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": true,
+                "decision": true,
+                "policy": false,
+                "revision": true
+              }
+            }
+          ]
+        },
+        {
+          "variant": "after",
+          "tasks": 4,
+          "correct": 0,
+          "completed": 4,
+          "knownUsage": 4,
+          "usageMatches": 4,
+          "inputTokens": 103442,
+          "outputTokens": 1021,
+          "totalTokens": 104463,
+          "cachedInputTokens": 0,
+          "uncachedInputTokens": 103442,
+          "reasoningTokens": 267,
+          "projectedRequests": 0,
+          "calls": 22,
+          "compactions": 0,
+          "recoveryCalls": 0,
+          "totalTaskMs": 39728.497584,
+          "contextMs": 13.61216700000179,
+          "qualityFields": [
+            {
+              "fixture": "correction",
+              "repetition": 0,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": true,
+                "decision": false,
+                "policy": false,
+                "revision": true
+              }
+            },
+            {
+              "fixture": "correction",
+              "repetition": 1,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": true,
+                "decision": false,
+                "policy": false,
+                "revision": true
+              }
+            },
+            {
+              "fixture": "boundary",
+              "repetition": 0,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": true,
+                "decision": true,
+                "policy": false,
+                "revision": true
+              }
+            },
+            {
+              "fixture": "boundary",
+              "repetition": 1,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": true,
+                "decision": true,
+                "policy": false,
+                "revision": true
+              }
+            }
+          ]
+        }
+      ],
+      "pairedTasks": 4,
+      "inputReductionPercent": -7.761063421951819,
+      "totalTokenReductionPercent": -7.944200464996132,
+      "latency": {
+        "pairs": 4,
+        "beforeMeanMs": 9556.876281,
+        "afterMeanMs": 9932.124396,
+        "beforeMedianMs": 9307.321,
+        "afterMedianMs": 10184.303875000001,
+        "meanReductionMs": -375.2481150000008,
+        "medianReductionMs": -291.38560450000114,
+        "meanReduction95CI": [
+          -3086.953417500001,
+          2336.4571874999992
+        ],
+        "geometricAfterBeforeRatio": 1.0592169262391633,
+        "ratio95CI": [
+          0.7975192649371073,
+          1.4067879563009902
+        ],
+        "fasterPairs": 2
+      },
+      "qualityRegressions": [],
+      "pairs": [
+        {
+          "pair": 1,
+          "fixture": "correction",
+          "repetition": 0,
+          "beforeCorrect": false,
+          "afterCorrect": false,
+          "beforeTokens": 24587,
+          "afterTokens": 24109,
+          "beforeMs": 12410.386208,
+          "afterMs": 9733.751833
+        },
+        {
+          "pair": 2,
+          "fixture": "correction",
+          "repetition": 1,
+          "beforeCorrect": false,
+          "afterCorrect": false,
+          "beforeTokens": 23679,
+          "afterTokens": 24896,
+          "beforeMs": 7202.476916,
+          "afterMs": 10797.332542
+        },
+        {
+          "pair": 3,
+          "fixture": "boundary",
+          "repetition": 0,
+          "beforeCorrect": false,
+          "afterCorrect": false,
+          "beforeTokens": 24928,
+          "afterTokens": 23929,
+          "beforeMs": 10558.837292,
+          "afterMs": 8562.557292000001
+        },
+        {
+          "pair": 4,
+          "fixture": "boundary",
+          "repetition": 1,
+          "beforeCorrect": false,
+          "afterCorrect": false,
+          "beforeTokens": 23581,
+          "afterTokens": 31529,
+          "beforeMs": 8055.804708,
+          "afterMs": 10634.855917
+        }
+      ]
+    },
+    {
+      "model": "gpt-6.1-sol",
+      "variants": [
+        {
+          "variant": "before",
+          "tasks": 3,
+          "correct": 1,
+          "completed": 3,
+          "knownUsage": 3,
+          "usageMatches": 3,
+          "inputTokens": 123017,
+          "outputTokens": 747,
+          "totalTokens": 123764,
+          "cachedInputTokens": 0,
+          "uncachedInputTokens": 123017,
+          "reasoningTokens": 35,
+          "projectedRequests": 0,
+          "calls": 22,
+          "compactions": 5,
+          "recoveryCalls": 0,
+          "totalTaskMs": 47800.942543000005,
+          "contextMs": 10.511371000003209,
+          "qualityFields": [
+            {
+              "fixture": "correction",
+              "repetition": 0,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": true,
+                "decision": false,
+                "policy": true,
+                "revision": true
+              }
+            },
+            {
+              "fixture": "correction",
+              "repetition": 1,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": true,
+                "decision": false,
+                "policy": true,
+                "revision": true
+              }
+            },
+            {
+              "fixture": "boundary",
+              "repetition": 0,
+              "passed": true,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": true,
+                "decision": true,
+                "policy": true,
+                "revision": true
+              }
+            }
+          ]
+        },
+        {
+          "variant": "after",
+          "tasks": 3,
+          "correct": 0,
+          "completed": 2,
+          "knownUsage": 2,
+          "usageMatches": 2,
+          "inputTokens": 108885,
+          "outputTokens": 629,
+          "totalTokens": 109514,
+          "cachedInputTokens": 0,
+          "uncachedInputTokens": 108885,
+          "reasoningTokens": 0,
+          "projectedRequests": 0,
+          "calls": 21,
+          "compactions": 0,
+          "recoveryCalls": 0,
+          "totalTaskMs": 63217.300957,
+          "contextMs": 10.77374900000396,
+          "qualityFields": [
+            {
+              "fixture": "correction",
+              "repetition": 0,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": true,
+                "decision": false,
+                "policy": true,
+                "revision": true
+              }
+            },
+            {
+              "fixture": "correction",
+              "repetition": 1,
+              "passed": false,
+              "fields": {
+                "code": true,
+                "total": true,
+                "threshold": true,
+                "decision": false,
+                "policy": true,
+                "revision": true
+              }
+            },
+            {
+              "fixture": "boundary",
+              "repetition": 0,
+              "passed": false,
+              "fields": {}
+            }
+          ]
+        }
+      ],
+      "pairedTasks": 3,
+      "inputReductionPercent": 11.48784314363056,
+      "totalTokenReductionPercent": 11.51384893830193,
+      "latency": {
+        "pairs": 3,
+        "beforeMeanMs": 15933.647514333335,
+        "afterMeanMs": 21072.433652333333,
+        "beforeMedianMs": 14490.697834,
+        "afterMedianMs": 14994.961833,
+        "meanReductionMs": -5138.786137999999,
+        "medianReductionMs": -1031.3707489999997,
+        "meanReduction95CI": [
+          -18818.635999,
+          4433.648334000001
+        ],
+        "geometricAfterBeforeRatio": 1.2391619467137434,
+        "ratio95CI": [
+          0.7708312548548043,
+          2.2986700995755505
+        ],
+        "fasterPairs": 1
+      },
+      "qualityRegressions": [
+        7
+      ],
+      "pairs": [
+        {
+          "pair": 5,
+          "fixture": "correction",
+          "repetition": 0,
+          "beforeCorrect": false,
+          "afterCorrect": false,
+          "beforeTokens": 38666,
+          "afterTokens": 39020,
+          "beforeMs": 13963.591084,
+          "afterMs": 14994.961833
+        },
+        {
+          "pair": 6,
+          "fixture": "correction",
+          "repetition": 1,
+          "beforeCorrect": false,
+          "afterCorrect": false,
+          "beforeTokens": 46467,
+          "afterTokens": 39017,
+          "beforeMs": 19346.653625000003,
+          "afterMs": 14913.005291000001
+        },
+        {
+          "pair": 7,
+          "fixture": "boundary",
+          "repetition": 0,
+          "beforeCorrect": true,
+          "afterCorrect": false,
+          "beforeTokens": 38631,
+          "afterTokens": null,
+          "beforeMs": 14490.697834,
+          "afterMs": 33309.333833
+        }
+      ]
+    }
+  ],
+  "caveats": [
+    "Small paired sample; latency confidence intervals are descriptive, not production certification.",
+    "Fresh cache routing keys do not guarantee zero cache hits: reported cached usage is retained.",
+    "Failed tasks and extra recovery calls remain in all-attempt totals; no retries.",
+    "Task latency includes context/tool/persistence work; network/provider variance dominates millisecond local changes.",
+    "Exact fixture grading checks selected context, not universal semantic quality."
+  ]
+}

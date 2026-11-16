@@ -1,4 +1,4 @@
-import type { HarnessProvider } from "../src/runtime/config.js";
+import type { HarnessProvider } from "../packages/core/src/runtime/config.js";
 
 const liveRoutes = ["meta", "qwen", "openai", "anthropic", "gemini", "vertex"] as const;
 

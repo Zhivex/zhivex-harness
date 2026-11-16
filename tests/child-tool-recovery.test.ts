@@ -5,7 +5,7 @@ import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import type { GenerateResult, ToolCall } from "@zhivex-ai/core";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
 
 const usage = { inputTokens: 10, outputTokens: 2, totalTokens: 12 };
 const call = (id: string, name: string, input: ToolCall["input"]): GenerateResult => ({

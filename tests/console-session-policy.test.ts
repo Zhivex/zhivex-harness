@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test";
 import type { AgentApprovalRequest, AgentStreamEvent } from "@zhivex-ai/agents";
-import { resolveTerminalApprovals } from "../src/cli/terminal/terminal-ui.js";
-import { consoleProgressGuard } from "../src/cli/console/console-progress.js";
-import { consoleBudgetOptions } from "../src/cli/console/console-budget.js";
-import { parseCliArgs } from "../src/cli/arguments.js";
-import { terminalApprovalResolver } from "../src/cli/presentation.js";
+import { resolveTerminalApprovals } from "../packages/core/src/cli/terminal/terminal-ui.js";
+import { consoleProgressGuard } from "../packages/core/src/cli/console/console-progress.js";
+import { consoleBudgetOptions } from "../packages/core/src/cli/console/console-budget.js";
+import { parseCliArgs } from "../packages/core/src/cli/arguments.js";
+import { terminalApprovalResolver } from "../packages/core/src/cli/presentation.js";
 const check = (script = "bun test", overrides = {}): AgentApprovalRequest => ({
   id: "check", kind: "local-tool", provider: "fixture", name: "run_check",
   arguments: JSON.stringify({ check: "test", expectedScript: script }), rawData: null, ...overrides,

@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { createQwen } from "@zhivex-ai/qwen";
 import { wrapLanguageModel, type ModelMessage } from "@zhivex-ai/core";
-import { qwenLocalContext } from "../src/providers/qwen-context.js";
+import { qwenLocalContext } from "../packages/core/src/providers/qwen-context.js";
 
 for (const streaming of [false,true]) test(`Qwen wire request replays compacted context instead of remote history: streaming=${streaming}`, async () => {
   const bodies: Record<string,any>[]=[];

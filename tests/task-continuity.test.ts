@@ -2,19 +2,19 @@ import { test, expect } from 'bun:test';
 import { mkdtemp, writeFile, rm, cp, readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { createHarness, runHarnessTask } from '../src/runtime/harness.js';
-import { initializeHarnessTaskBudget } from '../src/runtime/task-budget-host.js';
-import { reviseHarnessTaskAcceptance } from '../src/runtime/task-acceptance-host.js';
-import { taskAcceptanceContractSchema } from '../src/runtime/task-acceptance.js';
+import { createHarness, runHarnessTask } from '../packages/core/src/runtime/harness.js';
+import { initializeHarnessTaskBudget } from '../packages/core/src/runtime/task-budget-host.js';
+import { reviseHarnessTaskAcceptance } from '../packages/core/src/runtime/task-acceptance-host.js';
+import { taskAcceptanceContractSchema } from '../packages/core/src/runtime/task-acceptance.js';
 import type { StreamEvent } from '@zhivex-ai/core';
-import { inspectHarnessTaskContinuity } from '../src/runtime/task-continuity.js';
-import { TASK_ACCEPTANCE_KEY, TASK_ACCEPTANCE_EVIDENCE_KEY } from '../src/runtime/task-acceptance-record.js';
-import { persistHarnessTaskDraft, readHarnessTaskDraft, inspectHarnessTaskBudget } from '../src/runtime/task-budget-host.js';
-import { SqliteDatabase } from '../src/persistence/sqlite-database.js';
-import { createHarnessStateBackup, importHarnessStateBackup } from '../src/persistence/state-backup.js';
+import { inspectHarnessTaskContinuity } from '../packages/core/src/runtime/task-continuity.js';
+import { TASK_ACCEPTANCE_KEY, TASK_ACCEPTANCE_EVIDENCE_KEY } from '../packages/core/src/runtime/task-acceptance-record.js';
+import { persistHarnessTaskDraft, readHarnessTaskDraft, inspectHarnessTaskBudget } from '../packages/core/src/runtime/task-budget-host.js';
+import { SqliteDatabase } from '../packages/core/src/persistence/sqlite-database.js';
+import { createHarnessStateBackup, importHarnessStateBackup } from '../packages/core/src/persistence/state-backup.js';
 import { createTextMessage } from '@zhivex-ai/core';
-import { openHarnessTaskBudget } from '../src/runtime/task-budget-host.js';
-import { TASK_BUDGET_KEY } from '../src/runtime/task-budget.js';
+import { openHarnessTaskBudget } from '../packages/core/src/runtime/task-budget-host.js';
+import { TASK_BUDGET_KEY } from '../packages/core/src/runtime/task-budget.js';
 
 const contract = taskAcceptanceContractSchema.parse({ schemaVersion: 1, taskId: 'continuity', allowedWritePaths: ['result.txt'], protectedFiles: ['package.json'],
   requiredChecks: [{ id: 'test', kind: 'package-script', script: 'test', expectedScript: 'node --version', command: 'npm', args: ['--ignore-scripts', 'run', 'test'], purpose: 'fixture', execution: { backend: 'none', approval: 'required' } }],
@@ -281,7 +281,7 @@ for (const stage of ['before-receipt', 'after-receipt']) test(`SIGKILL ${stage} 
   const workerContract = { ...contract, requiredChecks: contract.requiredChecks.map(check => ({ ...check, expectedScript: command })) };
   const worker = root + '/worker.ts';
   await writeFile(worker, `
-import { createHarness, runHarnessTask } from ${JSON.stringify(new URL('../src/runtime/harness.ts', import.meta.url).pathname)};
+import { createHarness, runHarnessTask } from ${JSON.stringify(new URL('../packages/core/src/runtime/harness.ts', import.meta.url).pathname)};
 import { createMockLanguageModel } from ${JSON.stringify(new URL('../node_modules/@zhivex-ai/agents/dist/testing.js', import.meta.url).pathname)};
 const contract = ${JSON.stringify(workerContract)};
 const usage = { inputTokens: 10, outputTokens: 5, totalTokens: 15 };

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "bun": "1.4.3",
+  "methodology": "Offline synthetic workloads; 3 warmups; 25 alternating pairs; medians. Tokens use the harness character estimator, messages only, across 8 requests. Lookup changes durable revision between each page; excludes store I/O. Scope baseline retains old refresh frequency but uses the improved linear validator, conservatively understating the full improvement.",
+  "messageTokens": {
+    "before": 191348,
+    "after": 74460,
+    "reductionPercent": 61.08660660158455
+  },
+  "resultLookup": {
+    "samples": 25,
+    "beforeMedianMs": 12.093082999999979,
+    "afterMedianMs": 7.7990839999999935,
+    "speedup": 1.5505773498528788
+  },
+  "scopedRefresh": {
+    "samples": 25,
+    "beforeMedianMs": 7.543791999999939,
+    "afterMedianMs": 1.6522500000000946,
+    "speedup": 4.5657691027383915,
+    "beforeSourceReads": 320,
+    "afterSourceReads": 64,
+    "scopes": 64,
+    "toolReads": 4
+  },
+  "assertions": {
+    "exactPageRecovery": true,
+    "unchangedDurableResults": true,
+    "identicalScopedInstructions": true
+  }
+}

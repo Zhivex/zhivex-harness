@@ -2,14 +2,14 @@ import { expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { consoleBudgetOptions, restoreConsoleOptions } from "../src/cli/console/console-budget.js";
-import { createHarnessResumeMetadata, readHarnessResumeConfig } from "../src/cli/resume-metadata.js";
-import { effectiveRuntimeBudget, runtimeManifest } from "../src/runtime/runtime-policy.js";
-import { inspectRuntimeManifest } from "../src/runtime/runtime-diagnostics.js";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { cliRunEventDocumentSchema } from "../src/client/json-contracts.js";
-import { parseCliArgs } from "../src/cli/arguments.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { consoleBudgetOptions, restoreConsoleOptions } from "../packages/core/src/cli/console/console-budget.js";
+import { createHarnessResumeMetadata, readHarnessResumeConfig } from "../packages/core/src/cli/resume-metadata.js";
+import { effectiveRuntimeBudget, runtimeManifest } from "../packages/core/src/runtime/runtime-policy.js";
+import { inspectRuntimeManifest } from "../packages/core/src/runtime/runtime-diagnostics.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { cliRunEventDocumentSchema } from "../packages/core/src/client/json-contracts.js";
+import { parseCliArgs } from "../packages/core/src/cli/arguments.js";
 import { setTimeout as delay } from "node:timers/promises";
 
 test("interactive defaults omit accumulated ceilings, preserve explicit/environment settings and stored numeric values", () => {

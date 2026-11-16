@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { checkApprovalGrant } from '../src/cli/terminal/session-grants.js';
+import { checkApprovalGrant } from '../packages/core/src/cli/terminal/session-grants.js';
 
 import {
   DEFAULT_APPROVAL_SUMMARY_CHARACTERS,
@@ -10,7 +10,7 @@ import {
   resolveTerminalApprovals,
   sanitizeTerminalText,
   terminalSupportsColor
-} from "../src/cli/terminal/terminal-ui.js";
+} from "../packages/core/src/cli/terminal/terminal-ui.js";
 
 const approval = (
   name: string,

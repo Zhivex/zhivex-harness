@@ -146,26 +146,26 @@ describe("release workflow version source", () => {
     ]);
 
     expect(workflow).toContain("desktop-security:");
-    expect(workflow).toContain("bun install --cwd desktop --frozen-lockfile --ignore-scripts");
-    expect(workflow).toContain("working-directory: desktop");
-    expect(workflow).toContain("bun test desktop/tests");
-    expect(workflow).toContain("bun run --cwd desktop package");
-    expect(workflow).toContain("bun run --cwd desktop smoke:packaged --empty-start");
-    expect(dependabot).toMatch(/package-ecosystem: bun\n\s+directory: \/desktop/);
+    expect(workflow).toContain("bun install --cwd packages/desktop --frozen-lockfile --ignore-scripts");
+    expect(workflow).toContain("working-directory: packages/desktop");
+    expect(workflow).toContain("bun test --preload ./tests/preload-sqlite.ts packages/desktop/tests");
+    expect(workflow).toContain("bun run --cwd packages/desktop package");
+    expect(workflow).toContain("bun run packages/desktop/scripts/smoke-phase-five.mjs --packaged");
+    expect(dependabot).toMatch(/package-ecosystem: bun\n\s+directory: \/packages\/desktop/);
   });
 
   test("macOS CI prepares the Electron binary before native tests", async () => {
     const workflow = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8")) as {
       jobs: Record<string, { steps: { name: string; run?: string; if?: string }[] }>;
     };
-    for (const [job, testCommand] of [["desktop-security", "bun test desktop/tests"], ["verify", "bun run check"]] as const) {
+    for (const [job, testCommand] of [["desktop-security", "bun test --preload ./tests/preload-sqlite.ts packages/desktop/tests"], ["verify", "bun run check"]] as const) {
       const steps = workflow.jobs[job]!.steps;
-      const installIndex = steps.findIndex(step => step.run?.includes("node desktop/node_modules/electron/install.js"));
+      const installIndex = steps.findIndex(step => step.run?.includes("node packages/desktop/node_modules/electron/install.js"));
       const testIndex = steps.findIndex(step => step.run?.includes(testCommand));
       expect(installIndex).toBeGreaterThanOrEqual(0);
       expect(testIndex).toBeGreaterThan(installIndex);
       expect(steps.slice(0, installIndex + 1).some(step =>
-        step.run?.includes("bun install --cwd desktop --frozen-lockfile --ignore-scripts"))).toBe(true);
+        step.run?.includes("bun install --cwd packages/desktop --frozen-lockfile --ignore-scripts"))).toBe(true);
       if (job === "verify") expect(steps[installIndex]!.if).toBe("runner.os == 'macOS'");
     }
   });
@@ -181,7 +181,7 @@ describe("release workflow version source", () => {
       const steps = workflow.jobs[job]!.steps;
       const testIndex = steps.findIndex(step => step.run?.includes(command));
       const installIndex = steps.findIndex(step =>
-        step.run?.includes("bun install --cwd desktop --frozen-lockfile --ignore-scripts"));
+        step.run?.includes("bun install --cwd packages/desktop --frozen-lockfile --ignore-scripts"));
       expect(installIndex).toBeGreaterThanOrEqual(0);
       expect(testIndex).toBeGreaterThan(installIndex);
       expect(steps[installIndex]!.if).toBeUndefined();
@@ -423,7 +423,7 @@ test("all live release gates select the checked artifact and prohibit source fal
       expect(source).toContain("= loadDependencies");
       expect(source).toContain("runLiveRoutingSmoke(process.env)");
     }
-    expect(source).not.toContain('from "../src/runtime/harness.js"');
+    expect(source).not.toContain('from "../packages/core/src/runtime/harness.js"');
   }
 });
 
@@ -432,18 +432,19 @@ test("Desktop CI exercises packaged restart, uncertain effects and worktree deli
     jobs: Record<string, { steps: { run?: string }[] }>;
   };
   const steps = workflow.jobs["desktop-security"]!.steps;
-  const packaged = steps.find(step => step.run?.includes("bun run --cwd desktop package"))!.run!;
+  const packaged = steps.find(step => step.run?.includes("bun run --cwd packages/desktop package"))!.run!;
   // Restart/history checks invoke the root CLI; Desktop packaging does not build it.
   const commands = steps.flatMap(step => (step.run ?? "").split("\n").map(line => line.trim()));
   const cliBuild = commands.indexOf("bun run prepare:desktop");
   const manifest = await Bun.file(new URL("../package.json", import.meta.url)).json();
   expect(manifest.scripts["prepare:desktop"]).toStartWith("bun run build && bun pm pack");
-  expect(manifest.scripts["prepare:desktop"]).toContain("desktop/scripts/prepare-harness.ts");
+  expect(manifest.scripts["prepare:desktop"]).toContain("packages/desktop/scripts/prepare-harness.ts");
   expect(cliBuild).toBeGreaterThanOrEqual(0);
-  expect(cliBuild).toBeLessThan(commands.indexOf("bun run --cwd desktop smoke:restart:packaged"));
-  for (const scenario of ["smoke:restart:packaged", "smoke:restart:packaged --effect-crash", "smoke:restart:packaged --active-close", "smoke:worktrees:packaged"]) {
-    expect(packaged).toContain(`bun run --cwd desktop ${scenario}`);
+  expect(cliBuild).toBeLessThan(commands.indexOf("bun run packages/desktop/scripts/smoke-phase-five.mjs --packaged"));
+  for (const scenario of ["smoke-phase-five.mjs --packaged", "smoke-bundled-core.mjs", "smoke-mac-verifier.ts", "smoke-application-swap.ts"]) {
+    expect(packaged).toContain(`bun run packages/desktop/scripts/${scenario}`);
   }
+  expect(packaged).toContain("tests/application-offline-migration.test.ts");
 });
 
 

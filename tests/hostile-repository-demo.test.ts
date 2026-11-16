@@ -5,7 +5,7 @@ import path from "node:path";
 import type {
   HarnessOciRuntimeAdapter,
   OciRunRequest
-} from "../src/execution/execution-environment.js";
+} from "../packages/core/src/execution/execution-environment.js";
 import {
   HOSTILE_DEMO_COMMAND,
   STALE_DEMO_COMMAND,

@@ -4,10 +4,10 @@ import os from "node:os";
 import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { consoleBudgetOptions } from "../src/cli/console/console-budget.js";
-import { parseCliArgs } from "../src/cli/arguments.js";
-import { formatTerminalEvent } from "../src/cli/terminal/terminal-ui.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { consoleBudgetOptions } from "../packages/core/src/cli/console/console-budget.js";
+import { parseCliArgs } from "../packages/core/src/cli/arguments.js";
+import { formatTerminalEvent } from "../packages/core/src/cli/terminal/terminal-ui.js";
 
 for (const mode of ["api", "interactive", "explicit12"] as const) test(`long task with ${mode} limits`, async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "console-steps-"));
@@ -30,7 +30,7 @@ for (const mode of ["api", "interactive", "explicit12"] as const) test(`long tas
 });
 
 test("explicit CLI and API counts can exceed former arbitrary ceilings", async () => {
-  const { resolveHarnessConfig } = await import("../src/runtime/config.js");
+  const { resolveHarnessConfig } = await import("../packages/core/src/runtime/config.js");
   const options = parseCliArgs(["run", "task", "--max-steps", "1000", "--max-tool-calls", "1001",
     "--subagent-max-steps", "100", "--subagent-max-tool-calls", "501"]);
   const config = resolveHarnessConfig(options);

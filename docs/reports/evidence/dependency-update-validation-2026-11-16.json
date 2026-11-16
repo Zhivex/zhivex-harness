@@ -1,0 +1,107 @@
+{
+  "date": "2026-11-16",
+  "baselineCommit": "b2791da83a74afe36d82ab094a763a430ef41473",
+  "dependencyReview": {
+    "typescriptCompiler": "7.0.2",
+    "typescriptCompilerApi": "npm:typescript@6.0.3",
+    "rejectedUpdate": "The proposed compiler-API alias at 7.0.2 lacks createSourceFile, createProgram and other JavaScript compiler APIs required by repository tooling."
+  },
+  "checks": {
+    "coreTypecheck": true,
+    "toolingTypecheck": true,
+    "cliTypecheck": true,
+    "desktopTypecheck": true,
+    "architecture": true,
+    "workspaceStructureInCleanSnapshot": true,
+    "coreBuild": true,
+    "cliBuild": true,
+    "desktopPackageDarwinArm64": true,
+    "cliTests": {
+      "pass": 171,
+      "fail": 0
+    },
+    "fullCoreAndDesktopTests": {
+      "pass": 2737,
+      "skip": 1,
+      "fail": 5
+    },
+    "cliPtySmoke": true,
+    "mcpOfficialSdk": {
+      "schemaVersion": 1,
+      "kind": "official-mcp-sdk-interoperability",
+      "ok": true,
+      "certifiedAt": "2026-11-16T15:09:50.054Z",
+      "serverPackage": "@modelcontextprotocol/server",
+      "serverVersion": "2.4.0",
+      "clientProtocolVersion": "2025-06-18",
+      "serverCompatibilityMode": "legacy-stateless",
+      "transport": "loopback-streamable-http",
+      "toolCalls": 1
+    },
+    "electronCliIntegration": {
+      "schemaVersion": 1,
+      "pass": true,
+      "elapsedMs": 7544,
+      "realNodeHost": true,
+      "realElectron": true,
+      "fixtureModel": true,
+      "cliToDesktop": true,
+      "desktopToCli": true,
+      "reviewedFileEffect": true,
+      "persistedAfterRestart": true,
+      "draftAfterReload": true,
+      "isolatedRenderer": true,
+      "closeKeepsHost": true,
+      "hiddenWindowAutomationEnqueuesOnce": true,
+      "hiddenWindowTaskCompletes": true,
+      "ownerSuspendResume": true,
+      "expiredCursorReconciles": true,
+      "cancellationDuringSubmission": true,
+      "reconnectAfterHostRestart": true,
+      "compactNoDocumentOverflow": true
+    },
+    "packagedElectron": {
+      "passed": true,
+      "packaged": true,
+      "nodeHost": false,
+      "recoverNodeHost": false,
+      "autoRecoverNodeHost": false,
+      "testPersonal": false,
+      "testCode": false,
+      "testTools": false,
+      "testGit": false,
+      "directory": "/private/tmp/zhx-autonomous-GqymZV",
+      "profile": "c88aa8fcbc52",
+      "checks": [
+        "cold start without service",
+        "native keychain onboarding",
+        "real core session and streaming run",
+        "renderer isolation",
+        "compact navigation keyboard focus trap, Escape, search shortcut and focus restoration",
+        "close preserves host",
+        "shared native status menu shows and hides the existing window",
+        "status menu quit uses coordinated shutdown",
+        "quit releases host",
+        "cancel quit keeps the service available",
+        "quit dialog explains pending work and disconnected clients",
+        "restart preserves profile and conversation",
+        "GUI-style initial PATH; app runtime is bundled",
+        "worker crash recovery without duplicate conversations",
+        "setup state excludes API keys"
+      ],
+      "errors": []
+    }
+  },
+  "baselineReproducedFailures": [
+    "sessions: stores only explicit run metadata and redacts operator labels",
+    "state-backup: refuses an orphaned active destination lease for a run being imported",
+    "CLI doctor: accepts the session-only SQLite store created by sessions list",
+    "desktop backup: complete SQLite backup preserves WAL updates, visual activity, indexes and additional tables",
+    "desktop backup: tampering and non-private permissions reject recovery receipt"
+  ],
+  "otherLimits": [
+    "console-entry-smoke.py waits for an unformatted prompt; identical failure reproduced with baseline dependencies.",
+    "Local ignored legacy workspace directories fail the strict directory inventory; a clean source snapshot passes.",
+    "Electron smoke providers are local deterministic fixtures; no new live provider certification is claimed."
+  ]
+}

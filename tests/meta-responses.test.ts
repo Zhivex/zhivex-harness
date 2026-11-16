@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createMeta } from "@zhivex-ai/meta";
-import { providerModelInternals } from "../src/providers/providers.js";
+import { providerModelInternals } from "../packages/core/src/providers/providers.js";
 import type { ModelGenerateInput } from "@zhivex-ai/core";
 import { readFileSync } from "node:fs";
 

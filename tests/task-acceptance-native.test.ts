@@ -2,12 +2,12 @@ import { test, expect } from 'bun:test';
 import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import type { StreamEvent } from '@zhivex-ai/core';
-import { createHarness, runHarness } from '../src/runtime/harness.js';
-import { taskAcceptanceContractSchema } from '../src/runtime/task-acceptance.js';
-import { TASK_ACCEPTANCE_EVIDENCE_KEY } from '../src/runtime/task-acceptance-record.js';
-import { nativeTaskSnapshot } from '../src/runtime/task-acceptance-native.js';
-import { nextTaskAcceptanceLedger } from '../src/runtime/task-acceptance-record.js';
-import { checkEvidence } from '../src/client/check-evidence.js';
+import { createHarness, runHarness } from '../packages/core/src/runtime/harness.js';
+import { taskAcceptanceContractSchema } from '../packages/core/src/runtime/task-acceptance.js';
+import { TASK_ACCEPTANCE_EVIDENCE_KEY } from '../packages/core/src/runtime/task-acceptance-record.js';
+import { nativeTaskSnapshot } from '../packages/core/src/runtime/task-acceptance-native.js';
+import { nextTaskAcceptanceLedger } from '../packages/core/src/runtime/task-acceptance-record.js';
+import { checkEvidence } from '../packages/core/src/client/check-evidence.js';
 
 const done: StreamEvent[] = [{ type:'text-delta',textDelta:'done' },{ type:'finish',finishReason:'stop' }];
 const call = (name: string, input: any, id = name): StreamEvent[] => [{ type:'tool-call',toolCall:{ id,name,input } },{ type:'finish',finishReason:'tool-calls' }];

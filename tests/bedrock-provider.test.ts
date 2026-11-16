@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { BUILTIN_PROVIDER_REGISTRATIONS, createProviderRegistry, DEFAULT_PROVIDER_REGISTRY } from "../src/providers/providers.js";
-import { BEDROCK_MATRIX_TIER, bedrockConfigured, createBedrockModel } from "../src/providers/bedrock.js";
+import { BUILTIN_PROVIDER_REGISTRATIONS, createProviderRegistry, DEFAULT_PROVIDER_REGISTRY } from "../packages/core/src/providers/providers.js";
+import { BEDROCK_MATRIX_TIER, bedrockConfigured, createBedrockModel } from "../packages/core/src/providers/bedrock.js";
 import type { BedrockMockState } from "./preload-bedrock-mock.js";
 
 const registry = DEFAULT_PROVIDER_REGISTRY;

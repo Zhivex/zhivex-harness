@@ -2,10 +2,10 @@ import { expect, spyOn, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { UsageLedger, runUsageLedgerWithPolicy } from "../src/runtime/usage-ledger.js";
-import { openCliSessionStore } from "../src/persistence/sessions.js";
-import { SqliteDatabase } from "../src/persistence/sqlite-database.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { UsageLedger, runUsageLedgerWithPolicy } from "../packages/core/src/runtime/usage-ledger.js";
+import { openCliSessionStore } from "../packages/core/src/persistence/sessions.js";
+import { SqliteDatabase } from "../packages/core/src/persistence/sqlite-database.js";
 
 test("reopening an RC6 ledger creates the scope/run index without changing receipts or route order", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "har-ledger-index-"));

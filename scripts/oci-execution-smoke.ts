@@ -3,12 +3,12 @@ import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import os from "node:os";
 import path from "node:path";
 
-import { resolveHarnessConfig } from "../src/runtime/config.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
 import {
   cleanupHarnessExecutionArtifacts,
   createHarnessOciExecutionEnvironment
-} from "../src/execution/execution-environment.js";
-import { Workspace } from "../src/workspace/workspace.js";
+} from "../packages/core/src/execution/execution-environment.js";
+import { Workspace } from "../packages/core/src/workspace/workspace.js";
 
 const required = process.env.ZHIVEX_HARNESS_OCI_REQUIRED === "1";
 const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-oci-smoke-"));

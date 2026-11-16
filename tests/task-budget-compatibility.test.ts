@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { z } from 'zod';
-import { resolveHarnessConfig } from '../src/runtime/config.js';
-import { openHarnessPersistence } from '../src/persistence/operations.js';
-import { TaskBudget, TASK_BUDGET_ACCOUNT_KEY } from '../src/runtime/task-budget.js';
-import { usagePricingSchema } from '../src/runtime/usage-ledger.js';
+import { resolveHarnessConfig } from '../packages/core/src/runtime/config.js';
+import { openHarnessPersistence } from '../packages/core/src/persistence/operations.js';
+import { TaskBudget, TASK_BUDGET_ACCOUNT_KEY } from '../packages/core/src/runtime/task-budget.js';
+import { usagePricingSchema } from '../packages/core/src/runtime/usage-ledger.js';
 
 // Frozen HU70 decoder: 8b7327988984261290a7d07afd9c7a276c6a9085,
 // src/runtime/task-budget.ts:15-22. Actual HU70 reader is also exercised in

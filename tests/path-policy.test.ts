@@ -2,8 +2,8 @@ import { expect, test } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { isHardIgnored, isSensitiveName } from "../src/workspace/path-policy.js";
-import { Workspace } from "../src/workspace/workspace.js";
+import { isHardIgnored, isSensitiveName } from "../packages/core/src/workspace/path-policy.js";
+import { Workspace } from "../packages/core/src/workspace/workspace.js";
 
 test("Turkish I does not bypass protected path names", async () => {
   expect("I".toLocaleLowerCase("tr")).toBe("ı");

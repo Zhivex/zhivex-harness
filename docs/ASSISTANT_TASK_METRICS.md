@@ -69,35 +69,9 @@ await host.taskMetrics.feedback({
   outcome: "success",
   category: "calendar-change"
 });
-```
-
-The local web server exposes equivalent endpoints under the existing private bearer token and same-origin checks:
-
-| Method | Path | Body / response |
-| --- | --- | --- |
-| GET | `/api/task-metrics` | Versioned report with tasks and aggregate summary |
-| POST | `/api/task-metrics/link` | `{ taskId, runId, kind: "correction" \| "continuation" }` |
-| POST | `/api/task-metrics/feedback` | `{ taskId, expectedRevision, outcome, category }` |
-
-POST requires the local web origin and `Content-Type: application/json`. Invalid schemas return 400; stale reviews, pending tasks, missing references and invalid links return 409. These endpoints do not grant approval to any tool operation. Feedback and grouping currently use the API; no new dashboard or conversation controls are included.
-
-Categories: `general`, `agenda`, `calendar-change`, `preferences`, `daily-summary`, `recovery`. Category assignment is explicit; prompts are not analyzed or retained by the metrics store.
-
-## Evidence boundary and privacy
-
-The metrics database retains IDs, timestamps, statuses, numeric consumption, route/model identifiers, categories and review outcomes. It does not retain prompts, responses, event titles, tool arguments, credentials or arbitrary feedback text. It is not uploaded. Existing conversation storage has its own separate retention behavior. Reports contain stable local IDs and should be treated as private; retaining the database retains these observations.
-
-On startup and report reads, recorded runs are reconciled from public durable state. Existing historical sessions are not automatically imported. An observation without a recoverable state stays uncertain instead of being assigned an invented completion. Reports may include active work; wait for a quiescent host before exporting a benchmark result.
-
-This first instrumentation covers **conversation runs**, not direct `/memory` or `/daily` command handling, agenda-page reads, or deterministic scheduled deliveries. Those bypass the model run path. Their cases are included in the evaluation battery but require separate driver observations. Never count a scheduled send as user engagement, or infer delivery success from a completed conversation run.
-
-## Initial evaluation battery
-
-`packages/assistant/evaluations/tasks.v1.json` defines 30 English scenarios across agenda reads, approved/rejected/stale calendar changes, corrections, explicit preferences, daily delivery, recovery, and untrusted event content. Each case specifies setup, operator/user turns, verification method and required checks. The shared fixture clock and timezone are explicit.
-
-```sh
-bun run --cwd packages/assistant eval:tasks --validate
-bun run --cwd packages/assistant eval:tasks --plan /tmp/assistant-evaluation-plan.json
+Use the shared application through Electron or the commands documented in [CLI](CLI.md). The standalone Assistant launcher has been retired.sh
+bun test tests/assistant/evaluation.test.ts
+# Use planAssistantEvaluation from the core to generate a plan.
 ```
 
 Planning writes a new private file and refuses to overwrite an existing file. It creates 90 **not-executed** trials (three repetitions per case), a suite digest, configuration placeholders, and empty evidence/result fields. It makes no model calls and performs no external actions. This is a prepared evaluation protocol, not a live runner or benchmark result.

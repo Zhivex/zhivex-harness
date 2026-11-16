@@ -3,11 +3,11 @@ import { Readable } from "node:stream";
 import { mkdtemp, rm, readFile, symlink, readdir } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
-import { parseCliArgs, CliUsageError } from "../src/cli/arguments.js";
-import { readStdinTask, MAX_STDIN_TASK_BYTES } from "../src/cli/task-input.js";
-import { cliRecoveryHint, cliExitCodeForError } from "../src/cli/errors.js";
-import { createCliProfile, loadCliProfile, updateCliProfile, resolveCliProfilePath } from "../src/cli/cli-profiles.js";
-import { HarnessConfigError, HarnessProviderError } from "../src/runtime/errors.js";
+import { parseCliArgs, CliUsageError } from "../packages/core/src/cli/arguments.js";
+import { readStdinTask, MAX_STDIN_TASK_BYTES } from "../packages/core/src/cli/task-input.js";
+import { cliRecoveryHint, cliExitCodeForError } from "../packages/core/src/cli/errors.js";
+import { createCliProfile, loadCliProfile, updateCliProfile, resolveCliProfilePath } from "../packages/core/src/cli/cli-profiles.js";
+import { HarnessConfigError, HarnessProviderError } from "../packages/core/src/runtime/errors.js";
 
 test("appended help bypasses runtime validation and preserves literal arguments after --", () => {
   for (const args of [
@@ -83,7 +83,7 @@ test("CLI pipelines preserve task text, suspend edits for approval, and bypass s
   const invoke = async (args: string[], input = "", extraEnv: Record<string, string> = {}) => {
     const child = Bun.spawn([
       process.execPath, "--preload", path.resolve(import.meta.dir, "fixtures/console-fetch.mjs"),
-      path.resolve(import.meta.dir, "../src/cli.ts"), ...args
+      path.resolve(import.meta.dir, "../packages/core/src/cli.ts"), ...args
     ], {
       cwd: root, env: { PATH: process.env.PATH ?? "", HOME: root, NO_COLOR: "1",
         ZHIVEX_HARNESS_CONFIG_DIR: path.join(root, "config"),

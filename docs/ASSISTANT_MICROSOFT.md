@@ -99,11 +99,7 @@ added in this change.
 
 Use Bun:
 
-```sh
-bun run --cwd packages/assistant typecheck
-bun run --cwd packages/assistant test
-bun run --cwd packages/assistant smoke:microsoft-web
-```
+Use the shared application through Electron or the commands documented in [CLI](CLI.md). The standalone Assistant launcher has been retired.
 
 Tests use simulated Microsoft HTTP responses and real local callback/host servers.
 They cover consent/state, refresh/revocation, account changes, encrypted storage,

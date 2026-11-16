@@ -1,12 +1,12 @@
 import { expect, test } from "bun:test";
 import {createPilotModel} from '../scripts/acceptance/pilot-adapters.js';
-import * as engineApi from '../src/engine/index.js';
-import { assembleAnthropicContinuation } from "../src/providers/anthropic-continuation.js";
+import * as engineApi from '../packages/core/src/engine/index.js';
+import { assembleAnthropicContinuation } from "../packages/core/src/providers/anthropic-continuation.js";
 import type { StreamEvent } from "@zhivex-ai/core";
 import type { ModelMessage } from "@zhivex-ai/core";
-import { DEFAULT_PROVIDER_REGISTRY, BUILTIN_PROVIDER_REGISTRATIONS, createProviderRegistry } from "../src/providers/providers.js";
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { bundledModelCatalog } from "../src/models/catalog.js";
+import { DEFAULT_PROVIDER_REGISTRY, BUILTIN_PROVIDER_REGISTRATIONS, createProviderRegistry } from "../packages/core/src/providers/providers.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { bundledModelCatalog } from "../packages/core/src/models/catalog.js";
 
 const registry = DEFAULT_PROVIDER_REGISTRY;
 const env = { ANTHROPIC_API_KEY: "fixture-anthropic-secret" };

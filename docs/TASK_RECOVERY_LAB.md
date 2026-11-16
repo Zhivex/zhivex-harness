@@ -24,7 +24,7 @@ the laboratory refuses a dirty checkout. Pack both products from that checkout:
 bun run build
 bun run build:code
 bun pm pack --ignore-scripts --filename /tmp/hu75-harness.tgz
-bun pm pack --cwd packages/code --ignore-scripts --filename /tmp/hu75-code.tgz
+bun pm pack --cwd packages/cli --ignore-scripts --filename /tmp/hu75-code.tgz
 node scripts/task-recovery-lab-installed.mjs /tmp/hu75-harness.tgz /tmp/hu75-code.tgz /absolute/path/to/node /tmp/hu75-node-report
 bun scripts/task-recovery-lab-installed.mjs /tmp/hu75-harness.tgz /tmp/hu75-code.tgz /absolute/path/to/bun /tmp/hu75-bun-report
 ```
@@ -50,7 +50,7 @@ Run the existing Code installed journey with those **same tarballs**, under both
 Node lines, retaining its separate report:
 
 ```sh
-CODE_JOURNEY_OUTPUT=/tmp/hu75-code-journey node packages/code/scripts/installed-journey.mjs /tmp/hu75-code.tgz --candidate-engine /tmp/hu75-harness.tgz
+CODE_JOURNEY_OUTPUT=/tmp/hu75-code-journey node packages/cli/scripts/installed-journey.mjs /tmp/hu75-code.tgz --candidate-engine /tmp/hu75-harness.tgz
 ```
 
 `evaluations/task-recovery-lab.json` freezes fixture digest, required scenario IDs,

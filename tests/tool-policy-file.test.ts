@@ -2,12 +2,12 @@ import { expect, test } from 'bun:test';
 import { chmod, link, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { loadHarnessToolPolicyFile } from '../src/runtime/tool-policy-file.js';
+import { loadHarnessToolPolicyFile } from '../packages/core/src/runtime/tool-policy-file.js';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import { createInMemoryAgentRunStore } from '@zhivex-ai/agents/ops';
-import { createHarness, runHarness } from '../src/runtime/harness.js';
-import { parseCliArgs } from '../src/cli/arguments.js';
-import { harnessClientCommandSchema } from '../src/client/protocol.js';
+import { createHarness, runHarness } from '../packages/core/src/runtime/harness.js';
+import { parseCliArgs } from '../packages/core/src/cli/arguments.js';
+import { harnessClientCommandSchema } from '../packages/core/src/client/protocol.js';
 
 const policy = { schemaVersion: 1, rules: [{ id: 'deny-shell', tools: ['run_command'], decision: 'deny', reason: 'Operator restriction' }] };
 const fixture = async (body: (root: string, filename: string) => Promise<void>) => {

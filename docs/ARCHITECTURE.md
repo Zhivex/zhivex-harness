@@ -1,7 +1,7 @@
 # Source architecture
 
 Harness keeps its runtime package, a separately built Code terminal package in
-`packages/code`, and a separately built Desktop application. Additive public
+`packages/cli`, and a separately built Desktop application. Additive public
 [engine entrypoints](ENGINE_API.md) expose the motor independently of terminal
 presentation. Persisted-state and client protocol versions remain unchanged.
 
@@ -92,13 +92,13 @@ consumed by the application.
 
 `prepare:desktop` installs the candidate tarball in a private consumer. Build
 bundles only that installed package and records its artifact hash; no source or
-version/SQLite rewrite plugins are used. See [Desktop development](../desktop/DEVELOPMENT.md)
+version/SQLite rewrite plugins are used. See [Desktop development](../packages/desktop/DEVELOPMENT.md)
 for the exact candidate compatibility constraint and the distinction from the
 previously deployed RC3 bytes.
 
 ## Code integration
 
-Code owns its terminal source and independent build/tests in `packages/code`.
+Code owns its terminal source and independent build/tests in `packages/cli`.
 It imports the named Harness subpaths, with no source-relative links. The existing
 Harness CLI remains a compatibility snapshot for its 1.x binaries. Shared wire
 serialization, result documents and continuation reconstruction live in `client/`;

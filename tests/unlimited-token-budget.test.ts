@@ -4,17 +4,17 @@ import os from "node:os";
 import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
-import { parseCliArgs } from "../src/cli/arguments.js";
-import { createHarnessResumeMetadata, readHarnessResumeConfig } from "../src/cli/resume-metadata.js";
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { createModelBudget, workBudgetReached } from "../src/runtime/model-budget.js";
-import { createRepairProgress } from "../src/runtime/repair-progress.js";
-import { childRuntimeSafety, effectiveRuntimeBudget } from "../src/runtime/runtime-policy.js";
-import { inspectRuntimeManifest } from "../src/runtime/runtime-diagnostics.js";
-import { runtimeManifest } from "../src/runtime/runtime-policy.js";
-import { inspectHarnessRun } from "../src/persistence/operations.js";
-import { createEditProposal } from "../src/workspace/edit-contracts.js";
+import { parseCliArgs } from "../packages/core/src/cli/arguments.js";
+import { createHarnessResumeMetadata, readHarnessResumeConfig } from "../packages/core/src/cli/resume-metadata.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { createModelBudget, workBudgetReached } from "../packages/core/src/runtime/model-budget.js";
+import { createRepairProgress } from "../packages/core/src/runtime/repair-progress.js";
+import { childRuntimeSafety, effectiveRuntimeBudget } from "../packages/core/src/runtime/runtime-policy.js";
+import { inspectRuntimeManifest } from "../packages/core/src/runtime/runtime-diagnostics.js";
+import { runtimeManifest } from "../packages/core/src/runtime/runtime-policy.js";
+import { inspectHarnessRun } from "../packages/core/src/persistence/operations.js";
+import { createEditProposal } from "../packages/core/src/workspace/edit-contracts.js";
 
 test("CLI, JSON resume and child policy preserve unlimited mode without disabling other guards", () => {
   for (const args of [["--no-token-budget"], ["run", "--no-token-budget", "task"], ["review", "--no-token-budget", "task"]]) {

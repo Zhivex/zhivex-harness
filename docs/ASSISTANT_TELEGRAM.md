@@ -7,16 +7,12 @@ Assistant; this phase changes no Harness protocol or approval guarantees.
 ## Start and link
 
 Build/install the local Harness candidate as described in
-[Assistant setup](../packages/assistant/README.md). Supply the bot token through
+[Assistant setup](ASSISTANT_ELECTRON.md). Supply the bot token through
 `ASSISTANT_TELEGRAM_BOT_TOKEN`; do not put it in a command argument, source file or
 chat. Obtain the owner's numeric Telegram user ID through a trusted source.
 Usernames are not identities.
 
-```sh
-bun run --cwd packages/assistant build
-bun run --cwd packages/assistant start --directory "$HOME/.zhx-a" \
-  --owner local-owner --provider openai --telegram-owner 123456789
-```
+Use the shared application through Electron or the commands documented in [CLI](CLI.md). The standalone Assistant launcher has been retired.
 
 The foreground host prints a random pairing challenge locally. Send the exact
 `/start CODE` text to the bot from the selected account in a private chat within

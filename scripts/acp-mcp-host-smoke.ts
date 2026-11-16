@@ -4,14 +4,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { serveAcpStdio } from '../src/client/acp-stdio.js';
-import { createAcpMcpHost } from '../src/client/acp-mcp-host.js';
-import { createAcpConnection } from '../src/client/acp.js';
+import { serveAcpStdio } from '../packages/core/src/client/acp-stdio.js';
+import { createAcpMcpHost } from '../packages/core/src/client/acp-mcp-host.js';
+import { createAcpConnection } from '../packages/core/src/client/acp.js';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../src/integrations/mcp-stdio-admission.js';
-import { runPortableProcess } from '../src/execution/process-runtime.js';
-import { resolveHarnessConfig } from '../src/runtime/config.js';
-import { openHarnessPersistence } from '../src/persistence/operations.js';
+import { createMcpStdioAdmissionAuthority, type McpStdioLaunchProposal } from '../packages/core/src/integrations/mcp-stdio-admission.js';
+import { runPortableProcess } from '../packages/core/src/execution/process-runtime.js';
+import { resolveHarnessConfig } from '../packages/core/src/runtime/config.js';
+import { openHarnessPersistence } from '../packages/core/src/persistence/operations.js';
 const env = Object.fromEntries(['HOME', 'PATH', 'DOCKER_CONFIG', 'DOCKER_CONTEXT', 'DOCKER_HOST', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH', 'XDG_RUNTIME_DIR']
   .flatMap(key => process.env[key] ? [[key, process.env[key]!]] : []));
 async function docker(args: string[]) {
@@ -69,7 +69,7 @@ let calls=0;require('node:readline').createInterface({input:process.stdin}).on('
       await serveAcpStdio(host.adapter, { workspace: host.workspace, mcpSessionProvider: host.mcpSessionProvider,
         input: child.stdout, output: child.stdin, permissionTimeoutMs: 30_000 });
       assert.equal(await exited, 0, diagnostics);
-      assert.deepEqual(JSON.parse(diagnostics), { status: 'passed', client: '@agentclientprotocol/sdk@2.1.0', permissions: 2 });
+      assert.deepEqual(JSON.parse(diagnostics), { status: 'passed', client: '@agentclientprotocol/sdk@2.7.0', permissions: 2 });
     } finally { clearTimeout(deadline); child.kill(); }
   } else {
   const connection = createAcpConnection(host.adapter, { workspace: host.workspace, mcpSessionProvider: host.mcpSessionProvider,

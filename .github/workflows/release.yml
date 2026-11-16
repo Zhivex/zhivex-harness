@@ -88,7 +88,7 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Install immutable desktop test dependencies
-        run: bun install --cwd desktop --frozen-lockfile --ignore-scripts
+        run: bun install --cwd packages/desktop --frozen-lockfile --ignore-scripts
 
       - name: Prepare installed Harness candidate for Desktop tests
         run: bun run prepare:desktop
@@ -126,17 +126,14 @@ jobs:
 
       - name: Validate engine and Code against the exact release artifact
         run: |
-          bun run packages/code/scripts/link-local-engine.ts
-          bun install --cwd packages/web --frozen-lockfile --ignore-scripts
+          bun run packages/cli/scripts/link-local-engine.ts --replace
           bun run build:code
           bun run typecheck:code
           bun run test:code
           mkdir -p "$RUNNER_TEMP/code-package-managers"
           bun add --cwd "$RUNNER_TEMP/code-package-managers" --ignore-scripts pnpm@11.25.0 yarn@1.22.22
           HARNESS_CODE_HARNESS_ARTIFACT="$ARTIFACT" bun run smoke:engine-code
-          CODE_JOURNEY_OUTPUT="$RUNNER_TEMP/engine-code-release-evidence" node packages/code/scripts/installed-journey.mjs "$RUNNER_TEMP/engine-code-release-evidence/code.tgz" --candidate-engine "$ARTIFACT"
-          CODE_CANDIDATE_ENGINE="$GITHUB_WORKSPACE/$ARTIFACT" CODE_WEB_ARTIFACT="$RUNNER_TEMP/engine-code-release-evidence/code.tgz" node packages/web/scripts/installed-smoke.mjs
-          cp packages/web/.test-output/installed-report.json "$RUNNER_TEMP/engine-code-release-evidence/installed-web-report.json"
+          CODE_JOURNEY_OUTPUT="$RUNNER_TEMP/engine-code-release-evidence" node packages/cli/scripts/installed-journey.mjs "$RUNNER_TEMP/engine-code-release-evidence/code.tgz" --candidate-engine "$ARTIFACT"
         env:
           SMOKE_PNPM_PATH: ${{ runner.temp }}/code-package-managers/node_modules/.bin/pnpm
           SMOKE_YARN_PATH: ${{ runner.temp }}/code-package-managers/node_modules/.bin/yarn

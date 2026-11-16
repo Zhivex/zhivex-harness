@@ -4,11 +4,11 @@ import type { StreamEvent } from '@zhivex-ai/core';
 import type { AgentRunStore } from '@zhivex-ai/agents/ops';
 import { z } from 'zod';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
-import { createTaskTelemetry } from '../src/runtime/task-telemetry.js';
-import type { TaskTelemetrySnapshot } from '../src/runtime/task-telemetry.js';
-import { createContextRuntime, SCOPED_CONTEXT_KEY } from '../src/runtime/context-runtime.js';
-import { Workspace } from '../src/workspace/workspace.js';
-import { createHarness, runHarnessTask } from '../src/runtime/harness.js';
+import { createTaskTelemetry } from '../packages/core/src/runtime/task-telemetry.js';
+import type { TaskTelemetrySnapshot } from '../packages/core/src/runtime/task-telemetry.js';
+import { createContextRuntime, SCOPED_CONTEXT_KEY } from '../packages/core/src/runtime/context-runtime.js';
+import { Workspace } from '../packages/core/src/workspace/workspace.js';
+import { createHarness, runHarnessTask } from '../packages/core/src/runtime/harness.js';
 import { createInMemoryAgentRunStore } from '@zhivex-ai/agents/ops';
 import { createTextMessage, wrapLanguageModel } from '@zhivex-ai/core';
 

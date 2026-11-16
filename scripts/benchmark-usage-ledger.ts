@@ -7,11 +7,11 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { performance } from "node:perf_hooks";
-import { UsageLedger } from "../src/runtime/usage-ledger.js";
-import { openHarnessActivityStore } from "../src/client/service-events.js";
-import { resolveHarnessConfig } from "../src/runtime/config.js";
-import { openCliSessionStore } from "../src/persistence/sessions.js";
-import { SqliteDatabase } from "../src/persistence/sqlite-database.js";
+import { UsageLedger } from "../packages/core/src/runtime/usage-ledger.js";
+import { openHarnessActivityStore } from "../packages/core/src/client/service-events.js";
+import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
+import { openCliSessionStore } from "../packages/core/src/persistence/sessions.js";
+import { SqliteDatabase } from "../packages/core/src/persistence/sqlite-database.js";
 
 const RC6 = "0adf4e2e96380864ef4c697ea94df64ad7c18eec";
 const args = process.argv.slice(2);

@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { tool, type ToolSet } from "@zhivex-ai/core";
 import { z } from "zod";
-import { createRepairProgress } from "../src/runtime/repair-progress.js";
+import { createRepairProgress } from "../packages/core/src/runtime/repair-progress.js";
 import { measureContext } from "../scripts/swebench/context-metrics.js";
 
 const limits = { inputTokens: 1000, outputTokens: 100 };
@@ -106,7 +106,7 @@ test("context measurements stay bounded without dropping actual token accounting
 });
 
 test("a rejected plan cannot replace the last accepted scope, including after resume", async () => {
-  const { REPAIR_PROGRESS_KEY } = await import("../src/runtime/repair-progress.js");
+  const { REPAIR_PROGRESS_KEY } = await import("../packages/core/src/runtime/repair-progress.js");
   const usage = () => ({ inputTokens: 700, outputTokens: 0 });
   const controller = createRepairProgress(usage, limits);
   const tools = controller.wrapTools({ repair_plan: tool({ name: "repair_plan", schema: z.any(),

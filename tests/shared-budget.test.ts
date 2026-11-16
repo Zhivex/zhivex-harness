@@ -5,7 +5,7 @@ import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createAgentBudgetCoordinator } from "@zhivex-ai/core";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
 const reservation = { inputTokens: 20_000, outputTokens: 1000, totalTokens: 21_000 };
 const childReservation = { inputTokens: 10_000, outputTokens: 1000, totalTokens: 11_000 };
 const options = { sharedBudget: { modelReservation: reservation, childModelReservation: childReservation } };

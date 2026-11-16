@@ -1,4 +1,4 @@
-name: Assistant
+name: Core Assistant integrations
 
 on:
   pull_request:
@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   verify:
-    name: Assistant / Node ${{ matrix.node }}
+    name: Core Assistant integrations / Node ${{ matrix.node }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -34,16 +34,7 @@ jobs:
           bun-version: 1.4.3
       - name: Install immutable root dependencies
         run: bun install --frozen-lockfile --ignore-scripts
-      - name: Build and prepare the exact local engine
-        run: bun run prepare:assistant
-      - name: Validate types, tests and isolated installed consumer
-        run: bun run check:assistant
-      - name: Install Chromium
-        if: matrix.node == '24'
-        working-directory: packages/assistant
-        run: bun x playwright install --with-deps chromium
-      - name: Exercise setup, integrations and proactive notices in the browser
-        if: matrix.node == '24'
-        run: bun run smoke:assistant:web
+      - name: Build core and run domain regressions
+        run: bun run build && bun run test:assistant
       - name: Verify checks produced no tracked changes
         run: git diff --exit-code

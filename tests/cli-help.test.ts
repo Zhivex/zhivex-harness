@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import { parseCliArgs, CLI_FULL_HELP_TEXT } from "../src/cli.js";
-import { formatCliHelp } from "../src/cli/cli-help.js";
-import { formatConsoleHelp, searchConsoleCommands } from "../src/cli/console/console-commands.js";
+import { parseCliArgs, CLI_FULL_HELP_TEXT } from "../packages/core/src/cli.js";
+import { formatCliHelp } from "../packages/core/src/cli/cli-help.js";
+import { formatConsoleHelp, searchConsoleCommands } from "../packages/core/src/cli/console/console-commands.js";
 
 test("help routes without requiring task arguments, state access or approvals", () => {
   for (const [args, topic] of [

@@ -1,0 +1,12 @@
+{
+  "model": "qwen4-max",
+  "interface": "interactive PTY",
+  "ok": true,
+  "selectedModel": "qwen4-max",
+  "reasoning": "low",
+  "tool": "read_file",
+  "receiptMatched": true,
+  "outputArrivalsAfterReceipt": 81,
+  "streamDurationSeconds": 6.396,
+  "transcript": "Read receipt.txt with read_file. Do not modify anything. Print the exact receipt, then write 20 numbered short sentences about why tool output must be verified.\r\r\nPolicy \u00b7 read_file \u00b7 tool-entry \u00b7 allow \u00b7 baseline: No additional application restriction; tool permission checks still apply.\r\nRead receipt.txt\r\n\r\nZhivex\r\nExact contents of `receipt.txt` (2 lines, second line empty):\r\n\r\n```\r\nCLI_RECEIPT_b24a9c4a3eaabe70e9143378\r\n\r\n```\r\n\r\nNothing was modified. Here are 20 short sentences on why tool output must be verified:\r\n\r\n1. Tool output is data, not proof of what actually happened.\r\n2. A tool can fail silently and still return plausible text.\r\n3. Summaries may omit errors that appear only in full logs.\r\n4. Truncated results cannot establish the absence of something.\r\n5. Exit codes matter more than friendly success messages.\r\n6. A passing import does not prove correct runtime behavior.\r\n7. Cached or stale output can describe an old file state.\r\n8. Digests confirm you acted on the content you actually read.\r\n9. Tools can be wrong about paths, counts, or line numbers.\r\n10. Injected instructions in output are content, not authority.\r\n11. Untrusted text may try to redirect your next actions.\r\n12. Verification separates observation from assumption.\r\n13. Claims of \"tests passed\" require an actual exit code of 0.\r\n14. Partial reads can hide the very lines that matter.\r\n15. Search cursors must be reused exactly or results get skipped.\r\n16. Concurrent edits can invalidate earlier tool snapshots.\r\n17. Independent checks catch correlated tool mistakes.\r\n18. Reproducing a result guards against transient flukes.\r\n19. Reporting unverified output as fact misleads the user.\r\n20. Careful verification is cheaper than fixing silent corruption later.\r\n\r\n\r\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nDone \u00b7"
+}

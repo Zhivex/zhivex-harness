@@ -40,10 +40,10 @@ From a clean checkout on `main`:
 
 ```bash
 bun install --frozen-lockfile --ignore-scripts
-bun install --cwd desktop --frozen-lockfile --ignore-scripts
+bun install --cwd packages/desktop --frozen-lockfile --ignore-scripts
 # macOS: the full test suite also exercises the native Desktop worker.
 if [ "$(uname -s)" = Darwin ]; then
-  node desktop/node_modules/electron/install.js
+  node packages/desktop/node_modules/electron/install.js
 fi
 bun run release:check
 git diff --check

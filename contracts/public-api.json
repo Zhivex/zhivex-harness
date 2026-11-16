@@ -903,6 +903,12 @@
   ],
   "cli": {
     "commands": [
+      "automations",
+      "personal",
+      "agents",
+      "connections",
+      "projects",
+      "application",
       "init",
       "run",
       "review",
@@ -984,8 +990,67 @@
         "repeatable": [],
         "conflicts": {}
       },
+      "automations": {
+        "allowed": [
+          "--application-directory",
+          "--json",
+          "--yes"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "personal": {
+        "allowed": [
+          "--application-directory",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "agents": {
+        "allowed": [
+          "--application-directory",
+          "--json",
+          "--yes"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "connections": {
+        "allowed": [
+          "--application-directory",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "projects": {
+        "allowed": [
+          "--application-directory",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "application": {
+        "allowed": [
+          "--application-directory",
+          "--json",
+          "--yes"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
       "run": {
         "allowed": [
+          "--application-directory",
+          "--area",
           "--service",
           "--session",
           "--no-memory",
@@ -1135,6 +1200,8 @@
       },
       "chat": {
         "allowed": [
+          "--application-directory",
+          "--area",
           "--service",
           "--no-memory",
           "--compaction-model",
@@ -1251,6 +1318,8 @@
       },
       "policy": {
         "allowed": [
+          "--application-directory",
+          "--area",
           "--service",
           "--no-memory",
           "--compaction-model",
@@ -1416,6 +1485,8 @@
         "allowed": [
           "--no-memory",
           "--tool-policy",
+          "--application-directory",
+          "--area",
           "--service",
           "--session",
           "--workspace",
@@ -1553,6 +1624,8 @@
       },
       "sessions:list": {
         "allowed": [
+          "--application-directory",
+          "--area",
           "--service",
           "--workspace",
           "--state-dir",
@@ -1570,6 +1643,8 @@
       },
       "sessions:inspect": {
         "allowed": [
+          "--application-directory",
+          "--area",
           "--service",
           "--workspace",
           "--state-dir",
@@ -1585,6 +1660,8 @@
       },
       "sessions:rename": {
         "allowed": [
+          "--application-directory",
+          "--area",
           "--service",
           "--workspace",
           "--state-dir",
@@ -1634,6 +1711,9 @@
           "--tenant",
           "--user",
           "--namespace",
+          "--application-directory",
+          "--area",
+          "--service",
           "--json"
         ],
         "required": [],
@@ -1648,6 +1728,9 @@
           "--tenant",
           "--user",
           "--namespace",
+          "--application-directory",
+          "--area",
+          "--service",
           "--json"
         ],
         "required": [],
@@ -1662,6 +1745,9 @@
           "--tenant",
           "--user",
           "--namespace",
+          "--application-directory",
+          "--area",
+          "--service",
           "--json"
         ],
         "required": [],
@@ -1676,6 +1762,10 @@
           "--tenant",
           "--user",
           "--namespace",
+          "--application-directory",
+          "--area",
+          "--service",
+          "--session",
           "--json"
         ],
         "required": [],
@@ -1690,6 +1780,10 @@
           "--tenant",
           "--user",
           "--namespace",
+          "--application-directory",
+          "--area",
+          "--service",
+          "--session",
           "--json"
         ],
         "required": [],
@@ -1704,6 +1798,10 @@
           "--tenant",
           "--user",
           "--namespace",
+          "--application-directory",
+          "--area",
+          "--service",
+          "--session",
           "--json"
         ],
         "required": [],
@@ -1718,6 +1816,10 @@
           "--tenant",
           "--user",
           "--namespace",
+          "--application-directory",
+          "--area",
+          "--service",
+          "--session",
           "--json"
         ],
         "required": [],
@@ -1732,6 +1834,10 @@
           "--tenant",
           "--user",
           "--namespace",
+          "--application-directory",
+          "--area",
+          "--service",
+          "--session",
           "--json"
         ],
         "required": [],
@@ -1746,6 +1852,10 @@
           "--tenant",
           "--user",
           "--namespace",
+          "--application-directory",
+          "--area",
+          "--service",
+          "--session",
           "--json"
         ],
         "required": [],
@@ -1760,6 +1870,10 @@
           "--tenant",
           "--user",
           "--namespace",
+          "--application-directory",
+          "--area",
+          "--service",
+          "--session",
           "--json"
         ],
         "required": [],

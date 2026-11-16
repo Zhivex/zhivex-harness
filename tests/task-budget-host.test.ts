@@ -1,13 +1,13 @@
 import { expect, test } from 'bun:test';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { createHarness, runHarnessTask as runHarness } from '../src/runtime/harness.js';
-import { initializeHarnessTaskBudget, inspectHarnessTaskBudget, persistHarnessTaskDraft, readHarnessTaskDraft } from '../src/runtime/task-budget-host.js';
-import { createHarnessStateBackup, importHarnessStateBackup } from '../src/persistence/state-backup.js';
-import { TASK_BUDGET_KEY } from '../src/runtime/task-budget.js';
-import { USAGE_LEDGER_KEY } from '../src/runtime/usage-ledger.js';
-import type { TaskAcceptanceContract } from '../src/runtime/task-acceptance.js';
-import { SqliteDatabase } from '../src/persistence/sqlite-database.js';
+import { createHarness, runHarnessTask as runHarness } from '../packages/core/src/runtime/harness.js';
+import { initializeHarnessTaskBudget, inspectHarnessTaskBudget, persistHarnessTaskDraft, readHarnessTaskDraft } from '../packages/core/src/runtime/task-budget-host.js';
+import { createHarnessStateBackup, importHarnessStateBackup } from '../packages/core/src/persistence/state-backup.js';
+import { TASK_BUDGET_KEY } from '../packages/core/src/runtime/task-budget.js';
+import { USAGE_LEDGER_KEY } from '../packages/core/src/runtime/usage-ledger.js';
+import type { TaskAcceptanceContract } from '../packages/core/src/runtime/task-acceptance.js';
+import { SqliteDatabase } from '../packages/core/src/persistence/sqlite-database.js';
 import { createTextMessage } from '@zhivex-ai/core';
 
 const requirements: TaskAcceptanceContract = { schemaVersion: 1, taskId: 'host-task', allowedWritePaths: ['result.mjs'], protectedFiles: ['package.json'],

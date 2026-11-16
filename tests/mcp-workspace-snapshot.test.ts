@@ -2,8 +2,8 @@ import { expect, test } from 'bun:test';
 import { chmod, link, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Workspace } from '../src/workspace/workspace.js';
-import { prepareMcpWorkspaceSnapshot, consumeMcpWorkspaceSnapshot, discardMcpWorkspaceSnapshot, type McpWorkspaceSnapshot } from '../src/execution/mcp-workspace-snapshot.js';
+import { Workspace } from '../packages/core/src/workspace/workspace.js';
+import { prepareMcpWorkspaceSnapshot, consumeMcpWorkspaceSnapshot, discardMcpWorkspaceSnapshot, type McpWorkspaceSnapshot } from '../packages/core/src/execution/mcp-workspace-snapshot.js';
 
 async function fixture(run: (root: string, workspace: Workspace) => Promise<void>) {
   const root = await mkdtemp(path.join(tmpdir(), 'mcp-snapshot-test-'));

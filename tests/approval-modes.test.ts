@@ -5,11 +5,11 @@ import os from "node:os";
 import type { AgentApprovalRequest } from "@zhivex-ai/agents";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { parseCliArgs } from "../src/cli/arguments.js";
-import { terminalApprovalResolver } from "../src/cli/presentation.js";
-import { readDependency } from "../src/tools/dependency-read.js";
-import { terminalRunFailure } from "../src/cli/terminal/terminal-ui.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { parseCliArgs } from "../packages/core/src/cli/arguments.js";
+import { terminalApprovalResolver } from "../packages/core/src/cli/presentation.js";
+import { readDependency } from "../packages/core/src/tools/dependency-read.js";
+import { terminalRunFailure } from "../packages/core/src/cli/terminal/terminal-ui.js";
 
 const approval = (name = "read_dependency", pkg = "@scope/sdk", id = "a"): AgentApprovalRequest =>
   ({ id, provider: "meta", name, arguments: JSON.stringify({ package: pkg, file: "package.json", startLine: 1 }) } as AgentApprovalRequest);

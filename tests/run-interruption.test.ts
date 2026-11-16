@@ -4,8 +4,8 @@ import path from "node:path";
 import os from "node:os";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { composeRunInterruption, settleInterruptedRun } from "../src/runtime/run-interruption.js";
+import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { composeRunInterruption, settleInterruptedRun } from "../packages/core/src/runtime/run-interruption.js";
 
 test("captures cancellation provenance through nested signals and a second ancestor abort", () => {
   const outer = new AbortController(), requested = new AbortController(), failure = new AbortController();

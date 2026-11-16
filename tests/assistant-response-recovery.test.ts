@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { appendUserMessage, compactHarnessMessages, createHarness, runHarness } from "../src/runtime/harness.js";
-import { ASSISTANT_RESPONSE_KEY, assistantResponses, TASK_SOURCE_KEY, taskSources } from "../src/context/task-memory.js";
+import { appendUserMessage, compactHarnessMessages, createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
+import { ASSISTANT_RESPONSE_KEY, assistantResponses, TASK_SOURCE_KEY, taskSources } from "../packages/core/src/context/task-memory.js";
 
 const marker = "LATE_PLAN_REFERENCE_92ab";
 const report = "Audit evidence. ".repeat(1500) + `\n## Short-term plan\n1. Preserve exact approvals. ${marker}`;

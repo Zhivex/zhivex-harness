@@ -43,15 +43,20 @@ const markdownFiles = [
   path.join(workspace, "benchmarks", "README.md"),
   path.join(workspace, "results", "README.md"),
   ...await collectMarkdown(path.join(workspace, "docs")),
-  ...(await readdir(path.join(workspace, "desktop"), { withFileTypes: true }))
+  ...(await readdir(path.join(workspace, "packages/desktop"), { withFileTypes: true }))
     .filter(entry => entry.isFile() && entry.name.endsWith(".md"))
-    .map(entry => path.join(workspace, "desktop", entry.name)),
+    .map(entry => path.join(workspace, "packages/desktop", entry.name)),
   ...await collectMarkdown(path.join(workspace, "examples"))
 ].sort();
 
 const failures: string[] = [];
 for (const markdownFile of markdownFiles) {
   const contents = await readFile(markdownFile, "utf8");
+  const relativeFile = path.relative(workspace, markdownFile).split(path.sep).join("/");
+  const historical = /^docs\/(?:reports|archive|proposals)\//.test(relativeFile);
+  if (!historical && /--cwd\s+desktop(?=\s|[`"']|$)/m.test(contents)) {
+    failures.push(`${relativeFile}: use --cwd packages/desktop; the desktop alias was removed.`);
+  }
   const linkPattern = /!?\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
   for (const match of contents.matchAll(linkPattern)) {
     const href = match[1]?.replace(/^<|>$/g, "");
@@ -144,21 +149,21 @@ for (const candidate of gaReadiness.releaseCandidates ?? []) {
     failures.push(`ROADMAP.md still instructs maintainers to complete passed candidate ${candidate.version}.`);
   }
 }
-const providerConfig = `${await readFile(path.join(workspace, "src", "runtime", "config.ts"), "utf8")}\n${
-  await readFile(path.join(workspace, "src", "providers", "providers.ts"), "utf8")
+const providerConfig = `${await readFile(path.join(workspace, "packages/core/src", "runtime", "config.ts"), "utf8")}\n${
+  await readFile(path.join(workspace, "packages/core/src", "providers", "providers.ts"), "utf8")
 }`;
 const extensibility = await readFile(path.join(workspace, "docs", "EXTENSIBILITY.md"), "utf8");
 const expectedCurrentSdkDependencies = {
-  "@zhivex-ai/agents": "1.12.0",
-  "@zhivex-ai/anthropic": "0.15.0",
-  "@zhivex-ai/azure-openai": "0.8.0",
-  "@zhivex-ai/bedrock": "2.1.0",
-  "@zhivex-ai/core": "1.37.0",
-  "@zhivex-ai/gemini": "0.14.0",
-  "@zhivex-ai/meta": "0.3.0",
-  "@zhivex-ai/openai": "0.17.0",
-  "@zhivex-ai/qwen": "0.18.1",
-  "@zhivex-ai/vertex": "1.3.0"
+  "@zhivex-ai/agents": "1.13.0",
+  "@zhivex-ai/anthropic": "0.16.2",
+  "@zhivex-ai/azure-openai": "0.8.1",
+  "@zhivex-ai/bedrock": "2.1.3",
+  "@zhivex-ai/core": "1.40.1",
+  "@zhivex-ai/gemini": "0.15.1",
+  "@zhivex-ai/meta": "0.4.0",
+  "@zhivex-ai/openai": "0.18.2",
+  "@zhivex-ai/qwen": "0.20.1",
+  "@zhivex-ai/vertex": "1.3.6"
 } as const;
 for (const [packageName, expectedVersion] of Object.entries(expectedCurrentSdkDependencies)) {
   if (manifest.dependencies?.[packageName] !== expectedVersion) {
@@ -287,7 +292,7 @@ if (manifest.version.startsWith("0.4.")) {
     }
   }
   if (!providerConfig.includes("HARNESS_CONFIG_SCHEMA_VERSION = 2")) {
-    failures.push("src/runtime/config.ts must identify configuration schema version 2 for 0.4.x.");
+    failures.push("packages/core/src/runtime/config.ts must identify configuration schema version 2 for 0.4.x.");
   }
   if (!changelog.includes("## 0.4.0 -") || !changelog.includes("### Migration")) {
     failures.push("CHANGELOG.md must include the 0.4.0 entry and migration notes.");
@@ -344,7 +349,7 @@ if (manifest.version.startsWith("0.5.")) {
     }
   }
   if (!providerConfig.includes("HARNESS_CONFIG_SCHEMA_VERSION = 3")) {
-    failures.push("src/runtime/config.ts must identify configuration schema version 3 for 0.5.x.");
+    failures.push("packages/core/src/runtime/config.ts must identify configuration schema version 3 for 0.5.x.");
   }
   if (!changelog.includes("## 0.5.0 -") || !changelog.includes("### Migration")) {
     failures.push("CHANGELOG.md must include the 0.5.0 entry and migration notes.");
@@ -448,7 +453,7 @@ if (manifest.version.startsWith("0.6.")) {
     }
   }
   if (!providerConfig.includes("HARNESS_CONFIG_SCHEMA_VERSION = 4")) {
-    failures.push("src/runtime/config.ts must identify configuration schema version 4 for 0.6.x.");
+    failures.push("packages/core/src/runtime/config.ts must identify configuration schema version 4 for 0.6.x.");
   }
   if (!changelog.includes("## 0.6.0 -") || !changelog.includes("### Migration")) {
     failures.push("CHANGELOG.md must include the 0.6.0 entry and migration notes.");
@@ -575,9 +580,9 @@ if (manifest.version.startsWith("0.9.")) {
   const changeEnvelopes = await readFile(path.join(workspace, "docs", "CHANGE_ENVELOPES.md"), "utf8");
   const repositoryEditing = await readFile(path.join(workspace, "docs", "REPOSITORY_EDITING.md"), "utf8");
   const executionEnvironments = await readFile(path.join(workspace, "docs", "EXECUTION_ENVIRONMENTS.md"), "utf8");
-  const source = `${await readFile(path.join(workspace, "src", "runtime", "harness.ts"), "utf8")}\n${
-    await readFile(path.join(workspace, "src", "workspace", "change-envelope.ts"), "utf8")
-  }\n${await readFile(path.join(workspace, "src", "cli.ts"), "utf8")}`;
+  const source = `${await readFile(path.join(workspace, "packages/core/src", "runtime", "harness.ts"), "utf8")}\n${
+    await readFile(path.join(workspace, "packages/core/src", "workspace", "change-envelope.ts"), "utf8")
+  }\n${await readFile(path.join(workspace, "packages/core/src", "cli.ts"), "utf8")}`;
   for (const heading of [
     "## What it proves",
     "## Create and verify",
@@ -682,10 +687,10 @@ if (manifest.version.startsWith("0.10.") || manifest.version.startsWith("0.11.")
     "persistence/sessions.ts",
     "workspace/workspace.ts",
     "execution/execution-environment.ts"
-  ].map((file) => readFile(path.join(workspace, "src", file), "utf8")));
-  const packageManagerSource = await readFile(path.join(workspace, "src", "execution", "package-manager.ts"), "utf8");
-  const sqliteSource = await readFile(path.join(workspace, "src", "persistence", "sqlite-database.ts"), "utf8");
-  const processSource = await readFile(path.join(workspace, "src", "execution", "process-runtime.ts"), "utf8");
+  ].map((file) => readFile(path.join(workspace, "packages/core/src", file), "utf8")));
+  const packageManagerSource = await readFile(path.join(workspace, "packages/core/src", "execution", "package-manager.ts"), "utf8");
+  const sqliteSource = await readFile(path.join(workspace, "packages/core/src", "persistence", "sqlite-database.ts"), "utf8");
+  const processSource = await readFile(path.join(workspace, "packages/core/src", "execution", "process-runtime.ts"), "utf8");
 
   if (
     manifest.engines?.node !== ">=22.13.0" ||
@@ -828,9 +833,9 @@ if (manifest.version.startsWith("0.11.")) {
     path.join(workspace, "docs", "EXECUTION_ENVIRONMENTS.md"),
     "utf8"
   );
-  const contextSource = await readFile(path.join(workspace, "src", "context", "context-engineering.ts"), "utf8");
-  const terminalSource = await readFile(path.join(workspace, "src", "cli", "terminal", "terminal-ui.ts"), "utf8");
-  const harnessSource = await readFile(path.join(workspace, "src", "runtime", "harness.ts"), "utf8");
+  const contextSource = await readFile(path.join(workspace, "packages/core/src", "context", "context-engineering.ts"), "utf8");
+  const terminalSource = await readFile(path.join(workspace, "packages/core/src", "cli", "terminal", "terminal-ui.ts"), "utf8");
+  const harnessSource = await readFile(path.join(workspace, "packages/core/src", "runtime", "harness.ts"), "utf8");
 
   for (const heading of [
     "## Discovery and precedence",
@@ -904,7 +909,7 @@ const certifiedProviders = providerDescriptorMatches
   .map((match) => match[1]);
 const expectedLiveDefault = `default: ${certifiedProviders.join(",")}`;
 if (certifiedProviders.length === 0) {
-  failures.push("src/runtime/config.ts does not identify any certified providers.");
+  failures.push("packages/core/src/runtime/config.ts does not identify any certified providers.");
 } else if (!liveCertificationWorkflow.includes(expectedLiveDefault)) {
   failures.push(
     `.github/workflows/live-certification.yml must default to every certified provider (${certifiedProviders.join(", ")}).`
