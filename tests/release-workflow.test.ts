@@ -148,6 +148,7 @@ describe("release workflow version source", () => {
     const manifest = await Bun.file(path.join(workspace, "package.json")).json();
     expect(manifest.workspaces).toEqual(["packages/core", "packages/cli"]);
     expect(manifest.scripts.test).not.toContain("desktop");
+    expect(manifest.scripts.check.indexOf("bun run build")).toBeLessThan(manifest.scripts.check.indexOf("bun run typecheck:tooling"));
     expect(manifest.exports["./desktop/v1/state"]).toBeDefined();
     expect(manifest.exports["./desktop/v1/providers"]).toBeDefined();
     const workflow = await readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8");
