@@ -207,7 +207,7 @@ try {
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Toggle navigation');
   assert.equal(await page.locator('main.workspace').evaluate(node => node.inert), false);
   await page.getByLabel('Message', {exact: true}).focus(); await page.keyboard.press('Meta+k');
-  await page.waitForFunction(() => document.activeElement?.getAttribute('placeholder') === 'Search conversations…');
+  await page.waitForFunction(() => document.activeElement?.getAttribute('placeholder') === 'Find a page or conversation…');
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => document.activeElement?.id === 'prompt');
   await desktop.evaluate(({BrowserWindow}) => BrowserWindow.getAllWindows()[0].setBounds({width: 1440, height: 960}));

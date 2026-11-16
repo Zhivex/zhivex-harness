@@ -69,7 +69,7 @@ let calls=0;require('node:readline').createInterface({input:process.stdin}).on('
       await serveAcpStdio(host.adapter, { workspace: host.workspace, mcpSessionProvider: host.mcpSessionProvider,
         input: child.stdout, output: child.stdin, permissionTimeoutMs: 30_000 });
       assert.equal(await exited, 0, diagnostics);
-      assert.deepEqual(JSON.parse(diagnostics), { status: 'passed', client: '@agentclientprotocol/sdk@2.1.0', permissions: 2 });
+      assert.deepEqual(JSON.parse(diagnostics), { status: 'passed', client: '@agentclientprotocol/sdk@2.7.0', permissions: 2 });
     } finally { clearTimeout(deadline); child.kill(); }
   } else {
   const connection = createAcpConnection(host.adapter, { workspace: host.workspace, mcpSessionProvider: host.mcpSessionProvider,

@@ -80,7 +80,7 @@ try {
   await page.getByRole('textbox', { name: 'Message', exact: true }).fill('wait-for-cancel');
   await page.getByRole('button', { name: 'Send message', exact: true }).click();
   await page.getByRole('button', { name: 'Cancel task', exact: true }).click();
-  await page.waitForFunction(() => document.querySelector('.statusbar')?.textContent?.includes('cancelled'));
+  await page.getByText('Response stopped', {exact: true}).waitFor();
   const isolation = await page.evaluate(() => ({ require: typeof window.require, process: typeof window.process, bridge: typeof window.zhivex.command }));
   assert.deepEqual(isolation, { require: 'undefined', process: 'undefined', bridge: 'function' });
   const denied = await page.evaluate(async () => {
@@ -122,7 +122,7 @@ try {
   ready = await boot();
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
   await page.getByRole("alert").filter({hasText: "workspace connection was interrupted"}).waitFor({state: "hidden"});
-  await page.getByText("Connected to your core", { exact: true }).waitFor({state: "attached"});
+  await page.getByText('Connected', {exact: true}).waitFor();
   await desktop.close(); desktop = undefined;
   page = await open(ready.credentialsPath);
   await page.getByText('This conversation is shared with the terminal.', { exact: true }).waitFor();

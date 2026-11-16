@@ -88,7 +88,7 @@ try {
     ok: true,
     certifiedAt: new Date().toISOString(),
     serverPackage: "@modelcontextprotocol/server",
-    serverVersion: "2.3.1",
+    serverVersion: "2.4.0",
     clientProtocolVersion: "2025-06-18",
     serverCompatibilityMode: "legacy-stateless",
     transport: "loopback-streamable-http",
