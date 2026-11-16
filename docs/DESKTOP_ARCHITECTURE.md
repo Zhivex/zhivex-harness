@@ -1,5 +1,7 @@
 # Desktop architecture
 
+Electron source, packaging and CI now live in [zhivex-app](https://github.com/Zhivex/zhivex-app). Harness retains the public engine, application and state contracts consumed by the app. Paths below are relative to that repository.
+
 The desktop uses Electron and React with a separate Harness runtime process. It
 shares the [client protocol](CLIENT_PROTOCOL.md) and [local service](LOCAL_SERVICE.md)
 with other clients. Development uses Bun; installed application processes use
@@ -92,10 +94,10 @@ distribution; fixture success is not a substitute.
 
 ## Maintainer guides
 
-- [Desktop setup and reproducible checks](https://github.com/Zhivex/zhivex-harness/blob/main/packages/desktop/README.md)
-- [Model selection and credential behavior](https://github.com/Zhivex/zhivex-harness/blob/main/packages/desktop/MODELS.md)
-- [Installation and platform limits](https://github.com/Zhivex/zhivex-harness/blob/main/packages/desktop/INSTALLATION.md)
-- [Update trust and recovery protocol](https://github.com/Zhivex/zhivex-harness/blob/main/packages/desktop/UPDATES.md)
+- [Desktop setup and reproducible checks](https://github.com/Zhivex/zhivex-app/blob/main/packages/desktop/README.md)
+- [Model selection and credential behavior](https://github.com/Zhivex/zhivex-app/blob/main/packages/desktop/MODELS.md)
+- [Installation and platform limits](https://github.com/Zhivex/zhivex-app/blob/main/packages/desktop/INSTALLATION.md)
+- [Update trust and recovery protocol](https://github.com/Zhivex/zhivex-app/blob/main/packages/desktop/UPDATES.md)
 
 Automated Electron checks cover packaged offline behavior and process isolation.
 Live provider calls, real OCI execution, live GitHub authentication and signed

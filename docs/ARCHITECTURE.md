@@ -1,7 +1,8 @@
 # Source architecture
 
 Harness keeps its runtime package, a separately built Code terminal package in
-`packages/cli`, and a separately built Desktop application. Additive public
+`packages/cli`. The Electron application is maintained in the separate
+[zhivex-app repository](https://github.com/Zhivex/zhivex-app). Additive public
 [engine entrypoints](ENGINE_API.md) expose the motor independently of terminal
 presentation. Persisted-state and client protocol versions remain unchanged.
 
@@ -90,9 +91,9 @@ Renderer uses `/models` and `/protocol`; host capabilities remain behind preload
 The runtime never imports Desktop. Existing internal bridge files are no longer
 consumed by the application.
 
-`prepare:desktop` installs the candidate tarball in a private consumer. Build
-bundles only that installed package and records its artifact hash; no source or
-version/SQLite rewrite plugins are used. See [Desktop development](../packages/desktop/DEVELOPMENT.md)
+In zhivex-app, `prepare:harness` installs an explicit candidate tarball. App builds
+bundle only that installed package and record its artifact hash; no source or
+version/SQLite rewrite plugins are used. Harness has no Electron build dependency. See [Desktop development](https://github.com/Zhivex/zhivex-app/blob/main/packages/desktop/DEVELOPMENT.md)
 for the exact candidate compatibility constraint and the distinction from the
 previously deployed RC3 bytes.
 
@@ -109,8 +110,8 @@ preserve class and schema identity across entrypoints.
 ## Enforcement and verification
 
 `bun run architecture:check` checks static imports, re-exports, literal dynamic
-imports, `require` calls and import types. It runs in the main `check` gate and
-Desktop CI. Computed module paths are not a supported way to cross these boundaries.
+imports, `require` calls and import types. It runs in the main Harness `check` gate. The App repository owns its
+separate import-boundary and packaged-runtime checks. Computed module paths are not a supported way to cross these boundaries.
 The architecture tests also bundle the Desktop protocol for a browser to catch
 accidental transitive host dependencies.
 

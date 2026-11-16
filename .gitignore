@@ -30,8 +30,3 @@ evaluations/external/.venv/
 /tests/private/minimum-evals/
 /.private-minimum-evals/
 /private-minimum-evals/
-
-# Electron build artifacts
-packages/desktop/build/
-packages/desktop/out/
-packages/desktop/.harness/

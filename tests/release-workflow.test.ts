@@ -139,53 +139,22 @@ describe("release workflow version source", () => {
     expect(workflow).not.toMatch(/HARNESS_VERSION !== "\d+\.\d+\.\d+"/);
   });
 
-  test("CI and Dependabot cover the desktop dependency boundary", async () => {
-    const [workflow, dependabot] = await Promise.all([
-      readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8"),
-      readFile(path.join(workspace, ".github/dependabot.yml"), "utf8")
-    ]);
-
-    expect(workflow).toContain("desktop-security:");
-    expect(workflow).toContain("bun install --cwd packages/desktop --frozen-lockfile --ignore-scripts");
-    expect(workflow).toContain("working-directory: packages/desktop");
-    expect(workflow).toContain("bun test --preload ./tests/preload-sqlite.ts packages/desktop/tests");
-    expect(workflow).toContain("bun run --cwd packages/desktop package");
-    expect(workflow).toContain("bun run packages/desktop/scripts/smoke-phase-five.mjs --packaged");
-    expect(dependabot).toMatch(/package-ecosystem: bun\n\s+directory: \/packages\/desktop/);
-  });
-
-  test("macOS CI prepares the Electron binary before native tests", async () => {
-    const workflow = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8")) as {
-      jobs: Record<string, { steps: { name: string; run?: string; if?: string }[] }>;
-    };
-    for (const [job, testCommand] of [["desktop-security", "bun test --preload ./tests/preload-sqlite.ts packages/desktop/tests"], ["verify", "bun run check"]] as const) {
-      const steps = workflow.jobs[job]!.steps;
-      const installIndex = steps.findIndex(step => step.run?.includes("node packages/desktop/node_modules/electron/install.js"));
-      const testIndex = steps.findIndex(step => step.run?.includes(testCommand));
-      expect(installIndex).toBeGreaterThanOrEqual(0);
-      expect(testIndex).toBeGreaterThan(installIndex);
-      expect(steps.slice(0, installIndex + 1).some(step =>
-        step.run?.includes("bun install --cwd packages/desktop --frozen-lockfile --ignore-scripts"))).toBe(true);
-      if (job === "verify") expect(steps[installIndex]!.if).toBe("runner.os == 'macOS'");
+  test("Harness CI and releases operate without an Electron workspace", async () => {
+    for (const file of ["ci.yml", "release.yml"]) {
+      const source = await readFile(path.join(workspace, ".github/workflows", file), "utf8");
+      expect(source).not.toContain("packages/desktop");
+      expect(source).not.toContain("prepare:desktop");
     }
-  });
-
-  test("full-suite jobs install Desktop renderer dependencies on every platform", async () => {
-    for (const [file, job, command] of [
-      ["ci.yml", "verify", "bun run check"],
-      ["release.yml", "validate", "bun run release:check"],
-    ] as const) {
-      const workflow = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows", file), "utf8")) as {
-        jobs: Record<string, { steps: { run?: string; if?: string }[] }>;
-      };
-      const steps = workflow.jobs[job]!.steps;
-      const testIndex = steps.findIndex(step => step.run?.includes(command));
-      const installIndex = steps.findIndex(step =>
-        step.run?.includes("bun install --cwd packages/desktop --frozen-lockfile --ignore-scripts"));
-      expect(installIndex).toBeGreaterThanOrEqual(0);
-      expect(testIndex).toBeGreaterThan(installIndex);
-      expect(steps[installIndex]!.if).toBeUndefined();
-    }
+    const manifest = await Bun.file(path.join(workspace, "package.json")).json();
+    expect(manifest.workspaces).toEqual(["packages/core", "packages/cli"]);
+    expect(manifest.scripts.test).not.toContain("desktop");
+    expect(manifest.scripts.check.indexOf("bun run build")).toBeLessThan(manifest.scripts.check.indexOf("bun run typecheck:tooling"));
+    expect(manifest.exports["./desktop/v1/state"]).toBeDefined();
+    expect(manifest.exports["./desktop/v1/providers"]).toBeDefined();
+    const workflow = await readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8");
+    expect(workflow).toContain("bun run check");
+    expect(workflow).toContain("bun run test:code");
+    expect(workflow).toContain("bun run smoke:engine-code");
   });
 
   test("release artifact transfer actions are pinned to immutable commit SHAs", async () => {
@@ -426,27 +395,6 @@ test("all live release gates select the checked artifact and prohibit source fal
     expect(source).not.toContain('from "../packages/core/src/runtime/harness.js"');
   }
 });
-
-test("Desktop CI exercises packaged restart, uncertain effects and worktree delivery", async () => {
-  const workflow = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8")) as {
-    jobs: Record<string, { steps: { run?: string }[] }>;
-  };
-  const steps = workflow.jobs["desktop-security"]!.steps;
-  const packaged = steps.find(step => step.run?.includes("bun run --cwd packages/desktop package"))!.run!;
-  // Restart/history checks invoke the root CLI; Desktop packaging does not build it.
-  const commands = steps.flatMap(step => (step.run ?? "").split("\n").map(line => line.trim()));
-  const cliBuild = commands.indexOf("bun run prepare:desktop");
-  const manifest = await Bun.file(new URL("../package.json", import.meta.url)).json();
-  expect(manifest.scripts["prepare:desktop"]).toStartWith("bun run build && bun pm pack");
-  expect(manifest.scripts["prepare:desktop"]).toContain("packages/desktop/scripts/prepare-harness.ts");
-  expect(cliBuild).toBeGreaterThanOrEqual(0);
-  expect(cliBuild).toBeLessThan(commands.indexOf("bun run packages/desktop/scripts/smoke-phase-five.mjs --packaged"));
-  for (const scenario of ["smoke-phase-five.mjs --packaged", "smoke-bundled-core.mjs", "smoke-mac-verifier.ts", "smoke-application-swap.ts"]) {
-    expect(packaged).toContain(`bun run packages/desktop/scripts/${scenario}`);
-  }
-  expect(packaged).toContain("tests/application-offline-migration.test.ts");
-});
-
 
 test("certification is the safe default and publication requires explicit confirmation", async () => {
   const workflow = await readWorkflow("release.yml");

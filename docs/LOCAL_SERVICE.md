@@ -106,7 +106,7 @@ recovers the dead owner, verifies identical approval and replay state, invalidat
 credentials, applies the approved edit exactly once and inspects its completed journal
 receipt. Fixtures use mock providers; no live API or certification claim is made.
 
-The CLI service adapter and the [desktop](https://github.com/Zhivex/zhivex-harness/blob/main/packages/desktop/README.md) share this transport. Desktop signing, notarization and positive signed-update acceptance remain pending; the local unsigned build is not a production distribution.
+The CLI service adapter and the [desktop](https://github.com/Zhivex/zhivex-app/blob/main/packages/desktop/README.md) share this transport. Desktop signing, notarization and positive signed-update acceptance remain pending; the local unsigned build is not a production distribution.
 
 The CLI adapter now consumes this transport via opt-in `--service`; see
 [CLI.md](CLI.md#shared-local-service-experimental). It shares the direct CLI result

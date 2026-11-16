@@ -1,5 +1,7 @@
 # Primer flujo Core / CLI / Electron
 
+> Historical monorepo integration guide. Electron now belongs to [zhivex-app](https://github.com/Zhivex/zhivex-app); use its README for current installation, artifact preparation and build commands. The instructions below retain their original integration context.
+
 Estado: primer recorrido compartido implementado. Assistant y Code tienen arranque autónomo en Electron; ver [uso y proyectos](CODE_ELECTRON.md). Este documento describe el modo de conexión a un servicio externo.
 
 ## Qué funciona

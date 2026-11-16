@@ -1,5 +1,7 @@
 # Vincular Telegram desde Electron
 
+> Historical monorepo integration guide. Electron now belongs to [zhivex-app](https://github.com/Zhivex/zhivex-app); use its README for current installation, artifact preparation and build commands. The instructions below retain their original integration context.
+
 > Las rutas históricas `reports/unification/…` citadas en este documento pertenecen al [archivo interno](INTERNAL_ARCHIVE.md); los originales se conservaron fuera del árbol publicable.
 
 Al crear un Assistant, el borrador incluye la sección opcional **Telegram**. El flujo usa las acciones del gestor compartido del core; no hay un segundo cliente de bot en el renderer.

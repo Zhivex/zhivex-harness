@@ -98,8 +98,8 @@ profile; the stable signature snapshot was not modified to accommodate the chang
 
 ## Phase 0 acceptance
 
-`bun run build` at the root, followed by
-`bun run packages/desktop/scripts/smoke-assistant.mjs`, must package Harness without
+Build and pack Harness in this repository, prepare the artifact in zhivex-app,
+then run `bun run packages/desktop/scripts/smoke-assistant.mjs` there. This must consume Harness without
 rewriting its metadata, install it in a temporary consumer, check resolution
 local to the consumer, validate types/schemas and execute an offline task with Node.
 The report prints the tarball version and SHA-256. It does not certify a real provider,

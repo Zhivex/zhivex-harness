@@ -130,7 +130,6 @@ export const checkArchitecture = async (root: string): Promise<string[]> => {
     }
   };
   await visit("packages/core/src");
-  await visit("packages/desktop/src");
   await visit("packages/cli/src");
   violations.push(...engineBoundaryViolations(sources));
   return violations;

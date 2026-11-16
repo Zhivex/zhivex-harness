@@ -124,7 +124,7 @@ Release-gated providers are OpenAI, Qwen, and Meta. **Gemini, Anthropic, Vertex,
 | MCP | Bounded Streamable HTTP is supported. stdio is outside the default CLI. An experimental host-only path can launch stdio servers in Docker; see [Isolated MCP stdio](docs/MCP_STDIO.md). |
 | Editor protocol | `zhx-acp` is an experimental ACP subset: text sessions, one-time permissions, and cancellation. Output is buffered until the run finishes. ACP cannot load or resume a session. See [ACP](docs/ACP.md). |
 | Isolated commands | Docker on Linux is supported. Podman is provisional. See [Execution environments](docs/EXECUTION_ENVIRONMENTS.md). |
-| Desktop | Separate private alpha for macOS Apple Silicon. Unsigned, and not part of the npm package. See [Desktop](https://github.com/Zhivex/zhivex-harness/blob/main/packages/desktop/README.md). |
+| Desktop | Separate private alpha for macOS Apple Silicon. Unsigned, and not part of the npm package. See [Desktop](https://github.com/Zhivex/zhivex-app). |
 
 ## Use the engine as a library
 
@@ -167,10 +167,10 @@ Release channels, publication, and certification records are in the [release pro
 
 ## Electron workspace layout
 
-The maintained source lives in `packages/core`, `packages/cli`, and `packages/desktop`. Root package exports remain compatible. See [application migration and recovery](docs/APPLICATION_MIGRATION.md) for the Bun workspace commands, offline backups, and distribution gates.
+The maintained source lives in `packages/core` and `packages/cli`. Root package exports remain compatible. See [application migration and recovery](docs/APPLICATION_MIGRATION.md) for the Bun workspace commands, offline backups, and distribution gates.
 
 ## Repository packages
 
-The supported implementations are `packages/core`, `packages/cli`, and `packages/desktop` (Electron). The standalone browser applications, Tauri launcher, and temporary source aliases have been removed. Assistant functionality belongs to the core and Electron; its domain regressions run with `bun run test:assistant`.
+The maintained runtime and terminal implementations are `packages/core` and `packages/cli`. Electron lives in the separate [zhivex-app repository](https://github.com/Zhivex/zhivex-app). The standalone browser applications, Tauri launcher, and temporary source aliases have been removed. Assistant functionality belongs to the core and Electron; its domain regressions run with `bun run test:assistant`.
 
-Run `bun run workspace:check`, `bun run check`, `bun run dev:code`, and `bun run prepare:desktop`. Then run `bun run --cwd packages/cli test` and `bun run --cwd packages/desktop package`. Electron smoke tests own their Playwright dependency and use the unified application.
+Run `bun run workspace:check`, `bun run check`, `bun run dev:code`, and `bun run --cwd packages/cli test`. Electron builds and smoke tests run independently in zhivex-app against versioned Harness artifacts.

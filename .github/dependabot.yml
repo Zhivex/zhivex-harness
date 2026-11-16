@@ -13,22 +13,6 @@ updates:
       - dependencies
       - security
 
-  # Desktop is paused. Keep the directory entry so the pause is explicit,
-  # and open no dependency update pull requests for it.
-  - package-ecosystem: bun
-    directory: /packages/desktop
-    schedule:
-      interval: weekly
-      day: monday
-      time: "09:15"
-      timezone: America/Argentina/Buenos_Aires
-    open-pull-requests-limit: 0
-    ignore:
-      - dependency-name: "*"
-    labels:
-      - dependencies
-      - security
-
   - package-ecosystem: github-actions
     directory: /
     groups:

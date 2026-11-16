@@ -40,9 +40,9 @@ const visit = async (directory: string): Promise<void> => {
         const resolved = dependency.target.startsWith(".")
           ? path.posix.normalize(path.posix.join(path.posix.dirname(file), dependency.target)).replace(/\.js$/, ".ts")
           : dependency.target;
-        // All CLI/Desktop dependencies plus any reverse edge into CLI from the rest of Harness.
+        // All CLI dependencies plus any reverse edge into CLI from the rest of Harness.
         if (file.startsWith("packages/core/src/cli/") || ["packages/core/src/cli.ts", "packages/core/src/cli-entry.ts", "packages/core/src/acp-cli.ts", "packages/core/src/service-cli.ts"].includes(file)
-          || file.startsWith("packages/desktop/src/") || resolved.startsWith("packages/core/src/cli/")) {
+          || resolved.startsWith("packages/core/src/cli/")) {
           imports.push({ file, ...dependency, resolved });
         }
       }
@@ -50,7 +50,6 @@ const visit = async (directory: string): Promise<void> => {
   }
 };
 await visit("packages/core/src");
-await visit("packages/desktop/src");
 process.stdout.write(`${JSON.stringify({
   schemaVersion: 1,
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
