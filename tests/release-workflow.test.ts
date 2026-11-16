@@ -148,7 +148,7 @@ describe("release workflow version source", () => {
     expect(workflow).toContain("desktop-security:");
     expect(workflow).toContain("bun install --cwd packages/desktop --frozen-lockfile --ignore-scripts");
     expect(workflow).toContain("working-directory: packages/desktop");
-    expect(workflow).toContain("bun test packages/desktop/tests");
+    expect(workflow).toContain("bun test --preload ./tests/preload-sqlite.ts packages/desktop/tests");
     expect(workflow).toContain("bun run --cwd packages/desktop package");
     expect(workflow).toContain("bun run packages/desktop/scripts/smoke-phase-five.mjs --packaged");
     expect(dependabot).toMatch(/package-ecosystem: bun\n\s+directory: \/packages\/desktop/);
@@ -158,7 +158,7 @@ describe("release workflow version source", () => {
     const workflow = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8")) as {
       jobs: Record<string, { steps: { name: string; run?: string; if?: string }[] }>;
     };
-    for (const [job, testCommand] of [["desktop-security", "bun test packages/desktop/tests"], ["verify", "bun run check"]] as const) {
+    for (const [job, testCommand] of [["desktop-security", "bun test --preload ./tests/preload-sqlite.ts packages/desktop/tests"], ["verify", "bun run check"]] as const) {
       const steps = workflow.jobs[job]!.steps;
       const installIndex = steps.findIndex(step => step.run?.includes("node packages/desktop/node_modules/electron/install.js"));
       const testIndex = steps.findIndex(step => step.run?.includes(testCommand));

@@ -57,6 +57,11 @@ await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 let stored = null, owner, desktop, page; const errors = [];
 const options = {secrets: {async read() {return stored;}, async write(value) {stored = value;}}, validateProvider: async () => {}};
 async function waitForAsync(check) {const end = Date.now()+30000; while (!await check()) {if(Date.now()>end) throw new Error('CONDITION_TIMEOUT'); await new Promise(resolve=>setTimeout(resolve,60));}}
+const openCodeTool = async name => {
+ const menu = page.locator('details.sidebar-tools');
+ if (!await menu.evaluate(element => element.open)) await menu.locator('summary').click();
+ await menu.getByRole('button', {name, exact:true}).click();
+};
 const open = async () => {
  const packaged = process.argv.includes('--packaged');
  const appPathAt = process.argv.indexOf('--app-path');
@@ -78,6 +83,8 @@ try {
  await coordinator.call('action',{name:'select',value:{id:firstAgent}});
  await open();
  await page.getByRole('button',{name:/^New conversation/}).first().click();
+ await page.getByRole('button',{name:'Rename conversation',exact:true}).waitFor();
+ await page.getByRole('heading',{name:'Start with an idea.',exact:true}).waitFor();
  await page.getByLabel('Message',{exact:true}).fill('Hello from the autonomous app');
  await page.getByRole('button',{name:'Send message',exact:true}).click();
  await page.getByText('Autonomous assistant is ready.',{exact:true}).first().waitFor();
@@ -94,17 +101,20 @@ try {
     await page.waitForFunction(() => !document.querySelector('.setup-panel'));
     assert.equal((await page.evaluate(() => window.zhivex.hosts())).length, 2);
     await page.getByRole('button', {name: /^New conversation/}).first().click();
+    await page.getByRole('button',{name:'Rename conversation',exact:true}).waitFor();
+    await page.getByRole('heading',{name:'Start with an idea.',exact:true}).waitFor();
     await page.getByLabel('Message', {exact: true}).fill('code-edit: update review.txt');
     await page.getByRole('button', {name: 'Send message', exact: true}).click();
     await page.getByText('An action needs your review.', {exact: true}).waitFor();
     assert.equal(await readFile(path.join(workspace, 'review.txt'), 'utf8'), 'before\n');
     // A new conversation must not hide pending decisions in another conversation.
-    const pendingTitle = await page.locator('.session-list .selected').textContent();
+    const pendingTitle = await page.locator('.session-list .selected').getAttribute('title');
     await page.getByRole('button', {name: /^New conversation/}).first().click();
+    await page.getByRole('button',{name:'Rename conversation',exact:true}).waitFor();
     await page.getByRole('heading',{name:'Start with an idea.',exact:true}).waitFor();
     await page.locator('nav').getByRole('button',{name:/^Changes/}).click();
     await page.getByRole('region',{name:'Other conversations awaiting review'}).getByRole('button',{name:pendingTitle.trim(),exact:true}).click();
-    await page.getByRole('button',{name:'Load review',exact:true}).waitFor();
+    await page.getByRole('checkbox',{name:'Viewed',exact:true}).waitFor();
     await page.locator('nav').getByRole('button',{name:'Workspace',exact:true}).click();
     // A pending review must prevent project switching, without interrupting Assistant.
     await page.getByRole('button', {name: 'Code projects', exact: true}).click();
@@ -114,7 +124,7 @@ try {
     assert.equal((await page.evaluate(() => window.zhivex.command('assistant', {method: 'session.list'}))).data.sessions.length, 1);
     await page.getByRole('button', {name: 'Back to Code', exact: true}).click();
     await page.getByRole('button', {name: 'Review action', exact: true}).click();
-    await page.getByRole('button', {name: 'Load review', exact: true}).click();
+    if (await page.getByRole('button', {name: 'Load review', exact: true}).count()) await page.getByRole('button', {name: 'Load review', exact: true}).click();
     await page.getByRole('checkbox', {name: 'Viewed', exact: true}).check();
     await page.screenshot({path: path.join(directory, 'code-review.png')});
     for (const width of [1280,390]) {
@@ -125,10 +135,11 @@ try {
     }
     await desktop.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setContentSize(1440,960));
     await page.getByRole('button', {name: 'Approve this action', exact: true}).click();
+    await page.locator('nav').getByRole('button', {name: 'Workspace', exact: true}).click();
     await page.getByText('Autonomous assistant is ready.', {exact: true}).first().waitFor();
     assert.equal(await readFile(path.join(workspace, 'review.txt'), 'utf8'), 'after\n');
     if (testTools) {
-      await page.getByRole('button', {name: 'Context', exact: true}).click();
+      await openCodeTool('Context');
       await page.getByRole('region', {name: 'Code context', exact: true}).getByText('AGENTS.md', {exact: true}).waitFor();
       await page.getByRole('button', {name: 'Refresh context', exact: true}).click();
       await page.getByText('No project skills indexed.', {exact: true}).waitFor();
@@ -140,7 +151,7 @@ try {
       const {kind: contextKind, projectId: contextProject, ...cliContext} = contextCli;
       assert.equal(contextKind, 'application-code-context'); assert(contextProject); assert.deepEqual(cliContext, context);
       await page.screenshot({path: path.join(directory, 'code-context.png')});
-      await page.getByRole('button', {name: 'Checkpoints', exact: true}).click();
+      await openCodeTool('Checkpoints');
       await page.getByRole('button', {name: 'Workspace checkpoints', exact: true}).click();
       await page.getByText('Capture current files', {exact: true}).click();
       await page.getByLabel('Relative paths, one per line').fill('review.txt');
@@ -154,19 +165,20 @@ try {
       await page.getByLabel('Message', {exact: true}).waitFor();
       assert.equal(await readFile(path.join(workspace, 'review.txt'), 'utf8'), 'after\n');
       const rejected = await page.evaluate(async () => {try {await window.zhivex.command('code', {method: 'restore.apply'}); return false;} catch {return true;}}); assert.equal(rejected, true);
-      await page.getByRole('button', {name: 'Execution', exact: true}).click();
+      await openCodeTool('Execution');
       await page.getByRole('button', {name: 'Reload checks', exact: true}).click();
       await page.getByRole('button', {name: 'Ask Code to run test', exact: true}).click();
       await page.getByRole('button', {name: 'Review execution', exact: true}).click();
-      await page.getByRole('button', {name: 'Load review', exact: true}).click();
+      if (await page.getByRole('button', {name: 'Load review', exact: true}).count()) await page.getByRole('button', {name: 'Load review', exact: true}).click();
       await page.getByRole('button', {name: 'Approve this action', exact: true}).click();
-      await page.waitForFunction(() => document.querySelector('.context-row strong')?.textContent === 'completed');
+      await page.locator('nav').getByRole('button', {name: 'Workspace', exact: true}).click();
+      await page.getByText('Response complete', {exact: true}).waitFor();
       assert.equal(await readFile(path.join(workspace, 'check-ran.txt'), 'utf8'), 'ok');
-      await page.getByRole('button', {name: 'Execution', exact: true}).click();
+      await openCodeTool('Execution');
       await page.getByRole('region', {name: 'Recorded check results', exact: true}).getByText('Exit code: 0', {exact: true}).waitFor();
       await page.getByText('Check passed.', {exact: true}).waitFor();
       await page.screenshot({path: path.join(directory, 'execution-result.png')});
-      await page.getByRole('button', {name: 'Worktrees', exact: true}).click();
+      await openCodeTool('Worktrees');
       await page.getByLabel('Worktree title', {exact: true}).fill('Isolated task');
       await page.getByLabel('Branch (optional)', {exact: true}).fill('feat/isolated-task');
       await page.getByRole('button', {name: 'Create worktree', exact: true}).click();
@@ -177,10 +189,10 @@ try {
       await page.getByRole('button', {name: 'Open worktree', exact: true}).click();
       await page.waitForFunction(() => !document.querySelector('[aria-label="Worktrees"]'));
       assert.equal((await page.evaluate(() => window.zhivex.command('code', {method: 'session.list'}))).data.sessions.length, 0);
-      await page.getByRole('button', {name: 'Worktrees', exact: true}).click();
+      await openCodeTool('Worktrees');
       await page.getByRole('button', {name: 'Back to source project', exact: true}).click();
       await page.waitForFunction(() => !document.querySelector('[aria-label="Worktrees"]'));
-      await page.getByRole('button', {name: 'Worktrees', exact: true}).click();
+      await openCodeTool('Worktrees');
       await page.getByRole('button', {name: 'Review removal', exact: true}).click();
       await page.getByLabel('I reviewed this checkout and its removal.').check();
       await page.getByRole('button', {name: 'Confirm removal', exact: true}).click();
@@ -189,7 +201,7 @@ try {
       assert.equal(await readFile(path.join(workspace, 'review.txt'), 'utf8'), 'after\n');
       if (testGit) {
         const prior = execFileSync('git', ['-C', workspace, 'rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
-        await page.getByRole('button', {name: 'Git delivery', exact: true}).click();
+        await openCodeTool('Git delivery');
         await page.locator('.git-panel > summary').click();
         await page.getByRole('button', {name: 'Refresh files', exact: true}).click();
         await page.locator('[data-git-path="review.txt"]').check();
@@ -224,7 +236,7 @@ try {
  await page.getByRole('combobox',{name:/Model connection/}).selectOption(secondConnection.id);
  await page.getByRole('button',{name:'Use selected connection for this project',exact:true}).click();
  await page.getByRole('region',{name:'Code projects',exact:true}).waitFor({state:'hidden'});
- await page.getByRole('button',{name:'Context',exact:true}).click();
+ await openCodeTool('Context');
  await page.getByRole('region',{name:'Code context'}).getByText(/second-model/).waitFor();
  await page.screenshot({path:directory+'/model-context.png'});
  const snapshot = await coordinator.state(), projectId = snapshot.code.active;
@@ -239,7 +251,7 @@ try {
  assert((await code.command({method:'session.list'})).data.sessions.length >= 2);
  assert.equal(execFileSync('git',['-C',workspace,'rev-list','--count','HEAD'],{encoding:'utf8'}).trim(),'2');
  await open(); await page.getByRole('button',{name:'Code',exact:true}).click();
- await page.getByRole('button',{name:'Context',exact:true}).click();
+ await openCodeTool('Context');
  await page.getByRole('region',{name:'Code context'}).getByText('AGENTS.md',{exact:true}).waitFor();
  assert.equal(errors.length,0,JSON.stringify(errors));
  const report={passed:true,packaged:process.argv.includes("--packaged"),directory,coreArtifactSha256:JSON.parse(await readFile(root+'/packages/desktop/.harness/installed.json','utf8')).sha256,checks:['pending decisions remain discoverable after creating another conversation','repository validation and native picker','Assistant and Code coexist','pending file review prevents project switch','file effect only after review','CLI and Electron share context','checkpoint capture and approved restore','raw restore rejected','real Bun check after approval and visible result','worktree create/open/remove with source preservation','independently approved local commit once','area switch preserves running Code task; explicit cancellation stops it','model connection changes without losing conversations','Electron crash and host restart preserve sessions and commit'],limitations:['Local HTTP model and in-memory SecretStore; no keychain or external accounts. Push and PR transports validated separately with offline fixtures.']};
