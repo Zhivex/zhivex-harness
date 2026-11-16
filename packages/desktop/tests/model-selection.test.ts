@@ -4,7 +4,7 @@ import {execFileSync} from "node:child_process";
 import {desktopBootstrapCredentials, desktopProviders, defaultModelSelection, modelSelectionSchema, providerEnvironment} from "../src/model-selection.js";
 import {openProjectRegistry} from "../src/projects.js";
 import {prepareModelTransition} from "../src/model-transition.js";
-import type {HarnessClientResponse} from "../../core/src/client/index.js";
+import type {HarnessClientResponse} from "@zhivex-ai/harness/protocol";
 
 test("existing providers map only their own Keychain credential into the runtime",()=>{
  expect(desktopProviders().map(p=>p.id).sort()).toEqual(["anthropic","azure-openai","bedrock","gemini","meta","openai","qwen","vertex"]);
@@ -43,9 +43,8 @@ test("Vertex Desktop passes only explicit host ADC route settings, never API key
  expect(providerEnvironment({provider:"vertex",model:"gemini-3.7-flash"}, undefined, {})).toEqual({});
 });
 
-test("Qwen keeps Max as default while Flash is featured across Desktop and CLI", async () => {
- const {consoleModelChoices}=await import("../../core/src/cli/console/console-navigation.js");
- const {providerDescriptor}=await import("../../core/src/runtime/config.js");
+test("Qwen keeps Max as default while Flash is featured in Desktop", async () => {
+ const {providerDescriptor}=await import("@zhivex-ai/harness/engine");
  const qwen=desktopProviders().find(p=>p.id==="qwen")!;
  expect(qwen.defaultModel).toBe("qwen3.8-max");
  expect(qwen.models!.find(m=>m.id==="qwen4-max")).toMatchObject({group:"primary",capabilities:["chat","tools","vision"]});
@@ -53,9 +52,6 @@ test("Qwen keeps Max as default while Flash is featured across Desktop and CLI",
  expect(providerDescriptor("qwen").defaultModel).toBe(qwen.defaultModel);
  expect(qwen.models!.find(m=>m.id===qwen.defaultModel)?.group).toBe("primary");
  expect(qwen.models!.find(m=>m.id==="qwen3.8-flash")?.group).toBe("primary");
- const choices=consoleModelChoices("qwen",qwen.defaultModel,"qwen3.8-flash");
- expect(choices.find(m=>m.value==="qwen3.8-flash")?.detail).toContain("Current");
- expect(choices.find(m=>m.value===qwen.defaultModel)?.detail).toContain("Recommended default");
 });
 test("model choice survives reopen and project visits without changing another project",async()=>{
  const root=await mkdtemp("/tmp/har-model-registry-");
@@ -99,12 +95,11 @@ test("a dead runtime cannot authorize a model switch without recovering its stat
  expect(read).toBe(false);
 });
 
-test("desktop and CLI share catalog groups, defaults and model metadata", async () => {
- const {bundledModelCatalog}=await import("../../core/src/models/catalog.js");
- const {consoleModelChoices}=await import("../../core/src/cli/console/console-navigation.js");
+test("desktop preserves engine catalog groups, defaults and model metadata", async () => {
+ const {bundledModelCatalog}=await import("@zhivex-ai/harness/models");
  for(const provider of desktopProviders()){
-  const choices=consoleModelChoices(provider.id,provider.defaultModel);
-  expect(provider.models!.map(m=>m.id).sort()).toEqual(choices.map(m=>m.value).sort());
+  const catalogProvider=bundledModelCatalog.providers.find(p=>p.id===provider.id)!;
+  expect(provider.models!.map(m=>m.id).sort()).toEqual(catalogProvider.models.map(m=>m.id).sort());
   expect(provider.models!.find(m=>m.id===provider.defaultModel)?.group).toBe("primary");
   expect(provider.catalogRevision).toBe(bundledModelCatalog.revision);
  }

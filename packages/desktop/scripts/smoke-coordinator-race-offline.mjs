@@ -9,7 +9,7 @@ const output = await mkdtemp('/tmp/zhx-race-offline-');
 const installed = JSON.parse(await readFile(root + '/packages/desktop/.harness/installed.json', 'utf8'));
 const core = path.join(installed.install, 'node_modules/@zhivex-ai/harness/dist/engine/application.js');
 const clientModule = path.join(installed.install, 'node_modules/@zhivex-ai/harness/dist/engine/application-client.js');
-const {connectCoordinator} = await import(pathToFileURL(clientModule).href);
+const {connectCoordinator} = await import('@zhivex-ai/harness/application/client');
 const wait = async check => {const deadline = Date.now() + 20000; while (!await check()) {if (Date.now() > deadline) throw new Error('FIXTURE_TIMEOUT'); await new Promise(resolve => setTimeout(resolve, 30));}};
 const exists = file => access(file).then(() => true, () => false);
 await writeFile(output + '/worker.cjs', `

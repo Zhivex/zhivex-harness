@@ -9,7 +9,7 @@ const directory = await realpath(process.argv[2] ?? '');
 if (!directory.startsWith('/private/tmp/zhx-')) throw new Error('Use an existing disposable zhx test profile, not a personal profile.');
 const installed = JSON.parse(await readFile(path.join(root, 'packages/desktop/.harness/installed.json'), 'utf8'));
 const core = path.join(installed.install, 'node_modules/@zhivex-ai/harness');
-const {createProcessSecretStore} = await import(path.join(core, 'dist/engine/application.js'));
+const {createProcessSecretStore} = await import('@zhivex-ai/harness/application');
 const store = await createProcessSecretStore(directory, {executable: 'node', entry: path.join(core, 'dist/service-cli.js'), args: ['--credential-worker']});
 const started = Date.now(); let outcome;
 try {const value = await store.read(); outcome = value === null ? 'absent' : 'readable';}

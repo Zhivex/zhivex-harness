@@ -1,3 +1,4 @@
+import { validateHarnessExports } from "./harness-contract.js";
 import { createHash } from "node:crypto";
 import { readFile, realpath } from "node:fs/promises";
 import path from "node:path";
@@ -16,5 +17,6 @@ export async function installedHarness(root: string) {
   const metadata = JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8"));
   const desktop = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
   if (metadata.name !== "@zhivex-ai/harness" || metadata.version !== marker.version || metadata.version !== desktop.harness?.version) throw new Error("Installed Harness version or package identity mismatch.");
+  await validateHarnessExports(packageRoot, metadata);
   return { metadata, sha256, nodeModules: path.join(install, "node_modules") };
 }

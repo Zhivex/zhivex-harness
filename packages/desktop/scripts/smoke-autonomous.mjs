@@ -122,7 +122,7 @@ try {
     await page.screenshot({path: path.join(directory, 'notes-saved.png')});
     const installed = JSON.parse(await readFile(path.join(root, 'packages/desktop/.harness/installed.json'), 'utf8'));
     const core = path.join(installed.install, 'node_modules/@zhivex-ai/harness');
-    const {connectCoordinator} = await import(path.join(core, 'dist/engine/application-client.js'));
+    const {connectCoordinator} = await import('@zhivex-ai/harness/application/client');
     nodeService = spawn('node', [path.join(core, 'dist/service-cli.js'), '--application-directory', directory], {stdio: ['ignore', 'pipe', 'pipe'], env: process.env});
     nodeService.stderr.on('data', value => logs.push(value.toString()));
     await new Promise((resolve, reject) => {

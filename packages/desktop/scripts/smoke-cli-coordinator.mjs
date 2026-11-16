@@ -13,7 +13,7 @@ const root = fileURLToPath(new URL('../../../', import.meta.url));
 const installed = JSON.parse(await readFile(path.join(root, 'packages/desktop/.harness/installed.json'), 'utf8'));
 const core = path.join(installed.install, 'node_modules/@zhivex-ai/harness');
 const entry = path.join(core, 'dist/zhx.js');
-const {connectCoordinator} = await import(path.join(core, 'dist/engine/application-client.js'));
+const {connectCoordinator} = await import('@zhivex-ai/harness/application/client');
 const directory = await realpath(await mkdtemp('/tmp/zhx-cli-launch-'));
 const server = createServer(async (request, response) => {
   let body = ''; for await (const chunk of request) body += chunk;

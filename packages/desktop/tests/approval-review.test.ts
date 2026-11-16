@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
 import { projectApprovalReview } from "../src/approval-review.js";
-import type { HarnessClientRun } from "../../core/src/client/index.js";
+import type { HarnessClientRun } from "@zhivex-ai/harness/protocol";
 const run = (name: string, args: unknown): HarnessClientRun => ({ runId: "run_fixture", revision: 7, status: "waiting_approval", output: "", approvals: [{ approvalId: "a", digest: "a".repeat(64), provider: "fixture", kind: "tool", expiresAt: 1000, action: { name, arguments: JSON.stringify(args), signature: "never expose host signature" } }] });
 test("review binds exact replacement fragments and does not imply a full-file diff", () => {
     const view = projectApprovalReview(run("apply_reviewed_replacement", { path: "a.ts", expectedDigest: "sha256:" + "b".repeat(64), oldText: "before\n", newText: "<img onerror=alert(1)>\n" }), s => s);

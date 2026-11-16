@@ -29,7 +29,7 @@ async function boot() {
 }
 async function stopHost() { if (!hostProcess || hostProcess.exitCode !== null) return; const stopped = once(hostProcess, 'exit'); hostProcess.kill('SIGTERM'); await stopped; }
 async function cli(credentialsPath, args) {
-  const process = spawn('node', [path.join(root, 'dist/cli.js'), ...args, '--service', credentialsPath], { env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
+  const process = spawn('node', [path.join(JSON.parse(await readFile(path.join(root, 'packages/desktop/.harness/installed.json'), 'utf8')).install, 'node_modules/@zhivex-ai/harness/dist/cli.js'), ...args, '--service', credentialsPath], { env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
   let stdout = '', stderr = ''; process.stdout.on('data', chunk => { stdout += chunk; }); process.stderr.on('data', chunk => { stderr += chunk; });
   const [code] = await once(process, 'exit'); assert.equal(code, 0, stderr); return JSON.parse(stdout);
 }

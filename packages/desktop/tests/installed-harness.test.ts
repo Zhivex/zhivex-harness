@@ -1,3 +1,4 @@
+import { requiredHarnessExports } from "../scripts/harness-contract.js";
 import { expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
@@ -14,7 +15,9 @@ test("Desktop build requires the pinned installed candidate and rejects changed 
   try {
     await mkdir(pkg, { recursive: true }); await mkdir(path.dirname(link), { recursive: true });
     await writeFile(path.join(root, "package.json"), JSON.stringify({ harness: { version: "1.3.0-rc.3" } }));
-    await writeFile(path.join(pkg, "package.json"), JSON.stringify({ name: "@zhivex-ai/harness", version: "1.3.0-rc.3" }));
+    await writeFile(path.join(pkg, "package.json"), JSON.stringify({ name: "@zhivex-ai/harness", version: "1.3.0-rc.3", exports: Object.fromEntries(requiredHarnessExports.map(key => [key, {import: "./fixture.js", types: "./fixture.d.ts"}])) }));
+    await writeFile(path.join(pkg, "fixture.js"), "export {};");
+    await writeFile(path.join(pkg, "fixture.d.ts"), "export {};");
     await writeFile(path.join(install, "harness.tgz"), "fixture tarball");
     await writeFile(path.join(root, ".harness/installed.json"), JSON.stringify({ schemaVersion: 1, sha256, version: "1.3.0-rc.3", install }));
     await symlink(pkg, link, "dir");

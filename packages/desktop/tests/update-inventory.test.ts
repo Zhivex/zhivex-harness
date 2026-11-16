@@ -4,10 +4,10 @@ import {mkdir, mkdtemp, realpath, rm, symlink, writeFile, readFile} from "node:f
 import path from "node:path";
 import {collectDesktopUpdateInventory, prepareDesktopUpdateState, prepareExclusiveDesktopUpdateState} from "../src/update-inventory.js";
 import {acquireSqliteAccess, exclusiveSqliteAccessDescriptor} from "@zhivex-ai/harness/desktop/v1/state";
-import {resolveHarnessConfig} from "../../core/src/runtime/config.js";
-import {openHarnessPersistence, HARNESS_SQLITE_FILE} from "../../core/src/persistence/operations.js";
-import {openCliSessionStore} from "../../core/src/persistence/sessions.js";
-import {SqliteDatabase} from "../../core/src/persistence/sqlite-database.js";
+import {resolveHarnessConfig} from "@zhivex-ai/harness/engine";
+import {openHarnessPersistence, HARNESS_SQLITE_FILE} from "@zhivex-ai/harness/engine";
+import {openCliSessionStore} from "@zhivex-ai/harness/engine";
+import {SqliteFixture as SqliteDatabase} from "../testing/sqlite-fixture.js";
 import {armDesktopStateTransaction, restoreDesktopStateTransaction, finishDesktopStateTransaction} from "../src/state-transaction.js";
 import type {ManagedTask} from "../src/task-worktrees.js";
 const project = (workspace: string) => ({workspace, key: `project_${createHash("sha256").update(workspace).digest("hex").slice(0, 32)}`, name: "fixture", lastOpenedAt: 1});

@@ -1,0 +1,761 @@
+{
+  "schemaVersion": 1,
+  "sourceRepository": "https://github.com/Zhivex/zhivex-harness",
+  "sourceCommit": "0bc3927ba57b72ab7c9e18aeef5ab8f6595073a3",
+  "selectedRef": "refs/heads/main",
+  "historyPaths": [
+    "packages/desktop/",
+    "desktop/",
+    "packages/assistant/",
+    "LICENSE"
+  ],
+  "historyPolicy": "Preserve these paths on main ancestry; all local refs additionally retained in private Git bundle. Historical Assistant includes predecessor UI and domain context, but no current core source is extracted.",
+  "extractedCommit": "36a708f80c4080ac2f2154bc21f796a0af42def1",
+  "sourceDesktopFileSha256": {
+    "packages/desktop/DEVELOPMENT.md": "0eb2d679f71196c354045f6540e8f86fd4099417fe3e99ca61585c6818911f9c",
+    "packages/desktop/INSTALLATION.md": "0c8b5defdb960a78c3e004da6d28a9a27fb530307586a6bdfd56d491bacb4c20",
+    "packages/desktop/MODELS.md": "69597a3b66c4472cf4fb7ea207e73a50bad98d1c278dfce5974988c657beb106",
+    "packages/desktop/README.md": "84f111eb139fd8e3516353e1417320f706583613a5d6749ec0cd9c099ae7c138",
+    "packages/desktop/UPDATES.md": "8b194f43c438b8adfaabe1444805027111fc1805ce3c83a44059dd52d1970a60",
+    "packages/desktop/assets/statusTemplate.png": "26657501c5e9ef7bd7c78b48059523522ffebc14c050eec76299e1e925ed6c11",
+    "packages/desktop/assets/statusTemplate@2x.png": "54805501c9074676f0976557cf0a9719116e443546203527ed36812327bac8b9",
+    "packages/desktop/assets/zhivex-logo.icns": "fc4f0bcc97b5691e26d0de21e6171b4ce498cbc53fd5558a47328f2611382572",
+    "packages/desktop/assets/zhivex-logo.png": "b1d932d08e282682670a91b6080f944d2452cc1325a7e8a7e058b94ed3240ba2",
+    "packages/desktop/native/CredentialStore.swift": "110dbfda4677d7b4059b10f00f8b94c48da3f18b1d36d6ed6298eaedb1289e66",
+    "packages/desktop/native/UpdateWorkerLock.swift": "96f1b5304f63ca02e5148e53804c8d8cf52332a43c37d51ccc070fcc2b7da474",
+    "packages/desktop/package.json": "006b591e169b63daf00819ccf8a5788fdd6d4f62a451399add9c7c6235d95124",
+    "packages/desktop/scripts/backup-runtime-verification.ts": "5c26e6963e14ba99aaa38e6a1ce92a21ed665df60ad9de1520a2bfe2c17879db",
+    "packages/desktop/scripts/build-credential-helper.ts": "a1a8f509f09dd320f36feb5a58845c203394f42bbf4b105f5fad8f11dd27d8ca",
+    "packages/desktop/scripts/build-update-worker-lock.ts": "d8aa7a8636f6ec8be43a8c517d9231f6b4475c191abf2aa57b4b8a2ff2da2bd1",
+    "packages/desktop/scripts/build.ts": "098b56b366724e6f98a02b3e5ada807be1676d72534dbae46615df16b6d912ae",
+    "packages/desktop/scripts/generate-status-icon.swift": "2ffc2ab2b8ad78b8a6b34709560c1dafe1cc954d4f33c5cf10151796d983a8c4",
+    "packages/desktop/scripts/installed-harness.ts": "4457c15fe3e779135a0f740b79314a063e50db98a097ec7283c6acd332c22ecb",
+    "packages/desktop/scripts/native-credential-integration.ts": "67c3dd39464049fc1a15c14a54d1dd1a2ffa8f0c41a978688891bbe0e1ceb66d",
+    "packages/desktop/scripts/package.ts": "408df5a0c5d64c2c9291295b4bdf6ec08310661fb5ec85decf775fdf165dd75d",
+    "packages/desktop/scripts/prepare-harness.ts": "6ca5caf864090451421a7f10215e6fc99414e1c83265b6b5fc91537850032b80",
+    "packages/desktop/scripts/prepare-installer.ts": "6c5287f77c2fff496897887cddece3e3bb591e8d92e1d70c72976e857eb62096",
+    "packages/desktop/scripts/shell-acceptance.mjs": "a8fc4979a41031177c5dbe808366b66f70e7edf998858ba4931df4c8083ce8fc",
+    "packages/desktop/scripts/smoke-application-protocol.ts": "8bab324eb2874fc4237e1f37dd7ce4ba9b69b9afcf21c2f98e647d76f35ee4e6",
+    "packages/desktop/scripts/smoke-application-swap.ts": "18b2901c98d2b09f1ecd103336034c3e59306a761866a2684c83c4fdd312d6fb",
+    "packages/desktop/scripts/smoke-assistant.mjs": "01c348752f8f4d7116b34ef859e5d4d7fa5d27868f291108c8cc910c63eef32f",
+    "packages/desktop/scripts/smoke-automations.mjs": "9857357afc339a3f94e9af8fbd34e14cbf1d882169e17ff459d5a49b9bce5aa4",
+    "packages/desktop/scripts/smoke-autonomous.mjs": "e7d57421571d90578e319e87e37469f0705a39ba31e4938c5a7994e1cbd166f2",
+    "packages/desktop/scripts/smoke-backup.ts": "3a2a6965a7f31431dbd05102f5da4f8ac30241bb3113332ceafe9ed82798e87c",
+    "packages/desktop/scripts/smoke-bundled-core.mjs": "f84bae24192ccf7e33797b06be2909cf9ba9f8fbdeb44072a20f9ab05e4f9457",
+    "packages/desktop/scripts/smoke-calendar-create.mjs": "221e7823c5d35a84ed97053fb0595d4826c73e43140c767d57617431fbb6ffce",
+    "packages/desktop/scripts/smoke-calendar.mjs": "8f072d7a7e87e29a68ed65ee8b637abd9e8584c9a466341f611d2efd5fb2273c",
+    "packages/desktop/scripts/smoke-cli-compatibility.mjs": "c6843f0d220cb04817f0cb3e66a628e61d4ba86bd9e6a57ebe225227f2122194",
+    "packages/desktop/scripts/smoke-cli-coordinator.mjs": "41747df1eb07b2dda3cc9c72ee68223a5e1b298bda1f9d3cab8c2e5bc13230b6",
+    "packages/desktop/scripts/smoke-coordinator-race-offline.mjs": "a3f9355272e90205db553bea3c506c6641766da8b16d886361633a2871636816",
+    "packages/desktop/scripts/smoke-credential-handoff.mjs": "deb9b281281b3cf50a6269cc560e1a61d47747bf3d4ab8af85f9c0bf14e6c058",
+    "packages/desktop/scripts/smoke-installer-offline.ts": "e7ed630a26ed557b12879b3223e5031da61f18d87b874d87fb1029d541160294",
+    "packages/desktop/scripts/smoke-keychain-unavailable.mjs": "1dbf1d95e9063bbdccd4a82294810537190361deb0c1fad12690d7d85d0bb872",
+    "packages/desktop/scripts/smoke-launch-race.mjs": "0faf2a58a234a6b5f6a4f6a003cdcf248827a4d8a4e5a59614db13b3570f3e77",
+    "packages/desktop/scripts/smoke-mac-verifier.ts": "a7185250a9c37a36560e11567e6d8fe85928a630cce8dff15724960ded77b8c2",
+    "packages/desktop/scripts/smoke-native-credentials.ts": "847082036d0654926565edddea37ec00174e3ea95066128aaea00009c93b44eb",
+    "packages/desktop/scripts/smoke-phase-five.mjs": "fe75952db355295507391a16f2dab1f363d0091c541e4a1a4810e7f1cb4fc34e",
+    "packages/desktop/scripts/smoke-phase-one.mjs": "06f7abaebf0de46e81217627b3fe1b018234f1c7b4c7fb9d16ff961d7d341d35",
+    "packages/desktop/scripts/smoke-state-format.ts": "4afd1a12d06c01c2c28583701bf4a454a6b2d5e6a88122e27ea538a66249fbd6",
+    "packages/desktop/scripts/smoke-telegram.mjs": "96cf8f3401fa9e49284b5f22ccedeca0c11c486da9e4a6bd4c18ef9f7de8d646",
+    "packages/desktop/scripts/smoke-today.mjs": "2d81ae305e2575a117ec2677c940b9c13a6be7aa6383499cf3d317fe6528c1bd",
+    "packages/desktop/scripts/smoke-unified.mjs": "7c7939350add719dcfce1fc2fb812ce9c0abf183b4ad47a0e52998295c71e730",
+    "packages/desktop/scripts/smoke-update-image.ts": "6e1f17d0c26cc5967b78413e721c35f6ec9b416c0baadc98bcd2af12e3ac74d8",
+    "packages/desktop/scripts/sqlite-access-runtime.ts": "dc9757e34088e0a297a430fdee55ffaf95c52cc3bb732c4d8ecc20f9d33b3204",
+    "packages/desktop/scripts/sqlite-access-transfer-runtime.ts": "930942391e15e3c1171476bb51d2208ed1db984e0ab468f66e528a5a724758cf",
+    "packages/desktop/scripts/state-transaction-runtime.ts": "8b6692a1b7574a91d18544c69503068f79114b51f611ec4258693d885f7f2e5c",
+    "packages/desktop/scripts/unified-fixture-host.mjs": "f752bb61ff8e3020406bd58de31d835f9a5d14fad4dd31eb55eff810b43c0028",
+    "packages/desktop/scripts/update-handoff-runtime.ts": "129540d95c0b00973a4e24792fa0dca22b6d6b60d82fc9fd33460af5057e06da",
+    "packages/desktop/scripts/update-job-runtime.ts": "0a788260c1036ad756ac2dd5931844ab7f80ce2d690233404300b9000fefd38a",
+    "packages/desktop/scripts/validate-qwen4-ui.mjs": "82e6179511af60825a89e4cdb2fc3e9b9bc2f376acbe2a0d703782951ce386ad",
+    "packages/desktop/scripts/verify-web-search-preservation.mjs": "b01134f49e2c48313019a53ab483b368d7ae610ca186ec631dd44df79e433a6d",
+    "packages/desktop/src/CheckpointPanel.tsx": "1ea934c0916af37b36736ba44694406b5a96a0715578279e50f50c0b6ca3ac3c",
+    "packages/desktop/src/Conversation.tsx": "649aa5e5b1d0be2d687328857992cfe44808665253e5f6e640147263e0bfad7e",
+    "packages/desktop/src/DecisionHistory.tsx": "0d3b0d8cb668e6d01e52e3dacb195ede4a1e4c81ce91c7b87baf033da29a7c78",
+    "packages/desktop/src/FileDiff.tsx": "d219245f74621fe0b5e14c9d945f90abf469453b5af418702f265bee1cc39ffb",
+    "packages/desktop/src/GitPanel.tsx": "4cca986095306f6e9791ef6cf691334152f73727649d89783bea6858eea57513",
+    "packages/desktop/src/MarkdownResponse.tsx": "a7b1d284240b39f67d0f2e5e74f4da1756dfdeecf4bcc74c1ae25820b78e09cb",
+    "packages/desktop/src/PullRequestPanel.tsx": "f9efb01383815b8f0ea48db885fa040c9aeda6b0fdf3d8046339203aba1b6cde",
+    "packages/desktop/src/PushPanel.tsx": "238f1f829bdb5d3137779b38227d3e79a862ed83476365abf00cefe61e085e63",
+    "packages/desktop/src/ReviewPanel.tsx": "4073301942c3062e2a0230a41f771a01bcd46af9ae7d53343f63b7b9251618a6",
+    "packages/desktop/src/activity.ts": "2140a362d5ec9c155434febf3b63a0fa64bf07c0137f4b8b6ddfb202d934dc5b",
+    "packages/desktop/src/application-swap.ts": "4c3690826fb2b88b66c8cd1554e6372a8e6d90c2206e200084592a2f4cfa3bc6",
+    "packages/desktop/src/approval-review.ts": "c4b642acbba48367906c087737e9f5b1d673662cff6d5cbd48bd996484ea6339",
+    "packages/desktop/src/bridge.ts": "16c082ce460a30a8facbe22ef320635dabdead3b785f0d2934f584dde3fb8153",
+    "packages/desktop/src/checkpoint-review.ts": "379fde73ca4be008a09e1d50c37e74b5133a85578d660ec865cfeac674f22271",
+    "packages/desktop/src/conversation-feedback.ts": "97990ed244ab51c40384bf7509650f8aea8e9757c26e5fb33d174f9bbba3c6e0",
+    "packages/desktop/src/credential-bridge.ts": "d21392188d44c02f4bd347c2e73ae952277ff24cf8ed5a73ac1c19568a7c31f2",
+    "packages/desktop/src/credential-coordinator.ts": "3128a3095ebf32ec336008651f06de2efcc5b1a4a4a212f8381acc2b54c17f61",
+    "packages/desktop/src/credential-store.ts": "53897a3199c7c7905b97b087cce8860afc2b38f1225339e22fcaf0bff57bc848",
+    "packages/desktop/src/database-backup.ts": "42b6ad347b8456ff9a8a26d81d01f2c91368512f88007e27d25e780ac6b03be1",
+    "packages/desktop/src/external-url.ts": "1bef143d507c74f939ebd9e499fed26a7d28d529aad7f50b07a5929a16f5c918",
+    "packages/desktop/src/fixture-oci.ts": "917f9e65bf3bd7b3f9b3acee49e8312f57e98e700b242788e61afd5ffbb1e122",
+    "packages/desktop/src/git-delivery.ts": "cad101b6d9576d6a0919c82764b07938fd35df1b79c7261577e2be1cb1aade38",
+    "packages/desktop/src/github-git-transport.ts": "8d26e92ce2fd6659f02af2ab689129f0da5879068ae6b645f49e144d5fd9b5c0",
+    "packages/desktop/src/github-pr-transport.ts": "e16e66cff29dc0899361d66b17d2e0b2a3251f52caddd46e993ceb33a89c98fc",
+    "packages/desktop/src/local-preferences.ts": "870aa88e9bfed803f882f30d9b34a01c3695a15402865309e04f42a607c737d8",
+    "packages/desktop/src/mac-application-verifier.ts": "eee701d29be712ca4d33775e9959aacc4024f2d8936fca5928835d31445100ed",
+    "packages/desktop/src/metadata-backup.ts": "eb15846011567ff5eebfe89c43f51b99561e84d0822d04a09be3df19a57c8800",
+    "packages/desktop/src/model-selection.ts": "6fd3fa2597fdda806d8c8daeecf2d265d648c19938ac8f682dd1aad71ad819d3",
+    "packages/desktop/src/model-transition.ts": "9407d622394289f45880de5a34867bfe8709c7500a28bb4036cd05a5deb77ca7",
+    "packages/desktop/src/pr-bridge.ts": "89deb5792a316888c9643d6c5a535c00cd0dace5407c450a30a26eb6e62a5e60",
+    "packages/desktop/src/pr-delivery.ts": "4fa8537d0e0b1e14170f409f7d4eef12ba33dd65519437ad27f028438253f2a7",
+    "packages/desktop/src/pr-ipc.ts": "0d4705eb7db571d53a63fd08e0e93305675f4e4c2fac721e08ca46f3e5bc8012",
+    "packages/desktop/src/projects.ts": "f4a6027b2325b310b84a1f35ac5c5707ab1a01fe8c84280733918adc9ece398f",
+    "packages/desktop/src/provider-model.ts": "cc6d9a7992911a530f3835f949a197c884cb1fbb297cbec25e0e27e29480bcdf",
+    "packages/desktop/src/redaction.ts": "40fb079fd1dad7b4a218cb4723fd2072ed36b740ec628be3f7fde8b3318d9f19",
+    "packages/desktop/src/remote-delivery.ts": "1f90fb268dfa25f8f411c2416084c361e4adeebd9300d3700b9993e2d3d74a46",
+    "packages/desktop/src/renderer-fixture-data.ts": "02a1ebf7be1ba3af43e756baae2c588c3a66c485888fe458962248bc42dd3cf1",
+    "packages/desktop/src/renderer-script.ts": "1ef53213bf80dcfc0cea9454a8e1d6bb0a13ba79403fae7c1d8c1d2bb5ba4e21",
+    "packages/desktop/src/reveal-invisible.ts": "725d350b0cf43c8d84a9aaffeba5f1da0e16986f6ecfd218d757745146691cfd",
+    "packages/desktop/src/review-scope.ts": "622ba2c4c153fbcd191ce78025584f67c2337b087ee717405fa3d6bc16cf0047",
+    "packages/desktop/src/review-tickets.ts": "81f13803fbd40b4c17c2ffce24f8a77e4535e4bc6b8ae42943886a1d6bd9d816",
+    "packages/desktop/src/review-ui.ts": "67b56ff3c5585d0d1828aa41c115debad00b1be74f841bada3988dfaa9b029bf",
+    "packages/desktop/src/runtime-host.ts": "f2165971424f8ae137e6f93606eb01c6f92f490b89920dbbd57177a1a8e44f5e",
+    "packages/desktop/src/runtime.ts": "8048ab1ed5b73057434c2ff98caf2f21723d574eb737e8209b9c1e5eae76bb22",
+    "packages/desktop/src/shutdown.ts": "b3a863138f6fb7ef1944f14d4584b89a9a051a6766697185d5dc263481448dea",
+    "packages/desktop/src/smoke-checkpoints-verification.ts": "9756fdd38c325edfeb0e9f9d36e8dc2940e5c3f60ba8313987e1f6b756f975be",
+    "packages/desktop/src/smoke-effect-crash-verification.ts": "f087224622f269005cef2521013dadfda8990fa272c3ecbbd365784261712b74",
+    "packages/desktop/src/smoke-models-verification.ts": "274ab21c5fbf7aa896699668da6b87ea5bed99516bf5da8c5453f89dcd7bb3f9",
+    "packages/desktop/src/smoke-oci-verification.ts": "552dc9ec90374a326ade8ffceada40f5bf7684fda1e9a3273477190ddd4c1d3a",
+    "packages/desktop/src/smoke-restart-verification.ts": "169de2962d008cc250cfe58db90cd904c27937dc33e4d9922e46a54992ce0ca4",
+    "packages/desktop/src/smoke-review-helpers.ts": "ad34cc1822f7d81ca050c90947c0418736574e3f801e51fcf84b317decbb805b",
+    "packages/desktop/src/smoke-ux-verification.ts": "5d471a828c5029d6b34980a7aa8de315cb7e3ce2b1937e1716f7d937dd7deaa9",
+    "packages/desktop/src/smoke-verification.ts": "a7e7c6f6023f3959ecb06c2cc46c1ceb7aed88d05a0473a835a8f34bb72a3add",
+    "packages/desktop/src/smoke-worktrees-verification.ts": "c89aceed9d66c935e4124a7e057190817dc325ab2f0165acef2baefda8848614",
+    "packages/desktop/src/state-format.ts": "f8530af87a6b99d38e1e1227e7fa4843360a74a91fa96c3cac2ce19a43c78307",
+    "packages/desktop/src/state-transaction.ts": "420eccd85755f1360de92048ba066b29a39d643b9ab990380b8be44fa7537def",
+    "packages/desktop/src/style.d.ts": "35d26ea66c86da9701e4f4b467913481ffeae910761cea34c775c5dacb7f8eaa",
+    "packages/desktop/src/task-worktrees.ts": "dc1d2216d33506ebd6aded82973b4cc424bd76703b19f2702e1ab85097eb059d",
+    "packages/desktop/src/unified/AgendaCreate.tsx": "14783bf888a1a219f0c28c49dc8c240026465ca17e503dbc747b609b6fb5405f",
+    "packages/desktop/src/unified/AgendaEdit.tsx": "23e8c422e873b4cb0c172680780b857bda817478fd87d5bec4e1c57a278ed1c6",
+    "packages/desktop/src/unified/AgentModel.tsx": "2c0de1b1ac6afa0d22538d2f80982f36b3d46ea93bce2ae6813534f767dfbcd8",
+    "packages/desktop/src/unified/App.tsx": "8982eeab9e0495fdea400d13a64c6cdd1dbf7fa27eefbe183e2a4a0efb2944a1",
+    "packages/desktop/src/unified/AssistantToday.tsx": "bd3a5b19920aa64f5ce536ee1d80d738faadcf5cdc2c8ddbb917312ca86f423a",
+    "packages/desktop/src/unified/Automations.tsx": "79e52a90dbf293d2b15ea78f66278286e660b9d1c5da0ea6d6f937cbb9b28d0b",
+    "packages/desktop/src/unified/CalendarReview.tsx": "0c2f3530c915e2763c3574aade522a4b44c6ad218d9a492a2c5632a48607b1f1",
+    "packages/desktop/src/unified/CalendarSetup.tsx": "acba34c2a2520ecf90c5edabafd31410331ab2881a94b2128d25fbd08e523965",
+    "packages/desktop/src/unified/CodeContext.tsx": "77ef7c9fdff3a2a22bf7eefbc918df161a1b1840db42c8de210513811f2dd93e",
+    "packages/desktop/src/unified/CommandPalette.tsx": "7c16fed650cd47482797b6d8fc84aa9b851d216dbb449f0b74fe125ac5d6d751",
+    "packages/desktop/src/unified/DecisionHistory.tsx": "776a90edd1947e30772167b646f6c371a1c080507ac5f12b65bbdcbcd44cd483",
+    "packages/desktop/src/unified/Execution.tsx": "4b07f00e635177609ba4ce17aa4de4c175cf5bde268197944b37ba96d74ae1e8",
+    "packages/desktop/src/unified/IntegrationSetup.tsx": "28708701e41314d4f9a146bfc30f30694bd4b9b251871dcb44cd6c93b85f36cf",
+    "packages/desktop/src/unified/MailDrafts.tsx": "7d5e5df08efaaeb3950f3f343ff13ad4ba998c7f9cb2ee26ae7ebfb6f712ef02",
+    "packages/desktop/src/unified/MessageEditor.tsx": "5848cd86fee35a26b136445e1d4b25654dd349fc20bc4e7755b500d31737f412",
+    "packages/desktop/src/unified/Notes.tsx": "6c86d9f9cf7dc18ee748d9184bf7731c00d8afa23ebdd745530901b173dd15c5",
+    "packages/desktop/src/unified/Personal.tsx": "e283d201596884a77ae2c8046c42dcf819f3422b5e68398809f2a52abe4a6e93",
+    "packages/desktop/src/unified/PersonalOverview.tsx": "338f98e82b4701c42da090f0bd86f0842a677f7de95a612948a1d177b4d335be",
+    "packages/desktop/src/unified/Proactive.tsx": "24768e6be66eda12e6f512966d4b61888d4a5f9333792e466eed7f2f33cf61a1",
+    "packages/desktop/src/unified/Projects.tsx": "2e233a0ad408f75bcdbf42b99e0119006b16944d615d0307919e0df1810dac70",
+    "packages/desktop/src/unified/RenameConversation.tsx": "bad914e120fd56a8fad7151213a057b2f5af04ab82dbcea02020c7af7a5f5c28",
+    "packages/desktop/src/unified/Review.tsx": "5ea1aea95040b70597a48c7063d7a56eb715dfab326171eb782646b1159391ee",
+    "packages/desktop/src/unified/Setup.tsx": "8bd2ac94a34f6f9de4f94d27939a0126d7e900cbb67af956601a127e5606f800",
+    "packages/desktop/src/unified/TelegramSetup.tsx": "f53744c2d57800aa7f363ab26d534b8cc251d2e70b5601b0d42aea0b72ea6675",
+    "packages/desktop/src/unified/Today.tsx": "96b7cc86025a0cc2243df6f4c9f60c5993fd2cc1e36c435c3dd24065c4a950a9",
+    "packages/desktop/src/unified/Worktrees.tsx": "e66ae1d5098ab9934e08f1d4ea7d97a1ea78624e94559301c20ab0d69b03c338",
+    "packages/desktop/src/unified/assistant-worker.ts": "1b7d1a2b935eb68945733df91f170a54b5c94b1b386bca8580e5df45427a8fad",
+    "packages/desktop/src/unified/bridge.ts": "d3c37465b7363aa28aa648602353fbbda1bf63e23c4439857020e1008821e599",
+    "packages/desktop/src/unified/conversation-resume.ts": "3fa1163d621ab344001a94a3fc036d4578949e3be24b24fa14d18e6937fb00d7",
+    "packages/desktop/src/unified/credential-worker.ts": "08bd9e507f7a49632a7b5c4694b2d2a676cf72f1038d65beebb2af0c985c4c81",
+    "packages/desktop/src/unified/fonts.css": "a63bdd8de721fb058966f8067976f7dd9345b6cb07d32f7bac6878af5400ba3a",
+    "packages/desktop/src/unified/index.html": "7429d5d75cc3c7b4e98f48549427b608cc013acf966e9544c8b81d920a547ecf",
+    "packages/desktop/src/unified/main.ts": "eca3f86a2763d051d383c266897dbd5d434673b203b03e5798be72447672a585",
+    "packages/desktop/src/unified/managed-runtime.ts": "d0ae35b03a1f452f93e49b2ac1d6c563a907742420177e0cf6bb044382c388db",
+    "packages/desktop/src/unified/navigation.ts": "c32c9ef419615d5c50fac8f9b57fd04857e2745998c4bd315f977a38fe3377e1",
+    "packages/desktop/src/unified/preload.ts": "d1dd42e80c90e6565d8d649df166f3ee047aa82312e8db8bac40770c53d7e7ca",
+    "packages/desktop/src/unified/renderer.tsx": "9ab3ae057fd3c0e0eb398b0904c336f6a95d42e266f2b07b997ee7712e0f9c63",
+    "packages/desktop/src/unified/setup-errors.ts": "19da9a07e73e3550cb9980c70164944e3b3aa5ae9f3759cecc298b1bb65d5051",
+    "packages/desktop/src/unified/style.css": "777f26887f5cc93161a049e7ff9d9dca18584a9a9d4af53130fe2a27bc48b96f",
+    "packages/desktop/src/unified/today-state.ts": "922411206d02c83b424f37fff599efa3137aadda25787a07dc38785a455380b2",
+    "packages/desktop/src/unified/ui.tsx": "485e257d70b52b71739bce294ed6daf51872cf04380014bbe9cac4e1945e0124",
+    "packages/desktop/src/unified/use-compact-navigation.ts": "06a10f20e684c450330fa77fb414b1026cd68dd738c3289ebfa1d5a3c5d46ef2",
+    "packages/desktop/src/unified/use-navigation.ts": "4f4c1f40a7ce6894548168d8d34bfd468d041c2b422f553fbc533417eebceb96",
+    "packages/desktop/src/update-bridge.ts": "01b5d5dbf25943813a1f66efb8e025e2518886201ed05944ece913b47b21aff9",
+    "packages/desktop/src/update-coordinator.ts": "f1c7b7636e6a85d6a552e62b7c98b7d88f46f9392b393492e15b4ccf65a2c348",
+    "packages/desktop/src/update-download.ts": "3593c407031034e3f542c72599b9bc3d2bd11bf8aab1cfa7bae90c3ed0e4e438",
+    "packages/desktop/src/update-feed.ts": "e349a875bdc6215c457070e08584d1c2b5d7a358fc7975ddbbe975625b8b9e02",
+    "packages/desktop/src/update-handoff.ts": "f0af30ebc984563e850763f554bd735360419e0c9de7e18ecfbd38acd4f8fbbc",
+    "packages/desktop/src/update-install.ts": "51ba4ee9ef1f7d5b05640b08770195e634d2a993e7f5f47fef46dcd56658c208",
+    "packages/desktop/src/update-inventory.ts": "0eb076d02dd63bd1f61eced5f1e1e8be43bf4c0fb5e9bd714e4922f2748171c2",
+    "packages/desktop/src/update-ipc.ts": "2685c8e86f97047c63d4efe282080ac1f00a74acda8b0cbdf915275350a4ec88",
+    "packages/desktop/src/update-job.ts": "906b31cdf75e945eef4029bc7b68dfe13cc7e22efbd9f5d6659b357aeeab2a55",
+    "packages/desktop/src/update-manifest.ts": "46c73f02d5591d8bf9e0a0e524502cbb5e9d21c66a79e20a28219dc3d1093bcd",
+    "packages/desktop/src/update-recovery.ts": "728b57b817eeed4cb22afcfba103c112df205dc0ff6d59fad6bb8be3fca32a5d",
+    "packages/desktop/src/update-session.ts": "6e877ab136b527242e2ca5aa5cc02c5c67d81792e3a467ce4a76b3459b0ebe98",
+    "packages/desktop/src/update-trust.ts": "9796e6120c10e18044459317544227f19d37326b78105f7a84aca62faf76f52a",
+    "packages/desktop/src/update-worker-entry.ts": "f6c2fc99e62590a14feb8a5c13305a3d8cb121dbef5cfcfc9df31d298800ddef",
+    "packages/desktop/src/update-worker-launcher.ts": "678fdb13b519740f2f5d1762e8097250e269c723ecd7fae1126ccdac21aee7fb",
+    "packages/desktop/src/update-worker-staging.ts": "f1a3fc07648995d6cfa2fae7641ec2767813f06858c173019dc0d49cb7024099",
+    "packages/desktop/src/update-worker.ts": "46d18344698fd72c9b16b016e6dc4f1f7a84e259c4979b5ed5f47f8ec4790216",
+    "packages/desktop/tests/activity.test.ts": "148dd23df00d15e2c2819b6c4203708641d2a9167fd498ad20ba5974a0af7843",
+    "packages/desktop/tests/agent-web-search.test.tsx": "7367e871ecd7bee071cae1b399dce45b5a8c8feaf61573cbd4764c0aac3bab46",
+    "packages/desktop/tests/application-swap.test.ts": "a9b00a7e1c974b320e28116bce59bfb594f83b5b5bc485c284d19bf163e5c512",
+    "packages/desktop/tests/approval-review.test.ts": "5e07905d20d2fa4e6c9db519d1926ea05a4155d998fd6a1cfdcb3188bf50ee21",
+    "packages/desktop/tests/checkpoint-review.test.ts": "ba62978cdb4c377df9ff2c9cd43baa71bf2f5375f4793545095856141cf0e338",
+    "packages/desktop/tests/conversation-feedback.test.tsx": "d976c50c4e5a113c7543df632885e8e86f018a42c42d25f752650272c29345b5",
+    "packages/desktop/tests/conversation-resume.test.tsx": "48c51133cfe4372d66adcd32319ee483bab536be853db699f5418c1e5e1bd539",
+    "packages/desktop/tests/credential-coordinator.test.ts": "5a8429e6d1d26c0dca444a5bdd43f9e7c066d7361484e41b27bf480661f853d5",
+    "packages/desktop/tests/credential-redaction.test.ts": "2283b55c8776eac2b6212ff3ddbe22c50ac59600894c9756275084f98ddc2c63",
+    "packages/desktop/tests/credential-store.test.ts": "a8f96d1d036ecead81d64bda607d770914924dbe7aadb0d43d639b18b889f3c5",
+    "packages/desktop/tests/database-backup.test.ts": "eb225445b873b6b2889a2c243f8cd27cd211a57a1ad0ab386cd9d816d72d569c",
+    "packages/desktop/tests/execution-results.test.tsx": "dd4d2e943270cf68614d949f5c68b6605cdbf1420a6b45638c5c6ac61c4438f6",
+    "packages/desktop/tests/first-conversation.test.ts": "a45097a08f9a272f2991ca61ad318467dd2cdc863fca01a9784d60a4c2b19f91",
+    "packages/desktop/tests/git-delivery.test.ts": "680f7b63eee238a23190020af599b0213e9885788275d9562936df2347fd3fd9",
+    "packages/desktop/tests/github-git-transport.test.ts": "9166ced06eda4db23b570d45eb0482ccbb7cfec68e75c1e269034eee2bebbb59",
+    "packages/desktop/tests/github-pr-transport.test.ts": "08573ff52e736b1aa2f6130edcc8c1f58004067a5ee8c121a7290ebfaf6d6ad0",
+    "packages/desktop/tests/installed-harness.test.ts": "4a79f377a752b590d8f3b644e56ad1f9ea86ee7e1b4dc73da47a4e5acf438e49",
+    "packages/desktop/tests/mac-application-verifier.test.ts": "b2503fe3cb51e1b40569cd754e32b9a0758917e96616602c0092cd2b7ffccd8d",
+    "packages/desktop/tests/metadata-backup.test.ts": "cefc41ba835ca5fb5631ee7b376d89bdaf6b18eea282dfd42b0b9c2b262b0167",
+    "packages/desktop/tests/model-selection.test.ts": "ef93bef5f5043eccd2152aca8173f3d1cc78e124079481646a754c48f556039f",
+    "packages/desktop/tests/packaging-dependencies.test.ts": "54fe4bf744dc2f47c07287d6e41e7ad9b2d8ddcfadbc4c35d4b89506fd51e0d3",
+    "packages/desktop/tests/persistence-secrets.test.ts": "c094bc5f4e8a649fceac9f6b444e5a5c1c8437acaef7bf9aae4a35a55af657fe",
+    "packages/desktop/tests/pr-delivery.test.ts": "b9d9b43b19caacffe5eecfbf45a0a4849ca7c6cf51d90fe3082e9977c66d7238",
+    "packages/desktop/tests/projects.test.ts": "9db6c0980d939b8ef64df21db75d3bbbbf35e04277617e1132ea945e88b3737b",
+    "packages/desktop/tests/remote-delivery.test.ts": "d92782decdff816c8266e267a51676fc844ffb43a27944e4ae3bb38ab6586cdd",
+    "packages/desktop/tests/renderer-fixture-data.test.ts": "b768f8693ed1001032b0520e375b4e6acea95574acd06cbe23639038e86b4fd2",
+    "packages/desktop/tests/renderer-script.test.ts": "490d78949a41107ee8eec3690407cc1b6e124ad25edb00b63dfe50b6646a5b11",
+    "packages/desktop/tests/review-scope.test.ts": "023eb6c4b78d616fb05111d2fe58d8462b3fe6509130327b8fc7806ce9992a0b",
+    "packages/desktop/tests/review-tickets.test.ts": "856ad0ef446852cb225f3b392bfd11ff85b84f15f373fc085572ec2bf6d05688",
+    "packages/desktop/tests/shutdown.test.ts": "b9ad4ac12363417702322aecf92ed64a07508cc41eff1df0b0a8e45b0f5e63b3",
+    "packages/desktop/tests/smoke-timeout.test.ts": "4f1aa58a9bdff9051a5dd963a2f597779876bb459c8ff32377d87d75f690e239",
+    "packages/desktop/tests/state-format.test.ts": "6851cd709a9955f2dd4cc20b92cb18260d8d3a3d3d45909ab9e70590d8d3294f",
+    "packages/desktop/tests/state-transaction.test.ts": "6dda0199d9003164d9e583b584d1cfd47559219e08763cfa7186366daa7308a1",
+    "packages/desktop/tests/task-worktrees.test.ts": "b2bb792e0b56923dc57760a6cd01b5683419ceecffe4292d652fcdcd6507a4b7",
+    "packages/desktop/tests/today-state.test.ts": "4d38349462227066cbd303cab9c95525d5d14e05aa9f888b332ef42b0105a546",
+    "packages/desktop/tests/ui-improvements.test.ts": "4286ece0b294b8ca4165507553b131555e2b7079177bbe1a930ff4e14f2b82cb",
+    "packages/desktop/tests/unified-navigation.test.ts": "2a0baaf9fccbdf1f8bd61d50e0c0623fa2e17497ee13e0ea5a63cf17fcbe881e",
+    "packages/desktop/tests/update-coordinator.test.ts": "ebde5f87b6d37c0d0504790c4ea9aa23cd3a9cbc7ebca0638682005c35fd304f",
+    "packages/desktop/tests/update-feed.test.ts": "03c8a19c4ee4fec0c6c64f3f1b5787bbf617ad8133552730439b560b073692fc",
+    "packages/desktop/tests/update-handoff.test.ts": "9f3b3476000fa59e1747f5a796a2d2134973fa5437112d7b2270819a77da9da9",
+    "packages/desktop/tests/update-install.test.ts": "c3c4cc45a1bd1df2e2ec784b141dc73082f761eda92e90e682282ddd404079d3",
+    "packages/desktop/tests/update-inventory.test.ts": "c662d75319cb7ed61b084dac14da40eb9bdef71382e380202ffb7432112e5f83",
+    "packages/desktop/tests/update-job.test.ts": "b4f3a10bcb723899680bdadb5e862d254f9145b6360062dab073dfec0ba053aa",
+    "packages/desktop/tests/update-service-integration.test.ts": "33a3505bd7e2ff2aad58f1c6014136e8278dc2ba09dfafb4e1f2338e11958a30",
+    "packages/desktop/tests/update-session.test.ts": "5e67e626d8fea653a2f88b4abded59798d8a4e569f4099d3a029e8f44cb34eac",
+    "packages/desktop/tests/update-worker-launcher.test.ts": "4557d0aa3a6a1a3c670657e4c417c8ead8086895bae29f925928230a451912d5",
+    "packages/desktop/tests/update-worker-staging.test.ts": "4c5b8514285d0d3e2be0e927656a29b78ba68322c2a81d841f6fdc3d94bebdec",
+    "packages/desktop/tests/update.test.ts": "ed4349944487807f90ff25788beedcab4b9204c8e9a61f640418b7ebd4658210",
+    "packages/desktop/tsconfig.json": "a9e0784c236052e78fa8ac48e3498930e832e17979b0fb038e743db90cd05e0b",
+    "packages/desktop/update-trust.json": "d6bf7711eabe5880f29216273ba636058315a0af04202225d0f27e275d5592be"
+  },
+  "harnessImports": {
+    "@zhivex-ai/harness": [
+      "packages/desktop/scripts/installed-harness.ts",
+      "packages/desktop/scripts/prepare-harness.ts",
+      "packages/desktop/tests/installed-harness.test.ts"
+    ],
+    "@zhivex-ai/harness/application": [
+      "packages/desktop/scripts/smoke-assistant.mjs",
+      "packages/desktop/scripts/smoke-automations.mjs",
+      "packages/desktop/scripts/smoke-calendar.mjs",
+      "packages/desktop/scripts/smoke-phase-five.mjs",
+      "packages/desktop/scripts/smoke-phase-one.mjs",
+      "packages/desktop/scripts/smoke-telegram.mjs",
+      "packages/desktop/scripts/smoke-today.mjs",
+      "packages/desktop/scripts/unified-fixture-host.mjs",
+      "packages/desktop/src/approval-review.ts",
+      "packages/desktop/src/checkpoint-review.ts",
+      "packages/desktop/src/conversation-feedback.ts",
+      "packages/desktop/src/git-delivery.ts",
+      "packages/desktop/src/github-git-transport.ts",
+      "packages/desktop/src/github-pr-transport.ts",
+      "packages/desktop/src/pr-delivery.ts",
+      "packages/desktop/src/remote-delivery.ts",
+      "packages/desktop/src/review-tickets.ts",
+      "packages/desktop/src/task-worktrees.ts",
+      "packages/desktop/src/unified/CalendarReview.tsx",
+      "packages/desktop/src/unified/Review.tsx",
+      "packages/desktop/src/unified/Worktrees.tsx",
+      "packages/desktop/src/unified/assistant-worker.ts",
+      "packages/desktop/src/unified/bridge.ts",
+      "packages/desktop/src/unified/credential-worker.ts",
+      "packages/desktop/src/unified/main.ts",
+      "packages/desktop/src/unified/managed-runtime.ts",
+      "packages/desktop/tests/conversation-feedback.test.tsx"
+    ],
+    "@zhivex-ai/harness/application/client": [
+      "packages/desktop/scripts/smoke-assistant.mjs",
+      "packages/desktop/scripts/smoke-automations.mjs",
+      "packages/desktop/scripts/smoke-calendar.mjs",
+      "packages/desktop/scripts/smoke-phase-five.mjs",
+      "packages/desktop/scripts/smoke-phase-one.mjs",
+      "packages/desktop/scripts/smoke-telegram.mjs",
+      "packages/desktop/scripts/smoke-today.mjs",
+      "packages/desktop/scripts/smoke-unified.mjs",
+      "packages/desktop/src/unified/assistant-worker.ts",
+      "packages/desktop/src/unified/main.ts",
+      "packages/desktop/src/unified/managed-runtime.ts"
+    ],
+    "@zhivex-ai/harness/assistant/host": [
+      "packages/desktop/scripts/smoke-assistant.mjs",
+      "packages/desktop/scripts/smoke-automations.mjs",
+      "packages/desktop/scripts/smoke-calendar.mjs",
+      "packages/desktop/scripts/smoke-telegram.mjs",
+      "packages/desktop/scripts/smoke-today.mjs"
+    ],
+    "@zhivex-ai/harness/assistant/integrations/google": [
+      "packages/desktop/scripts/smoke-assistant.mjs"
+    ],
+    "@zhivex-ai/harness/assistant/automation/scheduler": [
+      "packages/desktop/scripts/smoke-automations.mjs",
+      "packages/desktop/scripts/unified-fixture-host.mjs"
+    ],
+    "@zhivex-ai/harness/assistant/telegram/store": [
+      "packages/desktop/scripts/smoke-automations.mjs",
+      "packages/desktop/scripts/unified-fixture-host.mjs"
+    ],
+    "@zhivex-ai/harness/assistant/calendar/calendar": [
+      "packages/desktop/scripts/smoke-calendar-create.mjs"
+    ],
+    "@zhivex-ai/harness/assistant/calendar/store": [
+      "packages/desktop/scripts/smoke-calendar-create.mjs"
+    ],
+    "@zhivex-ai/harness/application/protocol": [
+      "packages/desktop/scripts/smoke-phase-one.mjs",
+      "packages/desktop/src/unified/AgendaEdit.tsx",
+      "packages/desktop/src/unified/AssistantToday.tsx",
+      "packages/desktop/src/unified/Automations.tsx",
+      "packages/desktop/src/unified/CodeContext.tsx",
+      "packages/desktop/src/unified/Notes.tsx",
+      "packages/desktop/src/unified/Personal.tsx",
+      "packages/desktop/src/unified/PersonalOverview.tsx",
+      "packages/desktop/src/unified/Proactive.tsx",
+      "packages/desktop/src/unified/Projects.tsx",
+      "packages/desktop/src/unified/Today.tsx",
+      "packages/desktop/src/unified/bridge.ts",
+      "packages/desktop/src/unified/managed-runtime.ts",
+      "packages/desktop/src/unified/today-state.ts"
+    ],
+    "@zhivex-ai/harness/engine": [
+      "packages/desktop/scripts/smoke-phase-one.mjs",
+      "packages/desktop/scripts/unified-fixture-host.mjs",
+      "packages/desktop/src/fixture-oci.ts",
+      "packages/desktop/src/model-selection.ts",
+      "packages/desktop/src/provider-model.ts",
+      "packages/desktop/src/runtime.ts",
+      "packages/desktop/src/smoke-checkpoints-verification.ts",
+      "packages/desktop/src/state-transaction.ts",
+      "packages/desktop/src/update-inventory.ts"
+    ],
+    "@zhivex-ai/harness/service": [
+      "packages/desktop/scripts/unified-fixture-host.mjs",
+      "packages/desktop/src/runtime-host.ts",
+      "packages/desktop/src/runtime.ts"
+    ],
+    "@zhivex-ai/harness/protocol": [
+      "packages/desktop/src/CheckpointPanel.tsx",
+      "packages/desktop/src/Conversation.tsx",
+      "packages/desktop/src/DecisionHistory.tsx",
+      "packages/desktop/src/activity.ts",
+      "packages/desktop/src/bridge.ts",
+      "packages/desktop/src/conversation-feedback.ts",
+      "packages/desktop/src/model-transition.ts",
+      "packages/desktop/src/redaction.ts",
+      "packages/desktop/src/runtime-host.ts",
+      "packages/desktop/src/smoke-restart-verification.ts",
+      "packages/desktop/src/unified/App.tsx",
+      "packages/desktop/src/unified/AssistantToday.tsx",
+      "packages/desktop/src/unified/DecisionHistory.tsx",
+      "packages/desktop/src/unified/Execution.tsx",
+      "packages/desktop/src/unified/RenameConversation.tsx",
+      "packages/desktop/src/unified/bridge.ts",
+      "packages/desktop/src/unified/conversation-resume.ts",
+      "packages/desktop/tests/checkpoint-review.test.ts",
+      "packages/desktop/tests/conversation-feedback.test.tsx",
+      "packages/desktop/tests/conversation-resume.test.tsx",
+      "packages/desktop/tests/execution-results.test.tsx"
+    ],
+    "@zhivex-ai/harness/desktop/v1/state": [
+      "packages/desktop/src/application-swap.ts",
+      "packages/desktop/src/database-backup.ts",
+      "packages/desktop/src/metadata-backup.ts",
+      "packages/desktop/src/runtime.ts",
+      "packages/desktop/src/smoke-effect-crash-verification.ts",
+      "packages/desktop/src/state-transaction.ts",
+      "packages/desktop/src/update-handoff.ts",
+      "packages/desktop/src/update-inventory.ts",
+      "packages/desktop/src/update-job.ts",
+      "packages/desktop/src/update-recovery.ts",
+      "packages/desktop/src/update-worker-launcher.ts",
+      "packages/desktop/src/update-worker-staging.ts",
+      "packages/desktop/tests/state-transaction.test.ts",
+      "packages/desktop/tests/update-handoff.test.ts",
+      "packages/desktop/tests/update-inventory.test.ts",
+      "packages/desktop/tests/update-worker-launcher.test.ts"
+    ],
+    "@zhivex-ai/harness/models": [
+      "packages/desktop/src/bridge.ts",
+      "packages/desktop/src/model-selection.ts"
+    ],
+    "@zhivex-ai/harness/desktop/v1/providers": [
+      "packages/desktop/src/credential-store.ts",
+      "packages/desktop/src/model-selection.ts",
+      "packages/desktop/src/provider-model.ts",
+      "packages/desktop/src/runtime-host.ts"
+    ],
+    "@zhivex-ai/harness/assistant/managed/setup": [
+      "packages/desktop/src/unified/managed-runtime.ts"
+    ]
+  },
+  "identity": {
+    "packageName": "zhivex-harness-desktop",
+    "applicationName": "Zhivex Harness",
+    "bundleId": "ai.zhivex.harness",
+    "applicationStateDefault": "~/.zhx-app",
+    "electronProfile": "app.getPath(\"userData\"); no override unless --user-data supplied",
+    "keychainServices": [
+      "ai.zhivex.assistant",
+      "ai.zhivex.harness.providers"
+    ]
+  },
+  "status": "Local standalone candidate built, tested and packaged; remote publication, installed credential continuity and cutover remain pending.",
+  "initialSourceCouplings": {
+    "packages/desktop/scripts/backup-runtime-verification.ts": [
+      {
+        "line": 3,
+        "source": "import {resolveHarnessConfig} from \"../../core/src/runtime/config.js\";"
+      },
+      {
+        "line": 4,
+        "source": "import {openHarnessPersistence, HARNESS_SQLITE_FILE} from \"../../core/src/persistence/operations.js\";"
+      },
+      {
+        "line": 5,
+        "source": "import {openCliSessionStore} from \"../../core/src/persistence/sessions.js\";"
+      },
+      {
+        "line": 6,
+        "source": "import {openHarnessActivityStore} from \"../../core/src/client/service-events.js\";"
+      },
+      {
+        "line": 7,
+        "source": "import {SqliteDatabase} from \"../../core/src/persistence/sqlite-database.js\";"
+      }
+    ],
+    "packages/desktop/scripts/smoke-cli-compatibility.mjs": [
+      {
+        "line": 15,
+        "source": "const legacy=invoke(root+'/packages/cli/dist/cli.js',['web','--help']);assert.equal(legacy.status,2,legacy.stderr);assert.match(legacy.stderr,/legacy browser.*removed/);"
+      }
+    ],
+    "packages/desktop/scripts/sqlite-access-runtime.ts": [
+      {
+        "line": 5,
+        "source": "import {SqliteDatabase} from \"../../core/src/persistence/sqlite-database.js\";"
+      },
+      {
+        "line": 6,
+        "source": "import {acquireSqliteAccess} from \"../../core/src/persistence/sqlite-access.js\";"
+      }
+    ],
+    "packages/desktop/scripts/sqlite-access-transfer-runtime.ts": [
+      {
+        "line": 6,
+        "source": "import {SqliteDatabase} from \"../../core/src/persistence/sqlite-database.js\";"
+      },
+      {
+        "line": 7,
+        "source": "import {resolveHarnessConfig} from \"../../core/src/runtime/config.js\";"
+      },
+      {
+        "line": 8,
+        "source": "import {openHarnessPersistence, HARNESS_SQLITE_FILE} from \"../../core/src/persistence/operations.js\";"
+      },
+      {
+        "line": 9,
+        "source": "import {openCliSessionStore} from \"../../core/src/persistence/sessions.js\";"
+      }
+    ],
+    "packages/desktop/scripts/state-transaction-runtime.ts": [
+      {
+        "line": 4,
+        "source": "import {resolveHarnessConfig} from \"../../core/src/runtime/config.js\";"
+      },
+      {
+        "line": 5,
+        "source": "import {openHarnessPersistence, HARNESS_SQLITE_FILE} from \"../../core/src/persistence/operations.js\";"
+      },
+      {
+        "line": 6,
+        "source": "import {openCliSessionStore} from \"../../core/src/persistence/sessions.js\";"
+      },
+      {
+        "line": 7,
+        "source": "import {openHarnessActivityStore} from \"../../core/src/client/service-events.js\";"
+      },
+      {
+        "line": 8,
+        "source": "import {SqliteDatabase} from \"../../core/src/persistence/sqlite-database.js\";"
+      }
+    ],
+    "packages/desktop/scripts/update-job-runtime.ts": [
+      {
+        "line": 4,
+        "source": "import {resolveHarnessConfig} from \"../../core/src/runtime/config.js\";"
+      },
+      {
+        "line": 5,
+        "source": "import {openHarnessPersistence, HARNESS_SQLITE_FILE} from \"../../core/src/persistence/operations.js\";"
+      },
+      {
+        "line": 6,
+        "source": "import {openCliSessionStore} from \"../../core/src/persistence/sessions.js\";"
+      },
+      {
+        "line": 7,
+        "source": "import {SqliteDatabase} from \"../../core/src/persistence/sqlite-database.js\";"
+      }
+    ],
+    "packages/desktop/tests/activity.test.ts": [
+      {
+        "line": 4,
+        "source": "import type { HarnessClientResponse } from \"../../core/src/client/index.js\";"
+      }
+    ],
+    "packages/desktop/tests/approval-review.test.ts": [
+      {
+        "line": 3,
+        "source": "import type { HarnessClientRun } from \"../../core/src/client/index.js\";"
+      }
+    ],
+    "packages/desktop/tests/database-backup.test.ts": [
+      {
+        "line": 5,
+        "source": "import {resolveHarnessConfig} from \"../../core/src/runtime/config.js\";"
+      },
+      {
+        "line": 6,
+        "source": "import {openHarnessPersistence, HARNESS_SQLITE_FILE} from \"../../core/src/persistence/operations.js\";"
+      },
+      {
+        "line": 7,
+        "source": "import {openCliSessionStore} from \"../../core/src/persistence/sessions.js\";"
+      },
+      {
+        "line": 8,
+        "source": "import {openHarnessActivityStore} from \"../../core/src/client/service-events.js\";"
+      },
+      {
+        "line": 9,
+        "source": "import {SqliteDatabase} from \"../../core/src/persistence/sqlite-database.js\";"
+      }
+    ],
+    "packages/desktop/tests/model-selection.test.ts": [
+      {
+        "line": 7,
+        "source": "import type {HarnessClientResponse} from \"../../core/src/client/index.js\";"
+      },
+      {
+        "line": 47,
+        "source": "const {consoleModelChoices}=await import(\"../../core/src/cli/console/console-navigation.js\");"
+      },
+      {
+        "line": 48,
+        "source": "const {providerDescriptor}=await import(\"../../core/src/runtime/config.js\");"
+      },
+      {
+        "line": 103,
+        "source": "const {bundledModelCatalog}=await import(\"../../core/src/models/catalog.js\");"
+      },
+      {
+        "line": 104,
+        "source": "const {consoleModelChoices}=await import(\"../../core/src/cli/console/console-navigation.js\");"
+      }
+    ],
+    "packages/desktop/tests/persistence-secrets.test.ts": [
+      {
+        "line": 6,
+        "source": "import {protectPersistenceSecret} from \"../../core/src/persistence/persistence-secrets.js\";"
+      },
+      {
+        "line": 7,
+        "source": "import {SqliteDatabase} from \"../../core/src/persistence/sqlite-database.js\";"
+      },
+      {
+        "line": 21,
+        "source": "const {createHarness,runHarness}=await import(\"../../core/src/runtime/harness.js\");const {createMockLanguageModel}=await import(\"@zhivex-ai/agents/testing\");const {readdir}=await import(\"node:fs/promises\");"
+      },
+      {
+        "line": 26,
+        "source": "const {inspectHarnessRun}=await import(\"../../core/src/persistence/operations.js\");const exported=await inspectHarnessRun(harness.store,harness.config,safe.state.runId);expect(JSON.stringify(exported)).not.toContain(secret);"
+      },
+      {
+        "line": 27,
+        "source": "const {cancelHarnessRun}=await import(\"../../core/src/persistence/operations.js\");const page=await harness.store.list!({},harness.config.scope);for(const run of page.items)if(![\"completed\",\"failed\",\"cancelled\",\"timed_out\"].includes(run.status))await cancelHarnessRun(harness.store,harness.config,run.runId,{final:true});"
+      },
+      {
+        "line": 28,
+        "source": "const {exportHarnessStateBackup}=await import(\"../../core/src/persistence/state-backup.js\");const backup=path.join(dir,\"backup.json\");await exportHarnessStateBackup(harness.config,backup);expect((await readFile(backup)).includes(Buffer.from(secret))).toBe(false);"
+      }
+    ],
+    "packages/desktop/tests/state-transaction.test.ts": [
+      {
+        "line": 4,
+        "source": "import {resolveHarnessConfig} from \"../../core/src/runtime/config.js\";"
+      },
+      {
+        "line": 5,
+        "source": "import {openHarnessPersistence, HARNESS_SQLITE_FILE} from \"../../core/src/persistence/operations.js\";"
+      },
+      {
+        "line": 6,
+        "source": "import {openCliSessionStore} from \"../../core/src/persistence/sessions.js\";"
+      },
+      {
+        "line": 7,
+        "source": "import {openHarnessActivityStore} from \"../../core/src/client/service-events.js\";"
+      },
+      {
+        "line": 8,
+        "source": "import {SqliteDatabase} from \"../../core/src/persistence/sqlite-database.js\";"
+      }
+    ],
+    "packages/desktop/tests/update-handoff.test.ts": [
+      {
+        "line": 8,
+        "source": "import {resolveHarnessConfig} from \"../../core/src/runtime/config.js\";"
+      },
+      {
+        "line": 10,
+        "source": "import {HARNESS_SQLITE_FILE} from \"../../core/src/persistence/operations.js\";"
+      }
+    ],
+    "packages/desktop/tests/update-inventory.test.ts": [
+      {
+        "line": 7,
+        "source": "import {resolveHarnessConfig} from \"../../core/src/runtime/config.js\";"
+      },
+      {
+        "line": 8,
+        "source": "import {openHarnessPersistence, HARNESS_SQLITE_FILE} from \"../../core/src/persistence/operations.js\";"
+      },
+      {
+        "line": 9,
+        "source": "import {openCliSessionStore} from \"../../core/src/persistence/sessions.js\";"
+      },
+      {
+        "line": 10,
+        "source": "import {SqliteDatabase} from \"../../core/src/persistence/sqlite-database.js\";"
+      }
+    ],
+    "packages/desktop/tests/update-service-integration.test.ts": [
+      {
+        "line": 6,
+        "source": "import {createHarness} from \"../../core/src/runtime/harness.js\";"
+      },
+      {
+        "line": 7,
+        "source": "import {startHarnessLocalService, readHarnessLocalCredentials, requestHarnessLocalService} from \"../../core/src/client/local-service.js\";"
+      },
+      {
+        "line": 8,
+        "source": "import {exportHarnessStateBackup, readHarnessStateBackup} from \"../../core/src/persistence/state-backup.js\";"
+      }
+    ]
+  },
+  "verification": {
+    "baselineFilesMatch": 224,
+    "commitMetadataMappingsChecked": 57,
+    "standaloneTests": {
+      "passed": 224,
+      "skipped": 1,
+      "failed": 0
+    },
+    "harnessDesktopAndRelocatedTests": {
+      "passed": 229,
+      "skipped": 1,
+      "failed": 0
+    },
+    "coreArtifactSha256": "c2b0f53d0c508edb4a013c334e6c8ed59fe950b846c015f4a7900bd595b83eb2",
+    "fullHistoryBundleSha256": "bf35460f8e02e1d010e0a7284b007622200555142a4aa5631c48329ff70bde0a",
+    "packagedSmoke": {
+      "passed": true,
+      "packaged": true,
+      "directory": "/private/tmp/zhx-phase5-zDDDd4",
+      "coreArtifactSha256": "c2b0f53d0c508edb4a013c334e6c8ed59fe950b846c015f4a7900bd595b83eb2",
+      "checks": [
+        "pending decisions remain discoverable after creating another conversation",
+        "repository validation and native picker",
+        "Assistant and Code coexist",
+        "pending file review prevents project switch",
+        "file effect only after review",
+        "CLI and Electron share context",
+        "checkpoint capture and approved restore",
+        "raw restore rejected",
+        "real Bun check after approval and visible result",
+        "worktree create/open/remove with source preservation",
+        "independently approved local commit once",
+        "area switch preserves running Code task; explicit cancellation stops it",
+        "model connection changes without losing conversations",
+        "Electron crash and host restart preserve sessions and commit"
+      ],
+      "limitations": [
+        "Local HTTP model and in-memory SecretStore; no keychain or external accounts. Push and PR transports validated separately with offline fixtures."
+      ]
+    },
+    "sqliteRecovery": {
+      "evidence": "/tmp/har-state-recovery-report-E2YOLN",
+      "node": "24.22.0",
+      "electron": "44.9.3",
+      "databases": 2,
+      "interruptionRecovered": true,
+      "pass": true
+    },
+    "bundleSwap": {
+      "reportDirectory": "/tmp/har-bundle-swap-report-M8sjrx",
+      "temporaryApplications": true,
+      "realElectronBundles": true,
+      "applicationSwapped": true,
+      "rollbackInterruptionRecovered": true,
+      "restoredAsarVerified": true,
+      "nativeSignatureFixture": true,
+      "signedUpdateVerified": false,
+      "smoke": {
+        "passed": true,
+        "packaged": true,
+        "directory": "/private/tmp/zhx-phase5-nVc2pr",
+        "coreArtifactSha256": "c2b0f53d0c508edb4a013c334e6c8ed59fe950b846c015f4a7900bd595b83eb2",
+        "checks": [
+          "pending decisions remain discoverable after creating another conversation",
+          "repository validation and native picker",
+          "Assistant and Code coexist",
+          "pending file review prevents project switch",
+          "file effect only after review",
+          "CLI and Electron share context",
+          "checkpoint capture and approved restore",
+          "raw restore rejected",
+          "real Bun check after approval and visible result",
+          "worktree create/open/remove with source preservation",
+          "independently approved local commit once",
+          "area switch preserves running Code task; explicit cancellation stops it",
+          "model connection changes without losing conversations",
+          "Electron crash and host restart preserve sessions and commit"
+        ],
+        "limitations": [
+          "Local HTTP model and in-memory SecretStore; no keychain or external accounts. Push and PR transports validated separately with offline fixtures."
+        ]
+      }
+    },
+    "architectureTests": {
+      "passed": 16,
+      "failed": 0
+    },
+    "dependencyAudit": {
+      "packages": 183,
+      "vulnerabilities": 0
+    },
+    "workspaceCheck": "Pass in clean tracked-file snapshot; local ignored legacy directories preserved."
+  },
+  "localDestination": "/Users/mikeortiz/dev/zhivex-app",
+  "privateBackupDirectory": "/Users/mikeortiz/dev/zhivex-app-extraction-backup",
+  "remainingGates": [
+    "Installed-profile rehearsal and actual Keychain access using the final executable identity",
+    "Destination hosted CI execution",
+    "Harness removal/cutover after continuity approval"
+  ],
+  "remotePublication": {
+    "destination": "Zhivex/zhivex-app",
+    "visibility": "private",
+    "created": false,
+    "pushed": false
+  }
+}

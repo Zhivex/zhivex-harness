@@ -46,6 +46,8 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 
 ## Contribute and maintain
 
+- [Electron extraction into zhivex-app](ZHIVEX_APP_EXTRACTION_PLAN.md): phased repository split, history preservation, state and credential continuity, and rollback gates.
+
 - [Internal unification and UX archive](INTERNAL_ARCHIVE.md): historical plans, acceptance records and private original evidence.
 - [First shared CLI/Electron flow](https://github.com/Zhivex/zhivex-harness/blob/main/docs/UNIFIED_DESKTOP.md): local setup, new UX, acceptance smoke and remaining migration scope.
 

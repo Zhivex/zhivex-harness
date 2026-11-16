@@ -1,5 +1,6 @@
+import { validateHarnessExports } from "./harness-contract.js";
 import { createHash, randomUUID } from "node:crypto";
-import { access, copyFile, lstat, mkdir, readFile, readlink, rename, symlink, writeFile } from "node:fs/promises";
+import { copyFile, lstat, mkdir, readFile, readlink, rename, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 // Explicit developer setup. Build/package never fetch a candidate or use source aliases.
@@ -21,11 +22,7 @@ const metadata = JSON.parse(await readFile(path.join(packageRoot, "package.json"
 if (metadata.name !== "@zhivex-ai/harness") throw new Error("Candidate package identity mismatch.");
 const desktop = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
 if (metadata.version !== desktop.harness?.version) throw new Error("Candidate version does not match Desktop's exact Harness dependency.");
-for (const subpath of ["./engine", "./protocol", "./service", "./models", "./desktop/v1/state", "./desktop/v1/providers"]) {
-  const entry = metadata.exports?.[subpath];
-  if (!entry?.import || !entry?.types) throw new Error(`Candidate is missing ${subpath}. Published RC3 predates the Desktop contracts; use the local candidate.`);
-  await access(path.join(packageRoot, entry.import)); await access(path.join(packageRoot, entry.types));
-}
+await validateHarnessExports(packageRoot, metadata);
 const link = path.join(root, "node_modules/@zhivex-ai/harness");
 await mkdir(path.dirname(link), { recursive: true });
 try {

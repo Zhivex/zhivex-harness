@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import {mkdir, mkdtemp, readFile, realpath, rm, writeFile, access} from "node:fs/promises";
 import path from "node:path";
-import {resolveHarnessConfig} from "../../core/src/runtime/config.js";
-import {openHarnessPersistence, HARNESS_SQLITE_FILE} from "../../core/src/persistence/operations.js";
-import {openCliSessionStore} from "../../core/src/persistence/sessions.js";
-import {SqliteDatabase} from "../../core/src/persistence/sqlite-database.js";
+import {resolveHarnessConfig} from "@zhivex-ai/harness/engine";
+import {openHarnessPersistence, HARNESS_SQLITE_FILE} from "@zhivex-ai/harness/engine";
+import {openCliSessionStore} from "@zhivex-ai/harness/engine";
+import {SqliteFixture as SqliteDatabase} from "../testing/sqlite-fixture.js";
 import {createApplicationSwapper} from "../src/application-swap.js";
 import {armDesktopStateTransaction, prepareDesktopStateTransaction} from "../src/state-transaction.js";
 import {checkDesktopStateFormat} from "../src/state-format.js";
