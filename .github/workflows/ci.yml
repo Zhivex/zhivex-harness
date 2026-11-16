@@ -51,6 +51,9 @@ jobs:
       - name: Install immutable root dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
+      - name: Install standard SQLite for macOS Bun tests
+        run: brew list sqlite >/dev/null 2>&1 || brew install sqlite
+
       - name: Install immutable desktop dependencies
         run: bun install --cwd packages/desktop --frozen-lockfile --ignore-scripts
 
@@ -74,7 +77,7 @@ jobs:
           bun run workspace:check
           bun run architecture:check
           bun run --cwd packages/desktop typecheck
-          bun test packages/desktop/tests
+          bun test --preload ./tests/preload-sqlite.ts packages/desktop/tests
 
       - name: Package and exercise the desktop application
         run: |
@@ -83,7 +86,7 @@ jobs:
           bun run packages/desktop/scripts/smoke-bundled-core.mjs
           bun run packages/desktop/scripts/smoke-mac-verifier.ts
           bun run packages/desktop/scripts/smoke-application-swap.ts
-          bun test tests/application-offline-migration.test.ts tests/historical-migrations.test.ts
+          bun test --preload ./tests/preload-sqlite.ts tests/application-offline-migration.test.ts tests/historical-migrations.test.ts
 
       - name: Verify desktop build produced no tracked changes
         run: git diff --exit-code
@@ -119,6 +122,10 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Install standard SQLite for macOS Bun tests
+        if: runner.os == 'macOS'
+        run: brew list sqlite >/dev/null 2>&1 || brew install sqlite
 
       - name: Install desktop test dependencies
         run: bun install --cwd packages/desktop --frozen-lockfile --ignore-scripts
