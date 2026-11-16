@@ -26,4 +26,8 @@ one existing skip and zero failures. The results above preserve the original run
 
 The separate CLI onboarding smoke fails with both dependency sets because it expects a plain prompt while the current terminal emits ANSI cursor controls. The general interactive PTY smoke passes. Strict workspace inventory fails in the developer checkout because ignored legacy package directories remain, and passes in a clean source snapshot; no local directories were deleted.
 
+Follow-up: the [CLI onboarding smoke correction](cli-onboarding-smoke-validation-2026-11-16.md)
+resolves prompt matching and stale UI assertions. Both the onboarding and general
+PTY smoke scripts now pass.
+
 [Structured validation evidence](evidence/dependency-update-validation-2026-11-16.json) records the successful integration and packaged-app reports and the baseline comparison. The smoke provider was a local fixture; this update does not certify every provider against its live service.

@@ -4,6 +4,7 @@ import json
 import os
 import pathlib
 import pty
+import re
 import select
 import shutil
 import struct
@@ -26,14 +27,19 @@ class Console:
         os.close(slave)
         self.pending = b""
     def read(self, marker):
+        # Match visible text across readline cursor/erase/style sequences while
+        # retaining raw bytes for secret-leak and terminal-rendering assertions.
+        ansi = rb"(?:\x1b\[[0-?]*[ -/]*[@-~]|\x1b[78])*"
+        pattern = re.compile(ansi.join(re.escape(bytes([byte])) for byte in marker.encode()))
         deadline = time.monotonic() + 15
-        while marker.encode() not in self.pending:
+        while not (match := pattern.search(self.pending)):
             if time.monotonic() > deadline: raise AssertionError((marker, self.pending[-2000:]))
             if select.select([self.master], [], [], .1)[0]:
                 try: chunk = os.read(self.master, 65536)
                 except OSError: raise AssertionError((marker, self.pending[-2000:]))
+                if not chunk: raise AssertionError((marker, self.pending[-2000:]))
                 self.pending += chunk
-        end = self.pending.index(marker.encode()) + len(marker.encode())
+        end = match.end()
         result, self.pending = self.pending[:end], self.pending[end:]
         return result
     def read_selection(self):
@@ -84,9 +90,12 @@ try:
         hidden_output = setup.read("\n> ")
         assert b"opaque-setup-fixture" not in hidden_output
         assert hidden_output.count(b"Welcome") == 1
-        assert b"Ready" in hidden_output and b"credential: temporary" in hidden_output
-        assert b"Changes require your approval" in hidden_output
+        assert b"API key is available only for this CLI session." in hidden_output
+        assert b"Zhivex asks before it changes files." in hidden_output
         assert b"Open zhx" not in hidden_output
+        setup.send("/status\n")
+        setup.read("Credential: temporary")
+        setup.read("\n> ")
         setup.send("/credentials\n")
         setup.read("Credentials / Provider")
         setup.read_selection()
@@ -113,8 +122,11 @@ try:
     detected = Console([], dict(env, ZHIVEX_HARNESS_CONFIG_DIR=str(root / "detected"), DASHSCOPE_API_KEY="fixture-only"))
     try:
         output = detected.read("\n> ")
-        assert b"qwen/" in output and b"credential: environment" in output, output
+        assert b"qwen/" in output, output
         assert b"First-time setup" not in output and b"Credentials / openai" not in output
+        detected.send("/status\n")
+        detected.read("Credential: environment")
+        detected.read("\n> ")
         detected.send("/exit\n")
         assert detected.wait_exit() == 0
     finally: detected.close()
@@ -141,12 +153,12 @@ try:
             output = preferred.read("\n> ")
             assert b"Use default profile" not in output
             if "--approval-mode" in args:
-                assert (b"Restricted mode:" if args[-1] == "restricted" else b"Automatic approvals are enabled") in output
+                assert (b"Restricted mode:" if args[-1] == "restricted" else b"Automatic approvals are on within workspace policy.") in output
             assert b"qwen" in output.lower(), output
             assert json.loads(profile_path.read_text())["model"] == qwen_profile["model"]
             preferred.send("/context\n")
             context_output = preferred.read("Active retained conversation:") + preferred.read("\n> ")
-            expected = b"Cumulative token limits per run:" if "--token-budget" in args else b"Cumulative token budget: unlimited"
+            expected = b"Cumulative token limits per run:" if "--token-budget" in args else b"Cumulative token budget per run: unlimited"
             assert expected in context_output, context_output
             if "--context-tokens" in args:
                 assert b"100000 estimated tokens" in context_output
@@ -298,14 +310,16 @@ try:
         direct.send("\x1b")
         direct.read("\n> ")
         direct.send("EDIT_FIXTURE\n")
-        approval_card = direct.read("Permission required")
+        approval_card = direct.read("Waiting for your decision")
         assert b"approval approval_" not in approval_card and b"input sha256:" not in approval_card
-        direct.read_selection()
-        direct.send("View technical\n")
-        direct.read("Complete approval payload:")
-        direct.read("Permission required")
-        direct.read_selection()
-        direct.send("Allow once\n")
+        direct.read("No action highlighted")
+        assert not (root / "result.txt").exists()
+        direct.send("d")
+        payload = direct.read("Waiting for your decision · details")
+        assert b"approval approval_" in payload and b"apply_reviewed_edits" in payload
+        direct.read("No action highlighted")
+        assert not (root / "result.txt").exists()
+        direct.send("a")
         direct.read("Fixture done")
         direct.read("\n> ")
         assert (root / "result.txt").read_text() == "approved fixture edit\n"
