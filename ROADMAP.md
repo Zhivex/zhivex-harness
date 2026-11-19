@@ -139,6 +139,7 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `1.6.2` | Patch | One continuity retry per provider in the release gate | Published on npm as `latest` | S |
 | `1.6.3` | Patch | SDK and dependency maintenance; matched Code 0.4.2 | Published on npm as `latest` | S |
 | `1.7.0` | Minor | Experimental profiled engine API; private Assistant integration; matched Code 0.4.3 | Published on npm as `latest` | M |
+| `1.8.0` | Minor | Unified CLI, local folder and governed export support, matched Code 0.5.0 | Pending stable publication | M |
 
 Relative size is for sequencing only; dates require a capacity decision.
 

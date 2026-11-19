@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.5.0 - 2026-11-19
+
+- Pin the runtime to Harness 1.8.0 and honor an explicit approval mode in the shared CLI.
+- Use the terminal for local folder workflows. The standalone web launcher and its project registration command have been retired. See the [application migration guide](https://github.com/Zhivex/zhivex-harness/blob/main/docs/APPLICATION_MIGRATION.md).
+
 ## 0.4.3 - 2026-11-13
 
 - Prepare Code 0.4.3 with an exact Harness 1.7.0 dependency. Publish only after that engine is published and verified; both publications remain pending.

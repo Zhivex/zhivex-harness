@@ -6,9 +6,11 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
-- Consolidate the source tree into core, CLI and Electron workspaces while retaining the published engine and CLI contracts. Retired web/Tauri interfaces direct users to Electron and the shared CLI; see the application migration guide for data-preservation and distribution limits.
-- Add optional `readAttempts` diagnostics to `HarnessRunDiagnostics`. Existing `runHarness` arguments and diagnostic fields remain compatible; the reviewed Stable declaration snapshot includes this additive field.
-- Archive internal unification/UX captures and migration planning in private Notion storage with verified local backups. Keep the CLI compatibility fixture and technical benchmark evidence in the repository; generated parity reports now use ignored `results/`.
+## 1.8.0 - 2026-11-19
+
+- Support local folders outside Git for governed data and presentation exports. Expose optional read-attempt diagnostics through the engine.
+- Consolidate the Core CLI and honor explicitly selected approval modes. Include Qwen4 Max support.
+- Move the Electron application to the dedicated Zhivex App repository. The engine package retains its public exports and binaries.
 
 ## 1.7.0 - 2026-11-13
 
