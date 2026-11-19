@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { createHarness, resolveHarnessConfig, runHarness } from "../packages/core/src/engine/index.js";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { consoleBudgetOptions, interactiveBudgetOptions, webBudgetOptions } from "../packages/core/src/cli/interactive/console/console-budget.js";
+import { consoleBudgetOptions, interactiveBudgetOptions, webBudgetOptions } from "../packages/core/src/cli/console/console-budget.js";
 
 test("Web keeps finite ceilings for tools, tokens, steps and time, and retains the tool-error guard", () => {
   const web = webBudgetOptions({}, {});

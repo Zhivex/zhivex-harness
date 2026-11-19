@@ -4,8 +4,8 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import { createHarness, Workspace } from '../packages/core/src/engine/index.js';
-import { CODE_TASK_KEY, prepareCodeTask, keepCodeTask, restoredCodeTask, freshCodeTaskRecap, recoverCodeTask, reviseCodeTask } from '../packages/core/src/cli/interactive/console/console-task.js';
-import { consoleWorkspaceDiff } from '../packages/core/src/cli/interactive/console/console-diff.js';
+import { CODE_TASK_KEY, prepareCodeTask, keepCodeTask, restoredCodeTask, freshCodeTaskRecap, recoverCodeTask, reviseCodeTask } from '../packages/core/src/cli/console/console-task.js';
+import { consoleWorkspaceDiff } from '../packages/core/src/cli/console/console-diff.js';
 import { persistHarnessTaskDraft, readHarnessTaskDraft, inspectHarnessTaskContinuity, TASK_ACCEPTANCE_EVIDENCE_KEY, TASK_BUDGET_KEY } from '../packages/core/src/compat/code-support.js';
 
 const goal = { goal:'Fix greeting', paths:['greeting.mjs'], checks:['test'], constraints:['Preserve named export'] };
@@ -218,7 +218,7 @@ test('a refused first request preserves the established task draft and budget ac
 }));
 
 test('task recap separates durable request, native drain, provider uncertainty and acceptance', async () => fixture(async root => {
-  const { codeTaskBudgetRecap } = await import('../packages/core/src/cli/interactive/console/console-task.js');
+  const { codeTaskBudgetRecap } = await import('../packages/core/src/cli/console/console-task.js');
   const { initializeHarnessTaskBudget, inspectHarnessTaskBudget } = await import('../packages/core/src/compat/code-support.js');
   const host = await createHarness({ workspace: root, usageAccounting: {}, subagentProfiles: [], modelInstance: createMockLanguageModel() });
   try {

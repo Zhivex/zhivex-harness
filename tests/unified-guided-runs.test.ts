@@ -4,10 +4,10 @@ import os from "node:os";
 import path from "node:path";
 import { Workspace, openCliSessionStore, openWorkspaceCheckpointStore } from "../packages/core/src/engine/index.js";
 import type { AgentApprovalRequest } from "@zhivex-ai/agents";
-import { approvalFileDiff, formatFileDiff } from "../packages/core/src/cli/interactive/terminal/file-diff.js";
-import { handleConsoleCheckpoint } from "../packages/core/src/cli/interactive/console/console-checkpoints.js";
-import { catalogPrice, handleConsoleBudget } from "../packages/core/src/cli/interactive/console/console-pricing.js";
-import { consoleRunPolicyMetadata, restoreConsoleRunPolicy } from "../packages/core/src/cli/interactive/console/console-run-policy.js";
+import { approvalFileDiff, formatFileDiff } from "../packages/core/src/cli/terminal/file-diff.js";
+import { handleConsoleCheckpoint } from "../packages/core/src/cli/console/console-checkpoints.js";
+import { catalogPrice, handleConsoleBudget } from "../packages/core/src/cli/console/console-pricing.js";
+import { consoleRunPolicyMetadata, restoreConsoleRunPolicy } from "../packages/core/src/cli/console/console-run-policy.js";
 import { parseCliArgs } from "../packages/core/src/cli/arguments.js";
 
 test("file diffs show changed regions, creations, empty files and exact newline differences safely", () => {

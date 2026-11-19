@@ -1,7 +1,7 @@
 import type { CliOptions } from "../arguments.js";
 import type { HarnessConfig, HarnessProvider } from "../../runtime/config.js";
 import { PROVIDERS } from "../../providers/providers.js";
-import { loadModelCatalog, type CatalogSnapshot } from "../../models/catalog-store.js";
+import { loadModelCatalog, type CatalogSnapshot } from "../../compat/code-support.js";
 import { recommendCompactionModels } from "../../models/compaction-recommendations.js";
 import { sanitizeTerminalText } from "../terminal/terminal-ui.js";
 

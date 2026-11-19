@@ -1,10 +1,23 @@
 import type { PolicyDecisionEvidence } from "../runtime/policy-decisions.js";
+import { issueAutomaticApprovalResponses, issueExplicitReviewResponses, issueObservedApprovalResponses } from "../approvals/explicit-review.js";
+import { requiresExplicitHostReview } from "../approvals/host-policy-identity.js";
+import { decideBatch } from "../approvals/auto-approve.js";
+import { ActivityStream, type ActivityEmission } from "./terminal/activity-stream.js";
 import { ToolActivity, compactToolResult } from "./terminal/tool-activity.js";
 import type { ActivityHistory } from "./terminal/activity-history.js";
 import { USAGE_LEDGER_KEY, formatUsageLedger } from "../runtime/usage-ledger.js";
 import { runResultDocument } from "./run-document.js";
 import { TerminalMarkdown } from "./terminal/terminal-markdown.js";
-import { sanitizeTerminalText, formatVerificationSummary } from "./terminal/terminal-ui.js";
+import {
+  formatApproval,
+  formatTerminalEvent,
+  formatVerificationSummary,
+  resolveTerminalApprovals,
+  sanitizeTerminalText,
+  terminalRunFailure,
+  terminalSupportsColor,
+  type TerminalApprovalResolverOptions
+} from "./terminal/terminal-ui.js";
 import { createInterface } from "node:readline/promises";
 import {
   createRedactionPolicy,
@@ -14,17 +27,8 @@ import {
   type AgentStreamEvent
 } from "@zhivex-ai/agents";
 import { type HarnessRunOptions, type ZhivexHarness } from "../runtime/harness.js";
-import { requiresExplicitHostReview } from "../approvals/host-policy-identity.js";
-import { issueExplicitReviewResponses, issueAutomaticApprovalResponses, issueObservedApprovalResponses } from "../approvals/explicit-review.js";
 import { type AgentTelemetryObserver } from "@zhivex-ai/agents/ops";
 import { serializeStreamEvent, serializeStreamResult } from "./cli-stream.js";
-import {
-  formatApproval,
-  formatTerminalEvent,
-  terminalRunFailure,
-  resolveTerminalApprovals,
-  terminalSupportsColor
-} from "./terminal/terminal-ui.js";
 import { normalizeHarnessError } from "../runtime/errors.js";
 import { type CliOptions } from "./arguments.js";
 import { resumeCommand } from "./resume-metadata.js";
@@ -68,40 +72,82 @@ export const approvalResponses = (
   reason
 }));
 
+const interactiveApprovalResolver = (
+  automaticallyApprove: boolean | "ask" | "auto" | "restricted",
+  ask?: (question: string) => Promise<string>,
+  ui?: Omit<TerminalApprovalResolverOptions, "ask" | "write">
+): NonNullable<HarnessRunOptions["resolveApprovals"]> => {
+  return async (approvals) => {
+    if (automaticallyApprove === "restricted") return approvalResponses(approvals, false, "Denied by restricted approval mode.");
+    if (automaticallyApprove === true || automaticallyApprove === "auto") {
+      return approvalResponses(approvals, true, "Approved by automatic mode.");
+    }
+    const policy = ui?.requireCompleteReview ? undefined : ui?.autoApprove?.();
+    if (policy && policy.mode !== "manual") {
+      const batch = decideBatch(approvals.map(approval => ({ name: approval.name, arguments: approval.arguments })), policy);
+      if (batch.auto && ui) {
+        const { review: _review, select: _select, ...rest } = ui;
+        return resolveTerminalApprovals(approvals, {
+          ask: async () => "",
+          write: () => undefined,
+          ...rest,
+        });
+      }
+    }
+    if (!ask && (!process.stdin.isTTY || !process.stdout.isTTY)) return undefined;
+    const readline = ask ? undefined : createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      return await resolveTerminalApprovals(approvals, {
+        ask: ask ?? ((text: string) => readline!.question(text)),
+        write: text => process.stderr.write(text),
+        ...ui
+      });
+    } finally {
+      readline?.close();
+    }
+  };
+};
+
 export const terminalApprovalResolver = (
   automaticallyApprove: boolean | "ask" | "auto" | "restricted",
   ask?: (question: string) => Promise<string>,
-  ui?: { select: import("./cli-credentials.js").CredentialInput["select"]; workspace: string; sessionGrants?: Set<string> },
+  ui?: Omit<TerminalApprovalResolverOptions, "ask" | "write">,
   reviewHost?: ZhivexHarness
 ): NonNullable<HarnessRunOptions["resolveApprovals"]> => {
   return async (approvals, state) => {
     const automatic = (approve: boolean, reason: string) => {
       const responses = approvalResponses(approvals, approve, reason);
-      return reviewHost ? issueAutomaticApprovalResponses(reviewHost, state, responses, 'cli-automatic') : responses;
+      return reviewHost ? issueAutomaticApprovalResponses(reviewHost, state, responses, "cli-automatic") : responses;
     };
     if (automaticallyApprove === "restricted") return automatic(false, "Denied by restricted approval mode.");
     if (automaticallyApprove === true || automaticallyApprove === "auto") {
       return automatic(true, "Approved by automatic mode.");
     }
-    if (!ask && (!process.stdin.isTTY || !process.stdout.isTTY)) return undefined;
-    const readline = ask ? undefined : createInterface({ input: process.stdin, output: process.stdout });
-    try {
-      const explicit = reviewHost !== undefined && requiresExplicitHostReview(reviewHost);
-      const startedAt = Date.now();
-      const snapshot = reviewHost ? structuredClone(state) : state;
-      const origins: ('interactive' | 'automatic')[] = [];
-      const responses = await resolveTerminalApprovals(explicit ? snapshot.pendingApprovals : approvals, {
-        ask: ask ?? ((text: string) => readline!.question(text)),
-        write: text => process.stderr.write(text), ...ui,
-        onDecisionOrigin: origin => origins.push(origin),
-        ...(explicit ? { requireCompleteReview: true } : {})
-      });
-      if (!responses || !reviewHost) return responses;
-      return explicit ? issueExplicitReviewResponses(reviewHost, snapshot, responses, 'cli-terminal', startedAt)
-        : issueObservedApprovalResponses(reviewHost, snapshot, responses, 'cli-terminal', origins, startedAt);
-    } finally {
-      readline?.close();
+    if (!reviewHost) {
+      return interactiveApprovalResolver(automaticallyApprove, ask, ui)(approvals, state);
     }
+    const explicit = requiresExplicitHostReview(reviewHost);
+    const startedAt = Date.now();
+    const snapshot = structuredClone(state);
+    const origins: ("interactive" | "automatic")[] = [];
+    const effectiveUi: Omit<TerminalApprovalResolverOptions, "ask" | "write"> = explicit
+      ? {
+          ...(ui?.select && ui.workspace ? { select: ui.select, workspace: ui.workspace } : {}),
+          requireCompleteReview: true,
+          onDecisionOrigin: origin => origins.push(origin)
+        }
+      : {
+          ...ui,
+          onDecisionOrigin: origin => origins.push(origin)
+        };
+    const responses = await interactiveApprovalResolver(automaticallyApprove, ask, effectiveUi)(
+      explicit ? snapshot.pendingApprovals : approvals,
+      state
+    );
+    if (!responses) return undefined;
+    return explicit
+      ? issueExplicitReviewResponses(reviewHost, snapshot, responses, "cli-terminal", startedAt)
+      : issueObservedApprovalResponses(reviewHost, snapshot, responses, "cli-terminal", origins, startedAt);
   };
 };
 
@@ -112,7 +158,10 @@ export const printTerminalResult = (
   tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown; policyEvidence?: PolicyDecisionEvidence }
 ) => {
   tracker.markdown?.flush();
-  const document = { ...runResultDocument(result, harness), ...(tracker.policyEvidence ? { policyEvidence: tracker.policyEvidence } : {}) };
+  const document = {
+    ...runResultDocument(result, harness),
+    ...(tracker.policyEvidence ? { policyEvidence: tracker.policyEvidence } : {})
+  };
   if (output.jsonl) {
     tracker.sequence = (tracker.sequence ?? 0) + 1;
     process.stdout.write(`${serializeStreamResult(document, tracker.sequence)}\n`);
@@ -146,15 +195,66 @@ export const printTerminalResult = (
 const proseLineOpen = new WeakSet<object>();
 const conversationStarted = new WeakSet<object>();
 const toolActivities = new WeakMap<object, ToolActivity>();
+const activityStreams = new WeakMap<object, ActivityStream>();
 const lastTerminalFailures = new WeakMap<object, string>();
-export const flushToolActivity = (tracker: object) => toolActivities.get(tracker)?.flush();
+
+interface ActivityHost {
+  activityHistory?: ActivityHistory;
+  consoleView?: boolean;
+  turnDiff?: { added: number; removed: number };
+}
+
+const activityStreamFor = (tracker: ActivityHost) => {
+  let stream = activityStreams.get(tracker);
+  if (!stream) {
+    tracker.turnDiff ??= { added: 0, removed: 0 };
+    stream = new ActivityStream(tracker.turnDiff);
+    activityStreams.set(tracker, stream);
+  }
+  return stream;
+};
+
+const emitActivity = (tracker: ActivityHost, batch: readonly ActivityEmission[], print: boolean) => {
+  for (const item of batch) {
+    if (print && item.live) process.stderr.write(`${item.live}\n`);
+    for (const line of item.history) tracker.activityHistory?.add(line);
+  }
+};
+
+const recordActivity = (tracker: ActivityHost, event: AgentStreamEvent, print: boolean) => {
+  const stream = activityStreamFor(tracker);
+  const batch = event.type === "tool-call"
+    ? stream.noteCall(event.toolCall)
+    : event.type === "tool-result"
+      ? stream.noteResult(event.toolResult)
+      : event.type === "text-delta" || event.type === "agent-run-finish" || event.type === "error" || event.type === "tool-approval-request" || event.type === "agent-approval-request"
+        ? stream.flush()
+        : undefined;
+  if (!batch?.length) return;
+  if (print && batch.some(item => item.live)) toolActivities.get(tracker)?.pause();
+  emitActivity(tracker, batch, print);
+};
+
+export const flushToolActivity = (tracker: object) => {
+  const host = tracker as ActivityHost;
+  const stream = activityStreams.get(tracker);
+  if (stream) emitActivity(host, stream.flush(), true);
+  toolActivities.get(tracker)?.flush({ summary: !host.consoleView });
+};
 
 export const streamSink = (
   output: Pick<CliOptions, "json" | "jsonl">,
-  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown; activityHistory?: ActivityHistory; inputStatus?: () => string },
+  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown; activityHistory?: ActivityHistory; inputStatus?: () => string; consoleView?: boolean; turnDiff?: { added: number; removed: number } },
   compact = false
 ) => async (event: AgentStreamEvent) => {
-  if (!output.json && !output.jsonl) tracker.activityHistory?.observe(event);
+  if (!output.json && !output.jsonl) {
+    if (tracker.consoleView) {
+      recordActivity(tracker, event, compact);
+      tracker.activityHistory?.observe(event, { includeTools: false });
+    } else {
+      tracker.activityHistory?.observe(event);
+    }
+  }
   if (output.jsonl) {
     const sequence = (tracker.sequence ?? 0) + 1;
     const serialized = serializeStreamEvent(event, sequence);
@@ -168,7 +268,7 @@ export const streamSink = (
     let activity = toolActivities.get(tracker);
     if (!activity) {
       activity = new ToolActivity(text => { process.stderr.write(text); },
-        Boolean(process.stderr.isTTY && process.stdout.isTTY), () => process.stderr.columns || 80, tracker.inputStatus);
+        Boolean(process.stderr.isTTY && process.stdout.isTTY && !tracker.consoleView), () => process.stderr.columns || 80, tracker.inputStatus);
       toolActivities.set(tracker, activity);
     }
     if (event.type === "agent-compaction") {
@@ -196,22 +296,27 @@ export const streamSink = (
     }
     if (event.type === "tool-result") {
       activity.finish(event.toolResult.toolName, !event.toolResult.isError);
-      // Keep edits, checks and actionable failures explicit without fragmenting exploration.
-      const detail = compactToolResult(event.toolResult);
       const check = ["run_check", "run_environment_command"].includes(event.toolResult.toolName) || event.toolResult.toolName.startsWith("verify_and_apply_");
-      if (detail && !check) {
+      if (!tracker.consoleView) {
+        // Keep edits, checks and actionable failures explicit without fragmenting exploration.
+        const detail = compactToolResult(event.toolResult, { includeSuccessEdits: true });
+        if (detail && !check) {
+          activity.pause();
+          tracker.markdown?.flush();
+          if (proseLineOpen.has(tracker)) { process.stdout.write("\n"); proseLineOpen.delete(tracker); }
+          process.stderr.write(`${detail}\n`);
+          return;
+        }
+      }
+      if (!check) {
         activity.pause();
-        tracker.markdown?.flush();
-        if (proseLineOpen.has(tracker)) { process.stdout.write("\n"); proseLineOpen.delete(tracker); }
-        process.stderr.write(`${detail}\n`);
         return;
       }
-      if (!check) return;
       activity.pause();
     } else if (["agent-run-finish", "error", "tool-approval-request", "agent-approval-request"].includes(event.type)) {
       tracker.markdown?.flush();
       if (proseLineOpen.has(tracker)) { process.stdout.write("\n"); proseLineOpen.delete(tracker); }
-      activity.flush();
+      activity.flush({ summary: !tracker.consoleView });
     } else if (!["provider-data", "finish", "agent-step-start", "agent-step-finish"].includes(event.type)) {
       activity.pause();
     }
@@ -231,6 +336,7 @@ export const streamSink = (
     return;
   }
   if (!output.json) {
+    if (tracker.consoleView && event.type === "agent-run-finish" && event.status === "completed") return;
     if (compact && ["provider-data", "finish", "agent-run-start", "agent-step-start", "agent-step-finish", "tool-approval-request", "agent-approval-request", "agent-approval-resolved"].includes(event.type)) return;
     if (compact && event.type === "agent-run-finish" && event.status === "waiting_approval") return;
     tracker.markdown?.flush();

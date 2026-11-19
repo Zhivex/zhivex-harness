@@ -7,6 +7,7 @@ import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createHarness, runHarness } from "../packages/core/src/runtime/harness.js";
 import { parseCliArgs } from "../packages/core/src/cli/arguments.js";
+import { openAutoApproveController } from "../packages/core/src/cli/auto-approve-setup.js";
 import { terminalApprovalResolver } from "../packages/core/src/cli/presentation.js";
 import { readDependency } from "../packages/core/src/tools/dependency-read.js";
 import { terminalRunFailure } from "../packages/core/src/cli/terminal/terminal-ui.js";
@@ -31,6 +32,31 @@ test("approval modes apply uniformly to explicitly requested approvals", async (
   const auto = terminalApprovalResolver("auto", async () => { throw new Error("must not prompt"); });
   expect((await auto([approval("apply_patch")], {} as never))?.[0]?.approve).toBe(true);
   expect((await auto([approval()], {} as never))?.[0]?.approve).toBe(true);
+});
+
+test("explicit ask keeps edits pending without a terminal and honors interactive denial", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "approval-ask-"));
+  try {
+    await mkdir(path.join(root, ".zhivex-harness"));
+    await writeFile(path.join(root, ".zhivex-harness/approval.json"), JSON.stringify({ mode: "auto-edits" }));
+    const options = parseCliArgs(["run", "--approval-mode", "ask", "task"]);
+    const controller = await openAutoApproveController(root, options);
+    const edit = { ...approval("apply_reviewed_edits"), kind: "local-tool" as const,
+      arguments: JSON.stringify({ changes: [{ path: "example.txt", expectedDigest: null, content: "example" }] }) };
+    const ui = { workspace: root, autoApprove: controller.policy };
+    const tty = Object.getOwnPropertyDescriptor(process.stdin, "isTTY");
+    try {
+      Object.defineProperty(process.stdin, "isTTY", { configurable: true, value: false });
+      expect(await terminalApprovalResolver("ask", undefined, ui)([edit], {} as never)).toBeUndefined();
+    } finally {
+      if (tty) Object.defineProperty(process.stdin, "isTTY", tty);
+      else Reflect.deleteProperty(process.stdin, "isTTY");
+    }
+    const decisions = await terminalApprovalResolver("ask", async () => "n", ui)([edit], {} as never);
+    expect(decisions?.[0]?.approve).toBe(false);
+    const defaultController = await openAutoApproveController(root, parseCliArgs(["run", "task"]));
+    expect(defaultController.policy().mode).toBe("auto-edits");
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test("dependency reads reject traversal, hidden files, links and hardlinks", async () => {
