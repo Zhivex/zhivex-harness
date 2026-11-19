@@ -1,9 +1,13 @@
 # Zhivex Harness Roadmap
 
-- Status: published on npm as `latest`: Harness `1.7.0` and Code `0.4.3`.
-- Current publication date: 2026-11-14.
+- Status: published on npm as `latest`: Harness `1.8.0` and Code `0.5.0`.
+- Current publication date: 2026-11-19.
 
-Published npm `next` remains Harness `1.4.0-rc.8` and Code `0.3.0-rc.8`. `release-status.json` records Harness 1.7.0 and its release-bound certification.
+Published npm `next` remains Harness `1.4.0-rc.8` and Code `0.3.0-rc.8`. `release-status.json` records Harness 1.8.0 and its release-bound certification.
+
+## Published: 1.8.0 / Code 0.5.0
+
+Both packages were published from `3c376ec24828cb568426225ef78bf00918345e1f` after exact-main checks and protected artifact validation. Harness passed six-provider live certification and 42/42 representative cases; Code pins Harness 1.8.0 exactly and passed real registry installation before publication. Registry bytes, dist-tags and source-bound provenance were verified. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_8_0_CODE_0_5_0.md). This release adds non-Git local folder support, governed tabular data and presentation exports, Core CLI consolidation, explicit approval mode enforcement, Qwen4 Max support, and moves Electron to `Zhivex/zhivex-app`.
 
 ## Published: 1.7.0 / Code 0.4.3
 
@@ -139,7 +143,7 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `1.6.2` | Patch | One continuity retry per provider in the release gate | Published on npm as `latest` | S |
 | `1.6.3` | Patch | SDK and dependency maintenance; matched Code 0.4.2 | Published on npm as `latest` | S |
 | `1.7.0` | Minor | Experimental profiled engine API; private Assistant integration; matched Code 0.4.3 | Published on npm as `latest` | M |
-| `1.8.0` | Minor | Unified CLI, local folder and governed export support, matched Code 0.5.0 | Pending stable publication | M |
+| `1.8.0` | Minor | Unified CLI, local folder and governed export support, matched Code 0.5.0 | Published on npm as `latest` | M |
 
 Relative size is for sequencing only; dates require a capacity decision.
 

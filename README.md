@@ -1,8 +1,6 @@
 # Zhivex Code
 
-Version `1.8.0` is the source candidate paired with Code `0.5.0`.
-
-Version `1.7.0` is the current public npm release, paired with Code `0.4.3` pinned exactly to it. Both packages are published and verified on `latest`. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_7_0_CODE_0_4_3.md).
+Version `1.8.0` is the current public npm release, paired with Code `0.5.0` pinned exactly to it. Both packages are published and verified on `latest`. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_8_0_CODE_0_5_0.md).
 
 [![npm @zhivex-ai/code](https://img.shields.io/npm/v/@zhivex-ai/code?label=npm%20%40zhivex-ai%2Fcode)](https://www.npmjs.com/package/@zhivex-ai/code)
 [![CI](https://github.com/Zhivex/zhivex-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/Zhivex/zhivex-harness/actions/workflows/ci.yml)
@@ -163,9 +161,9 @@ Contracts, stability tiers, and the experimental ACP and MCP entry points are in
 
 ## Releases
 
-Version `1.7.0` is the current public npm release. The Code package on npm `latest` is `0.4.3`, pinned exactly to Harness `1.7.0`. The quick start above follows the published `latest` tag. npm `next` is Harness `1.4.0-rc.8` and Code `0.3.0-rc.8`. Confirm dist-tags on the [Code versions](https://www.npmjs.com/package/@zhivex-ai/code?activeTab=versions) and [Harness versions](https://www.npmjs.com/package/@zhivex-ai/harness?activeTab=versions) pages before you install a prerelease.
+Version `1.8.0` is the current public npm release. The Code package on npm `latest` is `0.5.0`, pinned exactly to Harness `1.8.0`. The quick start above follows the published `latest` tag. npm `next` is Harness `1.4.0-rc.8` and Code `0.3.0-rc.8`. Confirm dist-tags on the [Code versions](https://www.npmjs.com/package/@zhivex-ai/code?activeTab=versions) and [Harness versions](https://www.npmjs.com/package/@zhivex-ai/harness?activeTab=versions) pages before you install a prerelease.
 
-Release channels, publication, and certification records are in the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md). Releases are verified with npm provenance. See the [verified 1.7.0 / 0.4.3 publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_7_0_CODE_0_4_3.md). Source in this checkout can be newer than the public package. See the [changelog](CHANGELOG.md) and the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json).
+Release channels, publication, and certification records are in the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md). Releases are verified with npm provenance. See the [verified 1.8.0 / 0.5.0 publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_8_0_CODE_0_5_0.md). Source in this checkout can be newer than the public package. See the [changelog](CHANGELOG.md) and the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json).
 
 ## Electron workspace layout
 

@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "kind": "verified-coordinated-publication",
+  "sourceCommit": "3c376ec24828cb568426225ef78bf00918345e1f",
+  "verifiedAt": "2026-11-19T23:15:55Z",
+  "releases": [
+    {
+      "name": "@zhivex-ai/harness",
+      "version": "1.8.0",
+      "latest": "1.8.0",
+      "next": "1.4.0-rc.8",
+      "publishedAt": "2026-11-19T22:45:06.485Z",
+      "integrity": "sha512-WlfNm5oT1VAfeCrE1TDACBOsDytcOSuKkV1bNGXtDm76jaR+n67Jndi5nnLmRtPLigQfXsoshxQN8jcYM8Whxg==",
+      "engine": null,
+      "provenance": "https://slsa.dev/provenance/v1",
+      "registryMetadata": "https://registry.npmjs.org/@zhivex-ai%2Fharness/1.8.0",
+      "verifiedAt": "2026-11-19T23:15:55Z",
+      "tag": "v1.8.0",
+      "workflowRun": "https://github.com/Zhivex/zhivex-harness/actions/runs/44594249378",
+      "workflowConclusion": "success",
+      "workflowCompletedAt": "2026-11-19T22:55:00Z",
+      "retainedArtifact": "npm-release-3c376ec24828cb568426225ef78bf00918345e1f"
+    },
+    {
+      "name": "@zhivex-ai/code",
+      "version": "0.5.0",
+      "latest": "0.5.0",
+      "next": "0.3.0-rc.8",
+      "publishedAt": "2026-11-19T23:08:13.174Z",
+      "integrity": "sha512-2gkQ4TbDEMrbU5IywKO3n8TZSZWWAIqPotesFF0UMhFf2AVUynHOa86qH2R7RXp6dU5CsHfiwgZ5HfhTPhrK7A==",
+      "engine": "1.8.0",
+      "provenance": "https://slsa.dev/provenance/v1",
+      "registryMetadata": "https://registry.npmjs.org/@zhivex-ai%2Fcode/0.5.0",
+      "verifiedAt": "2026-11-19T23:15:55Z",
+      "tag": "code-v0.5.0",
+      "workflowRun": "https://github.com/Zhivex/zhivex-harness/actions/runs/44633166910",
+      "workflowConclusion": "success",
+      "workflowCompletedAt": "2026-11-19T23:08:42Z",
+      "retainedArtifact": "code-release-3c376ec24828cb568426225ef78bf00918345e1f"
+    }
+  ],
+  "mergedPullRequests": [
+    "https://github.com/Zhivex/zhivex-harness/pull/281",
+    "https://github.com/Zhivex/zhivex-harness/pull/282",
+    "https://github.com/Zhivex/zhivex-harness/pull/283",
+    "https://github.com/Zhivex/zhivex-harness/pull/284"
+  ],
+  "mainWorkflows": {
+    "ci": "https://github.com/Zhivex/zhivex-harness/actions/runs/44592650591",
+    "codeJourneys": "https://github.com/Zhivex/zhivex-harness/actions/runs/44592650582",
+    "assistant": "https://github.com/Zhivex/zhivex-harness/actions/runs/44592650679",
+    "codeql": "https://github.com/Zhivex/zhivex-harness/actions/runs/44592650567"
+  },
+  "liveCertification": {
+    "status": "passed",
+    "providers": [
+      "meta",
+      "qwen",
+      "openai",
+      "anthropic",
+      "gemini",
+      "vertex"
+    ],
+    "workflowRun": "https://github.com/Zhivex/zhivex-harness/actions/runs/44594249378"
+  },
+  "representativeMatrix": {
+    "passed": 42,
+    "failed": 0,
+    "omitted": 0,
+    "perProvider": {
+      "meta": 14,
+      "qwen": 14,
+      "openai": 14
+    },
+    "workflowRun": "https://github.com/Zhivex/zhivex-harness/actions/runs/44594249378"
+  }
+}

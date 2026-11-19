@@ -1,5 +1,11 @@
 # Code release procedure
 
+## Published minor: Code 0.5.0
+
+Code `0.5.0` is published and verified on npm `latest`, pinned exactly to Harness `1.8.0`. Annotated `code-v0.5.0` resolves to `3c376ec24828cb568426225ef78bf00918345e1f`, the same commit as `v1.8.0`. The [protected OIDC workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/44633166910) passed real registry resolution of the verified Harness release and installed acceptance. Registry bytes, `latest` and source-bound provenance were verified. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_8_0_CODE_0_5_0.md).
+
+npm `next` remains Code `0.3.0-rc.8` and Harness `1.4.0-rc.8`.
+
 ## Published patch: Code 0.4.3
 
 Code `0.4.3` is published and verified on npm `latest`, pinned exactly to Harness `1.7.0`. Annotated `code-v0.4.3` resolves to `80618dedc023168d777ca530dab76959ad491687`, the same commit as `v1.7.0`. The [protected OIDC workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/43625033978) passed real registry resolution of the verified Harness release, retained-artifact terminal/Web journeys and four-manager acceptance. Independent verification confirmed exact registry bytes, `latest` and source-bound provenance. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_7_0_CODE_0_4_3.md).
