@@ -54,12 +54,6 @@ export const main = async (argv = process.argv.slice(2)) => {
     await runServiceCli(parsedOptions, annotateCliStreamError);
     return;
   }
-  if ((parsedOptions.autoApproveMode || parsedOptions.autoApproveAllow) && ["run", "review", "resume"].includes(parsedOptions.command)) {
-    const advanced = await import('./cli/interactive/run-commands.js');
-    const configured = await applyCliProfile(parsedOptions);
-    await (configured.command === 'run' ? advanced.runOnce(configured) : configured.command === 'review' ? advanced.reviewOnce(configured) : advanced.resumeRun(configured));
-    return;
-  }
   if (["chat", "doctor"].includes(parsedOptions.command) &&
       !parsedOptions.sessionId && !parsedOptions.continueSession) {
     parsedOptions = await resolveCliDefaults(parsedOptions);

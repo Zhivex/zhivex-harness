@@ -11,7 +11,7 @@ const collect = async (directory: string): Promise<string[]> => {
   return groups.flat().sort();
 };
 const reports = [];
-for (const directory of ["packages/core/src/cli", "packages/cli/src/cli"]) {
+for (const directory of ["packages/core/src/cli"]) {
   const sources = [];
   for (const file of await collect(directory)) {
     const text = await readFile(path.join(root, file), "utf8");
@@ -32,7 +32,8 @@ for (const directory of ["packages/core/src/cli", "packages/cli/src/cli"]) {
     visit(ast);
     if (conditions.length) sources.push({ file, sha256: createHash("sha256").update(text).digest("hex"), conditions });
   }
-  const catalog = inventory.terminalCommands.find((entry: { source: string }) => entry.source === `${directory}/console/console-commands.ts`);
+  const normalizedDirectory = directory.replace(/^packages\/core\//, "");
+  const catalog = inventory.terminalCommands.find((entry: { source: string }) => entry.source === `${normalizedDirectory}/console/console-commands.ts`);
   if (!catalog) throw new Error(`Missing catalog: ${directory}`);
   const names = new Set<string>(catalog.commands.map((entry: { command: string }) => entry.command));
   const dispatchNames = [...new Set(sources.flatMap(source => source.conditions.flatMap(condition => condition.commands.map(command => command.trim().split(/\s/)[0]!))))].sort();

@@ -1,5 +1,5 @@
 import { parseCliArgs as core } from "../packages/core/src/cli/arguments.js";
-import { parseCliArgs as code } from "../packages/cli/src/cli/arguments.js";
+import { parseCliArgs as code } from "../packages/core/src/compat/cli.js";
 
 // Read-only parser probes. No launcher, profile resolution or service is invoked.
 const cases: { id: string; argv: string[] }[] = [

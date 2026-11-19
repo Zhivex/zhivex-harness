@@ -245,3 +245,61 @@ test("Qwen cancelled setup preserves previous destination and key", async () => 
   expect((await f.store.providerEnvironment("qwen", f.ui([]))).DASHSCOPE_API_KEY).toBe("plan-key");
   expect(f.keys.size).toBe(0);
 });
+
+test("Bedrock Converse does not store an API key and Azure accepts a managed key with its endpoint", async () => {
+  const converse = fixture({ AWS_REGION: "us-east-1" });
+  expect(await converse.store.inspect("bedrock")).toEqual({ source: "environment", configured: true });
+  expect(await converse.store.configure("bedrock", converse.ui([]))).toBe(true);
+  expect(converse.accesses()).toBe(0);
+  const openai = fixture({ BEDROCK_RUNTIME: "openai", BEDROCK_OPENAI_BASE_URL: "https://bedrock-mantle.example/v1" });
+  await openai.store.configure("bedrock", openai.ui(["temporary"], "fixture-bedrock-key"));
+  expect((await openai.store.providerEnvironment("bedrock", openai.ui([]))).BEDROCK_API_KEY).toBe("fixture-bedrock-key");
+  const azure = fixture({ AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com" });
+  await azure.store.configure("azure-openai", azure.ui(["temporary"], "fixture-azure-key"));
+  expect((await azure.store.providerEnvironment("azure-openai", azure.ui([]))).AZURE_OPENAI_API_KEY).toBe("fixture-azure-key");
+  await expect(fixture({}).store.providerEnvironment("azure-openai", fixture().ui([]))).rejects.toThrow("AZURE_OPENAI_ENDPOINT");
+});
+
+test("Anthropic managed keys use the default endpoint and remain isolated", async () => {
+  const managed = fixture();
+  await managed.store.configure("anthropic", managed.ui(["temporary"], "anthropic-test-key"));
+  const env = await managed.store.providerEnvironment("anthropic", managed.ui([]));
+  expect(env.ANTHROPIC_API_KEY).toBe("anthropic-test-key");
+  expect(env.OPENAI_API_KEY).toBeUndefined();
+  expect(managed.keys.size).toBe(0);
+  expect(managed.output()).not.toContain("anthropic-test-key");
+
+  const redirected = fixture({ ANTHROPIC_BASE_URL: "https://untrusted.example" });
+  redirected.keys.set("anthropic", "stored-key");
+  expect(await redirected.store.inspect("anthropic")).toEqual({ source: "blocked", configured: false });
+  await expect(redirected.store.providerEnvironment("anthropic", redirected.ui([]))).rejects.toThrow("default endpoint");
+  expect(redirected.accesses()).toBe(0);
+
+  const explicit = fixture({ ANTHROPIC_API_KEY: "explicit-key", ANTHROPIC_BASE_URL: "https://explicit.example" });
+  expect(await explicit.store.providerEnvironment("anthropic", explicit.ui([]))).toMatchObject({
+    ANTHROPIC_API_KEY: "explicit-key", ANTHROPIC_BASE_URL: "https://explicit.example",
+  });
+  expect(explicit.accesses()).toBe(0);
+});
+
+test("Vertex uses host ADC configuration without prompting or storing an API key", async () => {
+  const f = fixture({ GOOGLE_CLOUD_PROJECT: "example-project", VERTEX_LOCATION: "us-central1", GOOGLE_APPLICATION_CREDENTIALS: "/host/adc.json" });
+  const noPrompt: CredentialInput = {
+    select: async () => { throw new Error("Unexpected key prompt"); },
+    secret: async () => { throw new Error("Unexpected secret prompt"); },
+  };
+  expect(await f.store.inspect("vertex")).toEqual({ source: "environment", configured: true });
+  expect(await f.store.configure("vertex", noPrompt)).toBe(true);
+  expect(await f.store.providerEnvironment("vertex", noPrompt)).toEqual({
+    GOOGLE_CLOUD_PROJECT: "example-project", VERTEX_LOCATION: "us-central1", GOOGLE_APPLICATION_CREDENTIALS: "/host/adc.json",
+  });
+  expect(f.store.source("vertex")).toBe("environment");
+  expect(f.accesses()).toBe(0);
+  expect(f.output()).toContain("Application Default Credentials");
+
+  const missing = fixture({ GOOGLE_CLOUD_PROJECT: "example-project", VERTEX_LOCATION: "malformed/location" });
+  expect((await missing.store.inspect("vertex")).configured).toBe(false);
+  expect(await missing.store.configure("vertex", noPrompt)).toBe(false);
+  await expect(missing.store.providerEnvironment("vertex", noPrompt)).rejects.toThrow("VERTEX_LOCATION");
+  expect(missing.accesses()).toBe(0);
+});

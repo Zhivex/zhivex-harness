@@ -1,14 +1,14 @@
 import { expect, spyOn, test } from "bun:test";
 import { PassThrough } from "node:stream";
-import { ConsoleInput } from "../packages/core/src/cli/interactive/console/console-input.js";
-import { consoleLines, consoleLabel, consoleStateLines } from "../packages/core/src/cli/interactive/console/console-presentation.js";
-import { reviewFrame } from "../packages/core/src/cli/interactive/console/console-review.js";
-import { renderReviewedDiff } from "../packages/core/src/cli/interactive/console/review-diff.js";
-import { ConsoleRunView } from "../packages/core/src/cli/interactive/console/console-run-view.js";
-import { formatConsoleOutcome, formatTurnBanner } from "../packages/core/src/cli/interactive/console/console-outcome.js";
-import { checkpointRecovery } from "../packages/core/src/cli/interactive/console/console-recovery.js";
-import { resolveTerminalApprovals } from "../packages/core/src/cli/interactive/terminal/terminal-ui.js";
-import { terminalCellWidth } from "../packages/core/src/cli/interactive/terminal/terminal-table.js";
+import { ConsoleInput } from "../packages/core/src/cli/console/console-input.js";
+import { consoleLines, consoleLabel, consoleStateLines } from "../packages/core/src/cli/console/console-presentation.js";
+import { reviewFrame } from "../packages/core/src/cli/console/console-review.js";
+import { renderReviewedDiff } from "../packages/core/src/cli/console/review-diff.js";
+import { ConsoleRunView } from "../packages/core/src/cli/console/console-run-view.js";
+import { formatConsoleOutcome, formatTurnBanner } from "../packages/core/src/cli/console/console-outcome.js";
+import { checkpointRecovery } from "../packages/core/src/cli/console/console-recovery.js";
+import { resolveTerminalApprovals } from "../packages/core/src/cli/terminal/terminal-ui.js";
+import { terminalCellWidth } from "../packages/core/src/cli/terminal/terminal-table.js";
 
 const state = {model: "openai/gpt-5.6-luna", status: "approval pending", contextTokens: 1240,
   nextLimitUsd: 1, runUsage: {estimatedUsd: null, limitUsd: 0.25, usageComplete: false}};

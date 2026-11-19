@@ -101,6 +101,7 @@ test("built Code imports only declared dependencies and public Harness subpaths"
       if (packageName === "@zhivex-ai/harness") {
         harnessImports++;
         expect(allowedHarness.has(specifier)).toBe(true);
+        if (file === "cli.js") expect(edge.kind).not.toBe("import-statement");
         // The explicit product allowlist must also exist in the installed engine.
         expect(Object.hasOwn(installedHarness.exports, specifier.replace("@zhivex-ai/harness", "."))).toBe(true);
         expect(() => import.meta.resolve(specifier)).not.toThrow();

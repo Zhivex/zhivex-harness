@@ -1,4 +1,5 @@
-import { estimateMessages } from "../../context/adaptive-compaction.js";
+import { paintTerminal } from "../terminal/terminal-theme.js";
+import { estimateMessages } from "../../compat/code-support.js";
 import type { ModelMessage } from "@zhivex-ai/core";
 import { formatConsoleBudget } from "./console-budget.js";
 import type { ZhivexHarness } from "../../runtime/harness.js";
@@ -48,8 +49,8 @@ export const formatConsoleContext = (context: ZhivexHarness["context"], options?
 export const formatConsoleDiff = (diff: string, color: boolean) => diff.split("\n").map((line) => {
   const safe = sanitizeTerminalText(line);
   if (!color) return safe;
-  const code = line.startsWith("+") ? 32 : line.startsWith("-") ? 31 : line.startsWith("@@") ? 36 : undefined;
-  return code ? `\u001b[${code}m${safe}\u001b[0m` : safe;
+  const code = line.startsWith("+") ? "added" : line.startsWith("-") ? "removed" : line.startsWith("@@") ? "info" : undefined;
+  return code ? paintTerminal(safe, code, color) : safe;
 }).join("\n");
 
 /** Explicit attachments use the same bounded, secret-excluding reads as model tools. */
