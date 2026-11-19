@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "package": "@zhivex-ai/harness",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "status": "published",
   "channel": "latest",
-  "tag": "v1.7.0",
-  "sourceCommit": "80618dedc023168d777ca530dab76959ad491687",
+  "tag": "v1.8.0",
+  "sourceCommit": "3c376ec24828cb568426225ef78bf00918345e1f",
   "registry": "https://registry.npmjs.org/",
-  "registryIntegrity": "sha512-eDAe0mP3Rg1qkayIubF8P6znoXF0qm4hX8WZTAu4eNOB7lSeTYDkxhn16hGZY11iw7Qfvb12Y/bIC39bgpmFFA==",
+  "registryIntegrity": "sha512-WlfNm5oT1VAfeCrE1TDACBOsDytcOSuKkV1bNGXtDm76jaR+n67Jndi5nnLmRtPLigQfXsoshxQN8jcYM8Whxg==",
   "provenance": "verified",
-  "publishedAt": "2026-11-14T18:07:35.009Z",
+  "publishedAt": "2026-11-19T22:45:06.485Z",
   "liveCertification": {
     "status": "certified",
     "base": "passed-release-bound-run",
@@ -17,7 +17,7 @@
     "routing": "passed-release-bound-run",
     "execution": "passed-release-bound-run",
     "remoteWorkflow": "passed",
-    "remoteWorkflowRun": "https://github.com/Zhivex/zhivex-harness/actions/runs/43619969669",
-    "observedAt": "2026-11-14T18:07:57Z"
+    "remoteWorkflowRun": "https://github.com/Zhivex/zhivex-harness/actions/runs/44594249378",
+    "observedAt": "2026-11-19T22:55:00Z"
   }
 }
