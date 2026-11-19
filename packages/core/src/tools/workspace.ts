@@ -22,6 +22,16 @@ import {
   toolMetadata,
   verifyEditPreconditions
 } from "./shared.js";
+import {
+  analyzeTabularFile,
+  buildTabularExportBytes,
+  exportTabularDataSchema,
+  inspectTabularDataSchema
+} from "./tabular-data.js";
+import {
+  buildPresentationBytes,
+  generatePresentationSchema
+} from "./presentations.js";
 
 export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readonly string[]) => ({
   read_dependency: tool({
@@ -240,5 +250,55 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
       ...(await workspace.gitDiff()),
       mutations: workspace.mutationAudit()
     }))
+  }),
+  inspect_tabular_data: tool({
+    name: "inspect_tabular_data",
+    description: "Inspect and analyze a local tabular data file (.csv, .tsv, .json, or .xlsx) with up to 50,000 data rows without running external commands. Returns schema, column statistics (min/max/sum/mean/distinct), optional filtered/sorted/grouped aggregations, and a bounded row preview.",
+    schema: inspectTabularDataSchema,
+    metadata: readOnlyMetadata,
+    execute: async ({ path: filePath, ...options }, context) => {
+      const selectedWorkspace = harnessExecutionSession(context)?.workspace ?? workspace;
+      const file = await selectedWorkspace.readBinaryFile(filePath);
+      return serializeJsonValue({
+        digest: file.digest,
+        bytes: file.size,
+        ...analyzeTabularFile(file.path, file.contents, options)
+      });
+    }
+  }),
+  export_tabular_data: tool({
+    name: "export_tabular_data",
+    description: "Request approval to export structured tabular data to a local .csv or .xlsx file inside the workspace. Pass expectedDigest=null for new files or the existing SHA-256 digest when overwriting.",
+    schema: exportTabularDataSchema,
+    ...mutationApproval,
+    execute: async (input, context) => {
+      const selectedWorkspace = harnessExecutionSession(context)?.workspace ?? workspace;
+      const bytes = buildTabularExportBytes(input);
+      const written = await selectedWorkspace.writeBinaryFile(input.path, bytes, input.expectedDigest);
+      return serializeJsonValue({
+        ...written,
+        format: /\.xlsx$/i.test(input.path) ? "xlsx" : "csv",
+        rowCount: input.rows.length,
+        columnCount: input.columns.length
+      });
+    }
+  }),
+  generate_presentation: tool({
+    name: "generate_presentation",
+    description: "Request approval to generate a local presentation deck (.pptx PowerPoint or print-ready .html) inside the workspace with executive themes, KPI metric cards, bullets, and tables. Pass expectedDigest=null for new files or the existing SHA-256 digest when overwriting.",
+    schema: generatePresentationSchema,
+    ...mutationApproval,
+    execute: async (input, context) => {
+      const selectedWorkspace = harnessExecutionSession(context)?.workspace ?? workspace;
+      const bytes = buildPresentationBytes(input);
+      const written = await selectedWorkspace.writeBinaryFile(input.path, bytes, input.expectedDigest);
+      return serializeJsonValue({
+        ...written,
+        format: /\.pptx$/i.test(input.path) ? "pptx" : "html",
+        title: input.title,
+        slideCount: input.slides.length,
+        theme: input.theme
+      });
+    }
   })
 });

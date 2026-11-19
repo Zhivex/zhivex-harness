@@ -55,7 +55,7 @@ export interface AssistantSetupState {
   profiles: {id: string; name: string; active: boolean; connectionId?: string | undefined; provider: ProviderSummary | null;
     integrations: {microsoft: boolean; microsoftEmail?: string | undefined; outlookMail: boolean; outlookCalendar: boolean; daily: boolean; github: boolean; web: boolean; mail: boolean; drive: boolean; calendar: boolean; calendarEmail?: string | undefined; telegram: boolean}}[];
 }
-export interface CodeProject {id: string; workspace: string; connectionId: string; label: string}
+export interface CodeProject {id: string; workspace: string; connectionId: string; label: string; isGitRepository?: boolean | undefined}
 export interface CodeProjectState {projects: CodeProject[]; active?: string | undefined; ready: boolean; error: string | null}
 /** Metadata of the loaded runtime. A changed binding never authorizes resuming an old run. */
 export interface ApplicationRuntimeBinding {fingerprint: string; tools: string[]; contextFingerprint: string}

@@ -52,7 +52,7 @@ test('a missing registered project is reported without creating a replacement fo
   finally { await projects.close(); await rm(root, {recursive: true, force: true}); }
 });
 
-test('invalid Git selections preserve the current host; empty repositories and linked worktrees are accepted', async () => {
+test('invalid Git selections preserve the current host; plain folders, empty repositories and linked worktrees are accepted', async () => {
   const root = await mkdtemp('/tmp/code-repository-');
   for (const name of ['repo', 'plain', 'bare']) await mkdir(root + '/' + name);
   const git = (directory: string, args: string[]) => execFileSync('git', ['-C', directory, '-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', ...args], {stdio: 'pipe'});
@@ -64,23 +64,42 @@ test('invalid Git selections preserve the current host; empty repositories and l
   try {
     await projects.open(root + '/repo', 'fixture');
     const initial = projects.state();
+    expect(initial.projects.find(project => project.id === initial.active)?.isGitRepository).toBe(true);
     const client = await connectApplication(projects.currentHost()!.credentialsPath);
-    for (const [directory, code] of [['plain', 'CODE_GIT_REQUIRED'], ['bare', 'CODE_GIT_REQUIRED'], ['repo/subfolder', 'CODE_GIT_ROOT_REQUIRED']] as const) {
+    for (const [directory, code] of [['bare', 'CODE_GIT_REQUIRED'], ['repo/subfolder', 'CODE_GIT_ROOT_REQUIRED']] as const) {
       await expect(projects.open(root + '/' + directory, 'fixture')).rejects.toThrow(code);
       expect(projects.state()).toEqual(initial);
       expect((await client.command({method: 'session.list'})).ok).toBe(true);
     }
+    // Plain non-Git folders are accepted as local workspaces without Git worktrees.
+    await projects.open(root + '/plain', 'fixture');
+    const plainProject = projects.state().projects.find(project => project.id === projects.state().active);
+    expect(plainProject?.workspace).toBe(await realpath(root + '/plain'));
+    expect(plainProject?.isGitRepository).toBe(false);
+    await expect(projects.worktrees()).rejects.toThrow('CODE_GIT_REQUIRED');
+    // Persisted plain folders restore cleanly across restarts.
+    await projects.close();
+    projects = createCodeProjects(options);
+    expect(await projects.restore()).toMatchObject({ready: true, error: null});
+    const plainHost = projects.currentHost();
+    git(root + '/plain', ['init', '-q']);
+    const refreshed = await projects.select(plainProject!.id);
+    expect(refreshed.projects.find(project => project.id === plainProject!.id)?.isGitRepository).toBe(true);
+    expect(saved).toMatchObject({projects: expect.arrayContaining([expect.objectContaining({id: plainProject!.id, isGitRepository: true})])});
+    expect(projects.currentHost()).toBe(plainHost);
+    expect(await projects.worktrees()).toEqual([]);
     // A committed repository can also supply a linked checkout with a .git file.
     git(root + '/repo', ['commit', '--allow-empty', '-qm', 'Initial']);
     git(root + '/repo', ['worktree', 'add', '-qb', 'feat/linked', root + '/linked']);
     await projects.open(root + '/linked', 'fixture');
-    expect(projects.state().projects).toHaveLength(2);
+    expect(projects.state().projects).toHaveLength(3);
     expect(projects.state().projects.find(project => project.id === projects.state().active)?.workspace).toBe(await realpath(root + '/linked'));
-    // Persisted selections are validated again on startup; do not recreate Git metadata.
+    expect(projects.state().projects.find(project => project.id === projects.state().active)?.isGitRepository).toBe(true);
+    // Persisted Git selections are validated again on startup; do not silently downgrade or recreate Git metadata.
     await projects.close();
     await rm(root + '/linked/.git');
     projects = createCodeProjects(options);
     expect(await projects.restore()).toMatchObject({ready: false, error: 'CODE_GIT_REQUIRED'});
-    expect(projects.state().projects).toHaveLength(2);
+    expect(projects.state().projects).toHaveLength(3);
   } finally {await projects.close(); await rm(root, {recursive: true, force: true});}
 });
