@@ -112,6 +112,31 @@ function buildSlideXml(slide: GeneratePresentationInput["slides"][number], slide
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="${palette.bg}"/></a:solidFill><a:effectLst/></p:bgPr></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>${shapes.join("")}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
 }
 
+const officeRelationships = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+const notesNamespaces = 'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"';
+const colorMap = '<p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>';
+
+function relationship(id: string, type: string, target: string): string {
+  return `<Relationship Id="${id}" Type="${officeRelationships}/${type}" Target="${target}"/>`;
+}
+
+function relationships(...items: string[]): string {
+  return `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${items.join("")}</Relationships>`;
+}
+
+function notesPage(notes?: string): string {
+  const master = notes === undefined;
+  const tag = master ? "p:notesMaster" : "p:notes";
+  const paragraphs = (notes ?? "").split(/\r\n|[\r\n]/).map(line =>
+    `<a:p><a:r><a:t xml:space="preserve">${escapeXml(line)}</a:t></a:r></a:p>`).join("");
+  const geometry = master ? '<a:xfrm><a:off x="457200" y="457200"/><a:ext cx="5943600" cy="8229600"/></a:xfrm>' : "";
+  return `<${tag} ${notesNamespaces}><p:cSld><p:spTree>
+    <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>
+    <p:sp><p:nvSpPr><p:cNvPr id="2" name="Notes Body"/><p:cNvSpPr/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr>
+    <p:spPr>${geometry}</p:spPr><p:txBody><a:bodyPr/><a:lstStyle/>${paragraphs}</p:txBody></p:sp>
+    </p:spTree></p:cSld>${master ? colorMap : "<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>"}</${tag}>`;
+}
+
 export function buildPptxBuffer(spec: GeneratePresentationInput): Buffer {
   const palette = THEMES[spec.theme];
   const entries: ZipEntryInput[] = [];
@@ -120,6 +145,15 @@ export function buildPptxBuffer(spec: GeneratePresentationInput): Buffer {
     `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>`
   ];
   const sldIdList: string[] = [];
+  const hasNotes = spec.slides.some(slide => slide.notes);
+  if (hasNotes) {
+    presentationRels.push(relationship("rIdNotesMaster", "notesMaster", "notesMasters/notesMaster1.xml"));
+    slideContentTypes.push('<Override PartName="/ppt/notesMasters/notesMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml"/>');
+    entries.push(
+      { name: "ppt/notesMasters/notesMaster1.xml", data: notesPage() },
+      { name: "ppt/notesMasters/_rels/notesMaster1.xml.rels", data: relationships(relationship("rId1", "theme", "../theme/theme1.xml")) }
+    );
+  }
 
   spec.slides.forEach((slide, idx) => {
     const num = idx + 1;
@@ -131,10 +165,20 @@ export function buildPptxBuffer(spec: GeneratePresentationInput): Buffer {
       name: `ppt/slides/slide${num}.xml`,
       data: buildSlideXml(slide, num, spec.slides.length, palette)
     });
-    entries.push({
-      name: `ppt/slides/_rels/slide${num}.xml.rels`,
-      data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>`
-    });
+    const slideRels = [relationship("rId1", "slideLayout", "../slideLayouts/slideLayout1.xml")];
+    if (slide.notes) {
+      const notesPart = `notesSlides/notesSlide${num}.xml`;
+      slideRels.push(relationship("rId2", "notesSlide", `../${notesPart}`));
+      slideContentTypes.push(`<Override PartName="/ppt/${notesPart}" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"/>`);
+      entries.push(
+        { name: `ppt/${notesPart}`, data: notesPage(slide.notes) },
+        { name: `ppt/notesSlides/_rels/notesSlide${num}.xml.rels`, data: relationships(
+          relationship("rId1", "notesMaster", "../notesMasters/notesMaster1.xml"),
+          relationship("rId2", "slide", `../slides/slide${num}.xml`)
+        ) }
+      );
+    }
+    entries.push({ name: `ppt/slides/_rels/slide${num}.xml.rels`, data: relationships(...slideRels) });
   });
 
   entries.push(
@@ -148,7 +192,7 @@ export function buildPptxBuffer(spec: GeneratePresentationInput): Buffer {
     },
     {
       name: "ppt/presentation.xml",
-      data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst>${sldIdList.join("")}</p:sldIdLst><p:sldSz cx="12192000" cy="6858000"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`
+      data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>${hasNotes ? '<p:notesMasterIdLst><p:notesMasterId r:id="rIdNotesMaster"/></p:notesMasterIdLst>' : ""}<p:sldIdLst>${sldIdList.join("")}</p:sldIdLst><p:sldSz cx="12192000" cy="6858000"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`
     },
     {
       name: "ppt/_rels/presentation.xml.rels",
@@ -156,7 +200,7 @@ export function buildPptxBuffer(spec: GeneratePresentationInput): Buffer {
     },
     {
       name: "ppt/slideMasters/slideMaster1.xml",
-      data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/><p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst></p:sldMaster>`
+      data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld>${colorMap}<p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst></p:sldMaster>`
     },
     {
       name: "ppt/slideMasters/_rels/slideMaster1.xml.rels",
@@ -191,7 +235,10 @@ export function buildHtmlDeck(spec: GeneratePresentationInput): string {
     const table = slide.table
       ? `<table><thead><tr>${slide.table.headers.map((h) => `<th>${escapeXml(h)}</th>`).join("")}</tr></thead><tbody>${slide.table.rows.map((r) => `<tr>${slide.table!.headers.map((_, i) => `<td>${escapeXml(r[i] ?? "")}</td>`).join("")}</tr>`).join("")}</tbody></table>`
       : "";
-    return `<section class="slide" data-slide="${idx + 1}"><header><h1>${escapeXml(slide.title)}</h1>${slide.subtitle ? `<p class="subtitle">${escapeXml(slide.subtitle)}</p>` : ""}</header>${metrics}${bullets}${table}<footer><span>${escapeXml(spec.title)}</span><span>${idx + 1} / ${spec.slides.length}</span></footer></section>`;
+    const notes = slide.notes
+      ? `<details class="speaker-notes"><summary>Speaker notes</summary><div>${escapeXml(slide.notes)}</div></details>`
+      : "";
+    return `<section class="slide" data-slide="${idx + 1}"><header><h1>${escapeXml(slide.title)}</h1>${slide.subtitle ? `<p class="subtitle">${escapeXml(slide.subtitle)}</p>` : ""}</header>${metrics}${bullets}${table}${notes}<footer><span>${escapeXml(spec.title)}</span><span>${idx + 1} / ${spec.slides.length}</span></footer></section>`;
   }).join("\n");
 
   return `<!doctype html>
@@ -216,7 +263,8 @@ export function buildHtmlDeck(spec: GeneratePresentationInput): string {
   th { background: var(--accent); color: #fff; text-align: left; padding: 10px 14px; font-size: 0.9rem; }
   td { padding: 9px 14px; border-top: 1px solid var(--border); font-size: 0.92rem; }
   footer { margin-top: auto; display: flex; justify-content: space-between; font-size: 0.82rem; opacity: 0.7; }
-  @media print { .slide { min-height: 0; height: 100vh; } }
+  .speaker-notes div { white-space: pre-wrap; }
+  @media print { .speaker-notes { display: none; } .slide { min-height: 0; height: 100vh; } }
 </style>
 </head>
 <body>

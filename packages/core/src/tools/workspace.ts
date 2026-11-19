@@ -253,7 +253,7 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
   }),
   inspect_tabular_data: tool({
     name: "inspect_tabular_data",
-    description: "Inspect and analyze a local tabular data file (.csv, .tsv, .json, or .xlsx) without running external commands. Returns schema, column statistics (min/max/sum/mean/distinct), optional filtered/sorted/grouped aggregations, and a bounded row preview.",
+    description: "Inspect and analyze a local tabular data file (.csv, .tsv, .json, or .xlsx) with up to 50,000 data rows without running external commands. Returns schema, column statistics (min/max/sum/mean/distinct), optional filtered/sorted/grouped aggregations, and a bounded row preview.",
     schema: inspectTabularDataSchema,
     metadata: readOnlyMetadata,
     execute: async ({ path: filePath, ...options }, context) => {

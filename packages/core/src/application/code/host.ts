@@ -12,7 +12,8 @@ export async function startCodeHost(options: { workspace: string; directory: str
   try {
     if (options.recover) try { await recoverHarnessLocalService(harness, options.directory); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-    const service = await startApplicationHost(harness, { directory: options.directory, sensitiveValues: options.sensitiveValues ?? [] });
+    const service = await startApplicationHost(harness, { directory: options.directory, sensitiveValues: options.sensitiveValues ?? [] },
+      { tools: ['export_tabular_data', 'generate_presentation'] });
     const delivery = createCodeDelivery(service, harness.config.workspace, options.directory, options.sensitiveValues ?? []);
     let closing: Promise<void> | undefined;
     return {...service, binding: () => applicationRuntimeBinding(harness), context: () => projectCodeContext(harness, [...(options.sensitiveValues ?? []), ...Object.entries(process.env).filter(([key]) => /(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)$/i.test(key)).map(([, value]) => value ?? '')]), delivery: delivery.call, close: () => closing ??= (async () => { try {await delivery.close();} finally {await service.close();} })(), async checks() {

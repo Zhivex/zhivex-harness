@@ -8,6 +8,10 @@ export type TabularRow = Record<string, CellValue>;
 const MAX_ROWS = 50_000;
 const MAX_COLUMNS = 200;
 
+function checkRowLimit(dataRows: number) {
+  if (dataRows > MAX_ROWS) throw new Error("Tabular analysis supports at most 50,000 data rows.");
+}
+
 export const tabularFilterSchema = z.strictObject({
   column: z.string().min(1).max(200),
   op: z.enum(["eq", "neq", "contains", "gt", "gte", "lt", "lte"]),
@@ -91,7 +95,7 @@ export function parseDelimitedText(text: string, delimiter?: string): { columns:
       field = "";
       if (row.some((cell) => cell.trim() !== "")) matrix.push(row);
       row = [];
-      if (matrix.length > MAX_ROWS + 1) break;
+      checkRowLimit(matrix.length - 1);
     } else {
       field += ch;
     }
@@ -99,13 +103,14 @@ export function parseDelimitedText(text: string, delimiter?: string): { columns:
   if (field.length > 0 || row.length > 0) {
     row.push(field);
     if (row.some((cell) => cell.trim() !== "")) matrix.push(row);
+    checkRowLimit(matrix.length - 1);
   }
   if (!matrix.length) return { columns: [], rows: [] };
 
   const headerRow = matrix[0]!.slice(0, MAX_COLUMNS);
   const columns = headerRow.map((value, index) => value.trim() || `column_${index + 1}`);
   const rows: TabularRow[] = [];
-  for (let r = 1; r < matrix.length && rows.length < MAX_ROWS; r++) {
+  for (let r = 1; r < matrix.length; r++) {
     const source = matrix[r]!;
     const record: TabularRow = {};
     for (let c = 0; c < columns.length; c++) {
@@ -193,11 +198,12 @@ export function parseXlsxBuffer(buffer: Buffer, requestedSheet?: string): {
   const matrix: CellValue[][] = [];
   let maxCol = 0;
 
-  for (const rowMatch of sheetXml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)) {
+  for (const rowMatch of sheetXml.matchAll(/<row\b[^>]*?(?:\/>|>([\s\S]*?)<\/row>)/g)) {
+    if (!rowMatch[1]) continue;
     const cells: CellValue[] = [];
-    for (const cellMatch of rowMatch[1]!.matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/g)) {
+    for (const cellMatch of rowMatch[1].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
       const attrs = cellMatch[1]!;
-      const body = cellMatch[2]!;
+      const body = cellMatch[2] ?? "";
       const refMatch = /\br="([A-Z]+)\d+"/.exec(attrs);
       const colIndex = refMatch ? columnLettersToIndex(refMatch[1]!) : cells.length;
       if (colIndex >= MAX_COLUMNS) continue;
@@ -231,7 +237,7 @@ export function parseXlsxBuffer(buffer: Buffer, requestedSheet?: string): {
     if (cells.some((value) => value !== undefined && value !== null && value !== "")) {
       matrix.push(cells);
     }
-    if (matrix.length > MAX_ROWS + 1) break;
+    checkRowLimit(matrix.length - 1);
   }
 
   if (!matrix.length) {
@@ -247,7 +253,7 @@ export function parseXlsxBuffer(buffer: Buffer, requestedSheet?: string): {
   }
 
   const rows: TabularRow[] = [];
-  for (let r = 1; r < matrix.length && rows.length < MAX_ROWS; r++) {
+  for (let r = 1; r < matrix.length; r++) {
     const record: TabularRow = {};
     for (let c = 0; c < columns.length; c++) {
       record[columns[c]!] = matrix[r]![c] ?? null;
@@ -274,8 +280,8 @@ export function parseJsonTabular(text: string): { columns: string[]; rows: Tabul
   if (!rawList) throw new Error("JSON file must contain an array of objects (or an object with a rows/data/records/items array).");
 
   const columnSet = new Set<string>();
-  const slice = rawList.slice(0, MAX_ROWS);
-  for (const item of slice) {
+  checkRowLimit(rawList.length);
+  for (const item of rawList) {
     if (item && typeof item === "object" && !Array.isArray(item)) {
       for (const key of Object.keys(item)) {
         if (columnSet.size < MAX_COLUMNS) columnSet.add(key);
@@ -283,7 +289,7 @@ export function parseJsonTabular(text: string): { columns: string[]; rows: Tabul
     }
   }
   const columns = [...columnSet];
-  const rows: TabularRow[] = slice
+  const rows: TabularRow[] = rawList
     .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item)))
     .map((item) => {
       const record: TabularRow = {};

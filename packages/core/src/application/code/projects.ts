@@ -46,7 +46,15 @@ export function createCodeProjects(options: {
       const id = createHash('sha256').update(workspace).digest('hex').slice(0, 24);
       const current = registry.projects.find(project => project.id === id);
       if (current && current.isGitRepository !== false && !inspected.isGitRepository) throw new Error('CODE_GIT_REQUIRED');
-      if (host && registry.active === id && current?.connectionId === connectionId) return state();
+      if (host && registry.active === id && current?.connectionId === connectionId) {
+        if (current.isGitRepository !== inspected.isGitRepository) {
+          const updated = { ...registry, projects: registry.projects.map(project =>
+            project.id === id ? { ...project, ...inspected } : project) };
+          options.save(updated);
+          registry = updated;
+        }
+        return state();
+      }
       const replacing = Boolean(current && current.connectionId !== connectionId && registry.active === id && host);
       if (!current && registry.projects.length >= 100) throw new Error('CODE_PROJECT_LIMIT');
       const connection = options.connection(connectionId);

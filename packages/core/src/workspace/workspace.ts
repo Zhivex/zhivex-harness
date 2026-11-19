@@ -1386,10 +1386,13 @@ export class Workspace {
       } else if (expectedDigest !== null) {
         throw new HarnessWorkspaceError(`Cannot overwrite ${relativePath}: the file does not exist.`);
       }
-      await this.secureWorkspaceDirectory(path.dirname(safe.path));
       const temporary = await this.stageFile(safe.path, contents, before?.mode ?? 0o644);
       try {
         if (before) {
+          const current = await this.readBinaryFile(relativePath, maxBytes);
+          if (current.digest !== before.digest) {
+            throw new HarnessWorkspaceError(`Stale digest rejected for ${relativePath}.`);
+          }
           await rename(temporary, safe.path);
         } else {
           try {

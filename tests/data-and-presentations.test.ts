@@ -1,11 +1,19 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "bun:test";
 import { Workspace } from "../packages/core/src/workspace/workspace.js";
 import { createWorkspaceTools } from "../packages/core/src/tools/workspace.js";
 import { buildZipArchive, readZipEntries } from "../packages/core/src/tools/ooxml-zip.js";
+import { analyzeTabularFile } from "../packages/core/src/tools/tabular-data.js";
+
+function workbookWithRows(rows: string) {
+  return buildZipArchive([
+    { name: "xl/workbook.xml", data: '<workbook><sheets><sheet name="Sales" sheetId="1"/></sheets></workbook>' },
+    { name: "xl/worksheets/sheet1.xml", data: `<worksheet><sheetData>${rows}</sheetData></worksheet>` }
+  ]);
+}
 
 async function withTempWorkspace<T>(fn: (workspace: Workspace, root: string) => Promise<T>): Promise<T> {
   const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-data-decks-"));
@@ -159,6 +167,57 @@ describe("Step 2: local tabular data analysis and presentations", () => {
     });
   });
 
+  test("self-closing XLSX cells preserve the column of the following value", () => {
+    const workbook = workbookWithRows(
+      '<row><c r="A1" t="inlineStr"><is><t>Customer</t></is></c><c r="B1" t="inlineStr"><is><t>Amount</t></is></c></row>' +
+      '<row r="2"/><row r="3"><c r="A3" s="0"/><c r="B3"><v>125</v></c></row>'
+    );
+    const result = analyzeTabularFile("sales.xlsx", workbook, { limit: 2 });
+    expect(result.preview).toEqual([{ Customer: null, Amount: 125 }]);
+    expect(result.profile.find(column => column.column === "Amount")?.numeric?.sum).toBe(125);
+  });
+
+  test("tabular analysis accepts exactly 50,000 rows and rejects partial totals in each format", () => {
+    const row = '<row><c><v>1</v></c></row>';
+    const header = '<row><c t="inlineStr"><is><t>amount</t></is></c></row>';
+    for (const count of [50_000, 50_001]) {
+      const records = Array(count).fill("1").join("\n");
+      const inputs: [string, Buffer][] = [
+        ["data.csv", Buffer.from("amount\n" + records)],
+        ["data.tsv", Buffer.from("amount\n" + records + "\n")],
+        ["data.json", Buffer.from("[" + Array(count).fill('{"amount":1}').join(",") + "]")],
+        ["data.xlsx", workbookWithRows(header + row.repeat(count))]
+      ];
+      for (const [file, bytes] of inputs) {
+        const analyze = () => analyzeTabularFile(file, bytes, { limit: 1 });
+        if (count === 50_001) expect(analyze).toThrow("50,000 data rows");
+        else {
+          const result = analyze();
+          expect(result.totalRows).toBe(count);
+          expect(result.profile[0]?.numeric?.sum).toBe(count);
+        }
+      }
+    }
+  });
+
+  test("an external save during binary staging survives and leaves no mutation receipt", async () => {
+    await withTempWorkspace(async (workspace, root) => {
+      const target = path.join(root, "report.csv");
+      await writeFile(target, "original");
+      const original = await workspace.readBinaryFile("report.csv");
+      const stage = workspace["stageFile"].bind(workspace);
+      workspace["stageFile"] = async (...args) => {
+        const temporary = await stage(...args);
+        await writeFile(target, "saved by the editor");
+        return temporary;
+      };
+      await expect(workspace.writeBinaryFile("report.csv", Buffer.from("exported"), original.digest)).rejects.toThrow("Stale digest");
+      expect(await readFile(target, "utf8")).toBe("saved by the editor");
+      expect(await readdir(root)).not.toContainEqual(expect.stringContaining(".tmp"));
+      expect(workspace.mutationAudit()).toEqual([]);
+    });
+  });
+
   test("generates valid PPTX and print-ready HTML presentations", async () => {
     await withTempWorkspace(async (workspace, root) => {
       const tools = createWorkspaceTools(workspace, []);
@@ -192,7 +251,7 @@ describe("Step 2: local tabular data analysis and presentations", () => {
                 ["APAC", "$0.5M", "+14%"]
               ]
             },
-            notes: "Highlight EMEA enterprise expansion."
+            notes: "Highlight EMEA & APAC.\nMention <next steps>."
           }
         ],
         expectedDigest: null
@@ -213,6 +272,16 @@ describe("Step 2: local tabular data analysis and presentations", () => {
       const slide2Xml = zipEntries.get("ppt/slides/slide2.xml")!.toString("utf8");
       expect(slide2Xml).toContain("Regional Breakdown");
       expect(slide2Xml).toContain("AMER");
+      expect(slide2Xml).not.toContain("Highlight EMEA");
+      expect(zipEntries.has("ppt/notesSlides/notesSlide1.xml")).toBe(false);
+      const notes = zipEntries.get("ppt/notesSlides/notesSlide2.xml")!.toString();
+      expect(notes).toContain('type="body"');
+      expect(notes).toContain("Highlight EMEA &amp; APAC.");
+      expect(notes).toContain("Mention &lt;next steps&gt;.");
+      expect(zipEntries.get("ppt/slides/_rels/slide2.xml.rels")!.toString()).toContain("../notesSlides/notesSlide2.xml");
+      expect(zipEntries.get("ppt/notesSlides/_rels/notesSlide2.xml.rels")!.toString()).toContain("../slides/slide2.xml");
+      expect(zipEntries.has("ppt/notesMasters/notesMaster1.xml")).toBe(true);
+      expect(zipEntries.get("[Content_Types].xml")!.toString()).toContain("/ppt/notesSlides/notesSlide2.xml");
 
       const htmlCreated = await tools.generate_presentation.execute({
         path: "decks/board-update.html",
@@ -221,7 +290,8 @@ describe("Step 2: local tabular data analysis and presentations", () => {
         slides: [
           {
             title: "Executive Summary",
-            bullets: ["Local-first deck generation", "Zero Docker required"]
+            bullets: ["Local-first deck generation", "Zero Docker required"],
+            notes: "Mention <next steps>."
           }
         ],
         expectedDigest: null
@@ -231,6 +301,7 @@ describe("Step 2: local tabular data analysis and presentations", () => {
       expect(htmlText).toContain("<!doctype html>");
       expect(htmlText).toContain("Executive Summary");
       expect(htmlText).toContain("Local-first deck generation");
+      expect(htmlText).toContain('<details class="speaker-notes"><summary>Speaker notes</summary><div>Mention &lt;next steps&gt;.</div></details>');
     });
   });
 

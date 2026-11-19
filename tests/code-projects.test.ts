@@ -81,6 +81,13 @@ test('invalid Git selections preserve the current host; plain folders, empty rep
     await projects.close();
     projects = createCodeProjects(options);
     expect(await projects.restore()).toMatchObject({ready: true, error: null});
+    const plainHost = projects.currentHost();
+    git(root + '/plain', ['init', '-q']);
+    const refreshed = await projects.select(plainProject!.id);
+    expect(refreshed.projects.find(project => project.id === plainProject!.id)?.isGitRepository).toBe(true);
+    expect(saved).toMatchObject({projects: expect.arrayContaining([expect.objectContaining({id: plainProject!.id, isGitRepository: true})])});
+    expect(projects.currentHost()).toBe(plainHost);
+    expect(await projects.worktrees()).toEqual([]);
     // A committed repository can also supply a linked checkout with a .git file.
     git(root + '/repo', ['commit', '--allow-empty', '-qm', 'Initial']);
     git(root + '/repo', ['worktree', 'add', '-qb', 'feat/linked', root + '/linked']);

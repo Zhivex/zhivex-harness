@@ -1,9 +1,11 @@
 import { expect, test } from "bun:test";
 import { createHash } from "node:crypto";
+import path from "node:path";
 import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createHarness } from "../packages/core/src/runtime/harness.js";
 import { startApplicationHost } from "../packages/core/src/application/host.js";
+import { startCodeHost } from "../packages/core/src/application/code/host.js";
 import { connectApplication } from "../packages/core/src/application/client.js";
 import type { HarnessClientResponse, HarnessClientData } from "../packages/core/src/client/protocol.js";
 
@@ -64,6 +66,41 @@ test("independent clients share a durable conversation and host-reviewed edit, w
     expect(data(await reconnected.command({ method: "session.get", sessionId: session.sessionId }), "session").session.title).toBe("Shared conversation");
     expect(data(await reconnected.command({ method: "run.get", sessionId: session.sessionId, runId: run.runId }), "run").run.status).toBe("completed");
     await expect(reconnected.decide(review.review.ticketId, true)).rejects.toThrow();
+  } finally { await host.close(); await rm(root, { recursive: true, force: true }); }
+});
+
+test("Code exports data and presentations only after the client approves the file payload", async () => {
+  const root = await mkdtemp("/tmp/zhx-code-export-");
+  const calls = [
+    { id: "csv", name: "export_tabular_data", input: { path: "report.csv", columns: ["Total"], rows: [[125]], expectedDigest: null } },
+    { id: "deck", name: "generate_presentation", input: { path: "report.html", title: "Report", slides: [{ title: "Quarterly results" }], expectedDigest: null } }
+  ];
+  const model = createMockLanguageModel({ streamEvents: [
+    [...calls.map(toolCall => ({ type: "tool-call" as const, toolCall })), { type: "finish", finishReason: "tool-calls" }],
+    [{ type: "text-delta", textDelta: "Done" }, { type: "finish", finishReason: "stop" }]
+  ] });
+  const host = await startCodeHost({ workspace: root, directory: root + "/socket", engine: {
+    provider: "openai", modelInstance: model, subagentProfiles: [],
+    toolPolicy: { schemaVersion: 1, explicitReview: { schemaVersion: 1 }, rules: [] }
+  } });
+  try {
+    const client = await connectApplication(host.credentialsPath);
+    const session = data(await client.command({ method: "session.create", idempotencyKey: "new" }), "session").session;
+    const run = data(await client.command({ method: "run.start", sessionId: session.sessionId, expectedRevision: session.revision,
+      idempotencyKey: "reports", prompt: "Export both reports" }), "run").run;
+    expect(run.status).toBe("waiting_approval");
+    const result = await client.review(session.sessionId, run.runId);
+    if (!result.ok) throw new Error(result.error.code);
+    expect(result.review.canApprove).toBe(true);
+    expect(result.review.items).toHaveLength(calls.length);
+    for (const call of calls) {
+      const item = result.review.items.find(item => item.name === call.name);
+      expect(JSON.parse(item!.payload)).toMatchObject(call.input);
+      expect(await Bun.file(path.join(root, call.input.path)).exists()).toBe(false);
+    }
+    expect(data(await client.decide(result.review.ticketId, true), "run").run.status).toBe("completed");
+    expect(await readFile(root + "/report.csv", "utf8")).toBe("Total\n125\n");
+    expect(await readFile(root + "/report.html", "utf8")).toContain("Quarterly results");
   } finally { await host.close(); await rm(root, { recursive: true, force: true }); }
 });
 
