@@ -59,6 +59,16 @@ function parseCellScalar(raw: string): CellValue {
   return trimmed;
 }
 
+function columnNames(header: readonly (CellValue | undefined)[], width: number): string[] {
+  const used = new Set<string>();
+  return Array.from({ length: width }, (_, index) => {
+    const name = String(header[index] ?? "").trim() || `column_${index + 1}`;
+    if (used.has(name)) throw new Error(`Duplicate column header "${name}" at column ${index + 1}.`);
+    used.add(name);
+    return name;
+  });
+}
+
 export function parseDelimitedText(text: string, delimiter?: string): { columns: string[]; rows: TabularRow[] } {
   const normalized = text.replace(/^\uFEFF/, "");
   const firstLine = normalized.split(/\r?\n/, 1)[0] ?? "";
@@ -108,7 +118,7 @@ export function parseDelimitedText(text: string, delimiter?: string): { columns:
   if (!matrix.length) return { columns: [], rows: [] };
 
   const headerRow = matrix[0]!.slice(0, MAX_COLUMNS);
-  const columns = headerRow.map((value, index) => value.trim() || `column_${index + 1}`);
+  const columns = columnNames(headerRow, headerRow.length);
   const rows: TabularRow[] = [];
   for (let r = 1; r < matrix.length; r++) {
     const source = matrix[r]!;
@@ -153,8 +163,11 @@ export function parseXlsxBuffer(buffer: Buffer, requestedSheet?: string): {
 
   const relTargets = new Map<string, string>();
   if (relsXml) {
-    for (const match of relsXml.matchAll(/<Relationship\b[^>]*\bId="([^"]+)"[^>]*\bTarget="([^"]+)"/g)) {
-      relTargets.set(match[1]!, match[2]!.replace(/^\/?/, ""));
+    for (const match of relsXml.matchAll(/<Relationship\b([^>]*)>/g)) {
+      const attrs = match[1]!;
+      const id = /\sId\s*=\s*(["'])(.*?)\1/.exec(attrs)?.[2];
+      const target = /\sTarget\s*=\s*(["'])(.*?)\1/.exec(attrs)?.[2];
+      if (id && target) relTargets.set(decodeXmlEntities(id), decodeXmlEntities(target).replace(/^\//, ""));
     }
   }
 
@@ -166,6 +179,7 @@ export function parseXlsxBuffer(buffer: Buffer, requestedSheet?: string): {
     if (!nameMatch) continue;
     const name = decodeXmlEntities(nameMatch[1]!);
     const relTarget = relMatch ? relTargets.get(relMatch[1]!) : undefined;
+    if (relMatch && !relTarget) throw new Error(`Missing worksheet relationship for "${name}".`);
     const target = relTarget
       ? (relTarget.startsWith("xl/") ? relTarget : `xl/${relTarget}`)
       : `xl/worksheets/sheet${sheetEntries.length + 1}.xml`;
@@ -244,13 +258,7 @@ export function parseXlsxBuffer(buffer: Buffer, requestedSheet?: string): {
     return { sheets: sheetEntries.map((s) => s.name), activeSheet: selected.name, columns: [], rows: [] };
   }
 
-  const columns: string[] = [];
-  for (let c = 0; c < maxCol; c++) {
-    const rawHeader = matrix[0]![c];
-    columns.push(rawHeader !== undefined && rawHeader !== null && String(rawHeader).trim()
-      ? String(rawHeader).trim()
-      : `column_${c + 1}`);
-  }
+  const columns = columnNames(matrix[0]!, maxCol);
 
   const rows: TabularRow[] = [];
   for (let r = 1; r < matrix.length; r++) {
@@ -364,13 +372,13 @@ export function analyzeTabularFile(
     let sum = 0;
     let min = Infinity;
     let max = -Infinity;
-    const distinct = new Set<string>();
+    const distinct = new Set<CellValue>();
     const types = new Set<string>();
     for (const row of working) {
       const val = row[column];
       if (val === null || val === undefined) continue;
       nonNull++;
-      if (distinct.size < 1000) distinct.add(String(val));
+      distinct.add(val);
       types.add(typeof val);
       if (typeof val === "number") {
         numericCount++;

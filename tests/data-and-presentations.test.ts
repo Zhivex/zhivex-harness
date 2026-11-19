@@ -167,6 +167,30 @@ describe("Step 2: local tabular data analysis and presentations", () => {
     });
   });
 
+  test("worksheet selection follows the relationship target regardless of attribute order", () => {
+    const sheet = (value: number) => `<worksheet><sheetData><row><c t="inlineStr"><is><t>amount</t></is></c></row><row><c><v>${value}</v></c></row></sheetData></worksheet>`;
+    const workbook = buildZipArchive([
+      { name: "xl/workbook.xml", data: '<workbook><sheets><sheet name="Second" r:id="b"/><sheet name="First" r:id="a"/></sheets></workbook>' },
+      { name: "xl/_rels/workbook.xml.rels", data: '<Relationships><Relationship Target="worksheets/sheet2.xml" Id="b"/><Relationship Id="a" Target="worksheets/sheet1.xml"/></Relationships>' },
+      { name: "xl/worksheets/sheet1.xml", data: sheet(10) },
+      { name: "xl/worksheets/sheet2.xml", data: sheet(20) }
+    ]);
+    expect(analyzeTabularFile("sales.xlsx", workbook, { sheet: "Second", limit: 1 }).preview).toEqual([{ amount: 20 }]);
+  });
+
+  test("column profiles count all distinct values above one thousand", () => {
+    const ids = Array.from({ length: 1001 }, (_, index) => index);
+    const bytes = Buffer.from(["id", ...ids, 0].join("\n"));
+    expect(analyzeTabularFile("ids.csv", bytes, { limit: 1 }).profile[0]).toMatchObject({ distinct: 1001, nonNull: 1002 });
+  });
+
+  test("tabular readers reject duplicate headers including generated names", () => {
+    const inspect = (file: string, bytes: Buffer) => analyzeTabularFile(file, bytes, { limit: 1 });
+    expect(() => inspect("sales.csv", Buffer.from("amount,amount\n10,20"))).toThrow("Duplicate column header");
+    const workbook = workbookWithRows('<row><c r="B1" t="inlineStr"><is><t>column_1</t></is></c></row><row><c><v>10</v></c><c><v>20</v></c></row>');
+    expect(() => inspect("sales.xlsx", workbook)).toThrow("Duplicate column header");
+  });
+
   test("self-closing XLSX cells preserve the column of the following value", () => {
     const workbook = workbookWithRows(
       '<row><c r="A1" t="inlineStr"><is><t>Customer</t></is></c><c r="B1" t="inlineStr"><is><t>Amount</t></is></c></row>' +
