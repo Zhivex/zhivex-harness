@@ -1347,6 +1347,78 @@ export class Workspace {
     return { proposalId: proposal.proposalId, changes };
   }
 
+  async readBinaryFile(relativePath: string, maxBytes = 8 * 1024 * 1024): Promise<{ path: string; contents: Buffer; digest: FileDigest; size: number }> {
+    const safe = await this.safePath(relativePath, { skipLeafValidation: true });
+    const file = await readRegularFileNoFollow(safe.path, {
+      label: "The file",
+      maxBytes
+    });
+    return {
+      path: wirePath(path.relative(this.root, safe.path)),
+      contents: file.contents,
+      digest: digestBytes(file.contents),
+      size: file.contents.byteLength
+    };
+  }
+
+  async writeBinaryFile(
+    relativePath: string,
+    contents: Uint8Array,
+    expectedDigest: FileDigest | null = null,
+    maxBytes = 16 * 1024 * 1024
+  ): Promise<{ path: string; bytes: number; digest: FileDigest; overwritten: boolean }> {
+    if (contents.byteLength > maxBytes) {
+      throw new HarnessWorkspaceError(`Output file exceeds the ${maxBytes}-byte limit.`);
+    }
+    return withWorkspaceMutation(this.root, async () => {
+      const safe = await this.safePath(relativePath, { allowMissing: true });
+      let before: { digest: FileDigest; mode: number } | undefined;
+      if (safe.exists) {
+        const current = await readRegularFileNoFollow(safe.path, { label: "The target file", maxBytes });
+        const currentDigest = digestBytes(current.contents);
+        if (expectedDigest === null) {
+          throw new HarnessWorkspaceError(`Cannot create ${relativePath}: the file already exists. Pass expectedDigest to overwrite.`);
+        }
+        if (currentDigest !== expectedDigest) {
+          throw new HarnessWorkspaceError(`Stale digest rejected for ${relativePath}.`);
+        }
+        before = { digest: currentDigest, mode: current.stat.mode & 0o777 };
+      } else if (expectedDigest !== null) {
+        throw new HarnessWorkspaceError(`Cannot overwrite ${relativePath}: the file does not exist.`);
+      }
+      await this.secureWorkspaceDirectory(path.dirname(safe.path));
+      const temporary = await this.stageFile(safe.path, contents, before?.mode ?? 0o644);
+      try {
+        if (before) {
+          await rename(temporary, safe.path);
+        } else {
+          try {
+            await link(temporary, safe.path);
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+              throw new HarnessWorkspaceError(`The target file was created concurrently: ${relativePath}.`);
+            }
+            throw error;
+          }
+          await unlink(temporary);
+        }
+      } catch (error) {
+        await unlink(temporary).catch(() => {});
+        throw error;
+      }
+      const normalized = wirePath(path.relative(this.root, safe.path));
+      const afterDigest = digestBytes(contents);
+      this.invalidateWorkspaceIndex();
+      await this.audit([{
+        operation: before ? "update" : "create",
+        path: normalized,
+        ...(before ? { beforeDigest: before.digest } : {}),
+        afterDigest
+      }]);
+      return { path: normalized, bytes: contents.byteLength, digest: afterDigest, overwritten: Boolean(before) };
+    });
+  }
+
   /** @deprecated Use applyPatch with an inspected expectedDigest. */
   async writeFile(relativePath: string, content: string, overwrite = false) {
     const safe = await this.safePath(relativePath, { allowMissing: true });

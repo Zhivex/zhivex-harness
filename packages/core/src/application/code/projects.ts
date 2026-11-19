@@ -7,9 +7,9 @@ import { z } from 'zod';
 import { openTaskWorktrees } from './worktrees.js';
 import { startCodeHost } from './host.js';
 import { connectApplication } from '../client.js';
-import { requireCodeRepository } from './repository.js';
+import { inspectCodeWorkspace } from './repository.js';
 
-const projectSchema = z.object({ id: z.string().regex(/^[a-f0-9]{24}$/), workspace: z.string().min(1), connectionId: z.string().min(1), label: z.string().min(1) }).strict();
+const projectSchema = z.object({ id: z.string().regex(/^[a-f0-9]{24}$/), workspace: z.string().min(1), connectionId: z.string().min(1), label: z.string().min(1), isGitRepository: z.boolean().optional() }).strict();
 const registrySchema = z.object({ version: z.literal(1), active: z.string().optional(), projects: z.array(projectSchema).max(100) }).strict();
 type Host = Awaited<ReturnType<typeof startCodeHost>>;
 /** Registry storage is owned/locked by the application manager. One Code project stays running alongside Assistant. */
@@ -24,9 +24,12 @@ export function createCodeProjects(options: {
   const sourceProject = async () => {
     const current = registry.projects.find(value => value.id === registry.active);
     if (!current) throw new Error('CODE_PROJECT_NOT_FOUND');
+    if (current.isGitRepository === false) throw new Error('CODE_GIT_REQUIRED');
     const task = (await tasks()).list().find(value => value.workspace === current.workspace);
     const source = task ? registry.projects.find(value => value.workspace === task.sourceWorkspace) : current;
-    if (!source) throw new Error('CODE_PROJECT_NOT_FOUND'); return source;
+    if (!source) throw new Error('CODE_PROJECT_NOT_FOUND');
+    if (source.isGitRepository === false) throw new Error('CODE_GIT_REQUIRED');
+    return source;
   };
   const sourceKey = (workspace: string) => `project_${createHash('sha256').update(workspace).digest('hex').slice(0, 32)}`;
   let settled: Promise<void> = Promise.resolve();
@@ -39,9 +42,10 @@ export function createCodeProjects(options: {
     try {
       workspace = await realpath(workspace);
       if (!(await stat(workspace)).isDirectory()) throw new Error('CODE_WORKSPACE_INVALID');
-      await requireCodeRepository(workspace);
+      const inspected = await inspectCodeWorkspace(workspace);
       const id = createHash('sha256').update(workspace).digest('hex').slice(0, 24);
       const current = registry.projects.find(project => project.id === id);
+      if (current && current.isGitRepository !== false && !inspected.isGitRepository) throw new Error('CODE_GIT_REQUIRED');
       if (host && registry.active === id && current?.connectionId === connectionId) return state();
       const replacing = Boolean(current && current.connectionId !== connectionId && registry.active === id && host);
       if (!current && registry.projects.length >= 100) throw new Error('CODE_PROJECT_LIMIT');
@@ -63,7 +67,7 @@ export function createCodeProjects(options: {
       next = await startCodeHost({ workspace, directory: options.directory, recover: true, ...connection,
         engine: {...connection.engine, ...(task ? {stateDirectory: task.stateDirectory} : {})} });
       try {
-        const project = { id, workspace, connectionId, label: path.basename(workspace) || workspace };
+        const project = { id, workspace, connectionId, label: path.basename(workspace) || workspace, isGitRepository: inspected.isGitRepository };
         const updated = { version: 1 as const, active: id, projects: [...registry.projects.filter(value => value.id !== id), project] };
         options.save(updated); registry = updated;
       } catch (failure) { await next.close(); throw failure; }

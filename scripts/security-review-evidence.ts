@@ -110,6 +110,18 @@ export const SECURITY_REVIEW_AUTHORITY_BEARING_TOOLS = [
     controlThreats: ["malicious-repository-context", "compromised-model-or-provider"]
   },
   {
+    id: "inspect_tabular_data",
+    controlThreats: ["malicious-repository-context", "compromised-model-or-provider"]
+  },
+  {
+    id: "export_tabular_data",
+    controlThreats: ["malicious-repository-context", "approval-replay-or-substitution"]
+  },
+  {
+    id: "generate_presentation",
+    controlThreats: ["malicious-repository-context", "approval-replay-or-substitution"]
+  },
+  {
     id: "run_environment_command",
     controlThreats: ["hostile-subprocess", "approval-replay-or-substitution"]
   },

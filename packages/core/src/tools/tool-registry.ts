@@ -7,7 +7,8 @@ export const LOCAL_TOOL_NAMES = new Set([
   "move_file", "quarantine_file", "restore_file", "run_check", "git_diff", "mutation_audit", "load_skill",
   "run_environment_command", "run_environment_batch", "run_environment_shell", "environment_status",
   "apply_reviewed_edits", "apply_reviewed_replacement", "read_task", "repair_plan", "inspect_environment_patch",
-  "apply_environment_patch", "verify_and_apply_environment_patch", "verify_and_apply_reviewed_edits"
+  "apply_environment_patch", "verify_and_apply_environment_patch", "verify_and_apply_reviewed_edits",
+  "inspect_tabular_data", "export_tabular_data", "generate_presentation"
 ]);
 export const assembleHarnessTools = (groups: readonly ToolSet[], external: ToolSet): ToolSet => {
   const tools: ToolSet = {};
