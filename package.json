@@ -1,6 +1,6 @@
 {
   "name": "@zhivex-ai/harness",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Governed, provider-portable runtime for coding agents with durable approvals and isolated repository execution.",
   "type": "module",
   "license": "MIT",
@@ -430,6 +430,7 @@
     "zod": "4.6.7"
   },
   "overrides": {
+    "@zhivex-ai/harness": "link:.",
     "@zhivex-ai/core": "1.40.1",
     "glob": "14.0.3",
     "minimatch": "11.0.4"
