@@ -1,4 +1,4 @@
-import { modelReasoningEfforts, type HarnessReasoningEffort } from "../../providers/reasoning.js";
+import { modelReasoningEfforts, type HarnessReasoningEffort } from "../../compat/code-support.js";
 import type { ConsoleInput } from "./console-input.js";
 
 const descriptions: Record<HarnessReasoningEffort, string> = {

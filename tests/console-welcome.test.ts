@@ -6,7 +6,7 @@ import { parseCliArgs } from "../packages/core/src/cli.js";
 test("welcome escapes project metadata and adapts to narrow, colorless terminals", () => {
  const rendered = formatConsoleWelcome({version:"1",workspace:"/tmp/project\x1b[2J",sessionId:"s",provider:"qwen",model:"example"},{color:false,columns:80});
  const logoLines = ZHIVEX_TERMINAL_LOGO.split("\n");
- expect(rendered.split("\n").slice(0, logoLines.length).map((line, index) => line.slice(0, logoLines[index]!.length)).join("\n")).toBe(ZHIVEX_TERMINAL_LOGO);
+ expect(rendered.split("\n").slice(1, 1 + logoLines.length).map((line, index) => line.slice(0, logoLines[index]!.length)).join("\n")).toBe(ZHIVEX_TERMINAL_LOGO);
  expect(rendered.split("\n")[3]).toContain("   Zhivex Harness 1");
  expect(rendered.split("\n")[7]).toContain("session s");
  expect(rendered).toContain("Welcome");

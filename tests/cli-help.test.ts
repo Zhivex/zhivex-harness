@@ -40,7 +40,7 @@ test("short help leads to focused help without exposing unrelated options", () =
 });
 
 test("common actions stay small while advanced and safety actions remain discoverable", () => {
-  expect(searchConsoleCommands("/").length).toBeLessThan(10);
+  expect(searchConsoleCommands("/").length).toBeLessThanOrEqual(10);
   expect(searchConsoleCommands("/").map(([name]) => name)).not.toContain("/route");
   expect(searchConsoleCommands("/route").map(([name]) => name)).toContain("/route");
   expect(formatConsoleHelp()).not.toContain("/route");

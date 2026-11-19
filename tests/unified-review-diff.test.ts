@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import { formatFileDiff } from "../packages/core/src/cli/interactive/terminal/file-diff.js";
-import { changeSummary, renderReviewedDiff } from "../packages/core/src/cli/interactive/console/review-diff.js";
-import { reviewFrame } from "../packages/core/src/cli/interactive/console/console-review.js";
+import { formatFileDiff } from "../packages/core/src/cli/terminal/file-diff.js";
+import { changeSummary, renderReviewedDiff } from "../packages/core/src/cli/console/review-diff.js";
+import { reviewFrame } from "../packages/core/src/cli/console/console-review.js";
 
 const before = `${"kept\n".repeat(8)}if (!rootDir) return;\n${"tail\n".repeat(6)}`;
 const after = `${"kept\n".repeat(8)}if (!rootDir) {\n  throw new ConfigurationError("rootDir is required");\n}\n${"tail\n".repeat(6)}`;

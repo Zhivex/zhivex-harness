@@ -1,6 +1,7 @@
-import {mkdir, readFile, writeFile} from 'node:fs/promises';
+import {lstat, mkdir, readdir, readFile, writeFile} from 'node:fs/promises';
+import path from 'node:path';
 import {CLI_COMMANDS, CLI_RUNS_COMMANDS, CLI_SESSIONS_COMMANDS, CLI_CHANGES_COMMANDS, CLI_STATE_COMMANDS, parseCliArgs} from '../packages/core/src/cli/arguments.js';
-import {CONSOLE_COMMAND_CATALOG} from '../packages/core/src/cli/interactive/console/console-commands.js';
+import {CONSOLE_COMMAND_CATALOG} from '../packages/core/src/cli/console/console-commands.js';
 const baseline = JSON.parse(await readFile('fixtures/cli-compatibility/inventory.json','utf8'));
 const source = await readFile('packages/core/src/cli/arguments.ts','utf8');
 const groups: Record<string, readonly string[]> = {CLI_COMMANDS, CLI_RUNS_COMMANDS, CLI_SESSIONS_COMMANDS, CLI_CHANGES_COMMANDS, CLI_STATE_COMMANDS};
@@ -17,7 +18,7 @@ for (const parser of baseline.parsers) {
 }
 for (const terminal of baseline.terminalCommands) for (const {command} of terminal.commands) {
  if (!CONSOLE_COMMAND_CATALOG.some(([name])=>name===command)) missing.push(`${terminal.source}:${command}`);
- rows.push({source:terminal.source,kind:'console',name:command,destination:'src/cli/interactive/console/console-commands.ts'});
+ rows.push({source:terminal.source,kind:'console',name:command,destination:'src/cli/console/console-commands.ts'});
 }
 for (const flag of ['--auto-approve=auto-edits','--auto-approve-allow=run_check']) parseCliArgs(['run','fixture',flag]);
 for (const flag of ['--auto-approve=auto-edits','--auto-approve-allow=run_check']) {
@@ -26,6 +27,29 @@ for (const flag of ['--auto-approve=auto-edits','--auto-approve-allow=run_check'
 }
 const wrapper=await readFile('packages/cli/src/cli.ts','utf8');
 if (!wrapper.includes('@zhivex-ai/harness/cli') || /switch\s*\(|createHarness|runOnce/.test(wrapper)) missing.push('wrapper-duplicates-dispatch');
+const cliHelp = await readFile('packages/cli/src/cli/cli-help.ts', 'utf8');
+if (/@zhivex-ai\/harness/.test(cliHelp)) missing.push('wrapper-help-loads-engine');
+try {
+ await lstat('packages/core/src/cli/interactive');
+ missing.push('duplicate-core-cli-interactive-tree');
+} catch (error) {
+ if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+}
+const listTsFiles = async (dir: string, prefix = ''): Promise<string[]> => {
+ const entries = await readdir(dir, {withFileTypes: true});
+ const files: string[] = [];
+ for (const entry of entries) {
+  const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+  if (entry.isDirectory()) files.push(...await listTsFiles(path.join(dir, entry.name), rel));
+  else if (entry.name.endsWith('.ts')) files.push(rel);
+ }
+ return files.sort();
+};
+const allowedWrapperFiles = ['cli-entry.ts', 'cli.ts', 'cli/cli-help.ts', 'cli/node-engine.ts', 'version.ts'];
+const actualWrapperFiles = await listTsFiles('packages/cli/src');
+if (JSON.stringify(actualWrapperFiles) !== JSON.stringify(allowedWrapperFiles)) {
+ missing.push(`wrapper-unexpected-files:${actualWrapperFiles.filter(file => !allowedWrapperFiles.includes(file)).join(',') || 'missing-required'}`);
+}
 const report={schemaVersion:1,passed:missing.length===0,missing,entries:rows.length,rows,compatibility:['zhivex-code normal commands delegate to canonical CLI','version/help identity retained; legacy web/project commands rejected with migration guidance','shared-host runtime flags rejected; direct historical mode retained','ACP remains zhx-acp over core']};
 await mkdir('results/unification', {recursive: true});
 await writeFile('results/unification/parity.json',JSON.stringify(report,null,2)+'\n');

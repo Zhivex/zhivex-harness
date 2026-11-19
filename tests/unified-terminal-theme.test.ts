@@ -1,8 +1,8 @@
 import { afterEach, expect, test } from "bun:test";
-import { paintTerminal, resolveTerminalTheme, terminalThemeChoice, terminalThemeCommand, terminalToneCode } from "../packages/core/src/cli/interactive/terminal/terminal-theme.js";
-import { formatConsoleDiff } from "../packages/core/src/cli/interactive/console/console-context.js";
-import { terminalSupportsColor } from "../packages/core/src/cli/interactive/terminal/terminal-ui.js";
-import { searchConsoleCommands } from "../packages/core/src/cli/interactive/console/console-commands.js";
+import { paintTerminal, resolveTerminalTheme, terminalThemeChoice, terminalThemeCommand, terminalToneCode } from "../packages/core/src/cli/terminal/terminal-theme.js";
+import { formatConsoleDiff } from "../packages/core/src/cli/console/console-context.js";
+import { terminalSupportsColor } from "../packages/core/src/cli/terminal/terminal-ui.js";
+import { searchConsoleCommands } from "../packages/core/src/cli/console/console-commands.js";
 afterEach(() => { terminalThemeCommand('/theme system'); });
 test('system detects a light terminal and unknown backgrounds default to dark', () => {
   expect(resolveTerminalTheme('system', { COLORFGBG: '0;15' })).toBe('light');
