@@ -14,6 +14,9 @@ export const createAutoApproveController = (workspace: string, options: CliOptio
   let sessionAllow: readonly string[] | undefined;
   return {
     policy(overLimit = false) {
+      if (options.approvalMode === "ask") {
+        return resolveAutoApprovePolicy({ rootDir: workspace, overLimit });
+      }
       return resolveAutoApprovePolicy({
         rootDir: workspace,
         file: stored,
