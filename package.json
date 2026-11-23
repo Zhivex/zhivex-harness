@@ -438,7 +438,7 @@
     "minimatch": "11.0.4"
   },
   "devDependencies": {
-    "@agentclientprotocol/sdk": "2.7.0",
+    "@agentclientprotocol/sdk": "2.8.0",
     "@modelcontextprotocol/server": "2.4.0",
     "@types/bun": "1.4.4",
     "@types/node": "^26.6.6",
