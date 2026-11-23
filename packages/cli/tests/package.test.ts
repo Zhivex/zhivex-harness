@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
@@ -8,6 +8,9 @@ import { CLI_JSON_SCHEMA_VERSION, HARNESS_VERSION } from "@zhivex-ai/harness/eng
 const packageRoot = fileURLToPath(new URL("../", import.meta.url));
 const manifest = JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8"));
 const binary = path.join(packageRoot, "dist/cli.js");
+// Tests run several sequential `node` processes (each bounded at 15 s); cold
+// starts on hosted macOS runners exceed Bun's 5 s per-test default.
+setDefaultTimeout(30_000);
 const run = (args: string[], cwd = packageRoot) => spawnSync("node", [binary, ...args], {
   encoding: "utf8", cwd, timeout: 15_000,
   env: { PATH: process.env.PATH, HOME: cwd, ZHIVEX_HARNESS_CREDENTIAL_STORE: "disabled", NO_COLOR: "1", NODE_NO_WARNINGS: "1" },
