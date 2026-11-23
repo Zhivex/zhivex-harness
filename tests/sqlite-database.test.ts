@@ -37,6 +37,27 @@ describe("SQLite runtime compatibility", () => {
     });
   }
 
+  test("reuses prepared statements across calls and drops them on close", () => {
+    const database = new SqliteDatabase(":memory:");
+    try {
+      database.exec("CREATE TABLE items(value TEXT)");
+      const insert = "INSERT INTO items VALUES (?1)";
+      for (let index = 0; index < 200; index += 1) database.query(insert).run(`v${index}`);
+      // More distinct SQL than the cache holds must still execute correctly.
+      for (let index = 0; index < 300; index += 1) {
+        expect(database.query<{ n: number }>(`SELECT ${index} AS n`).get()).toEqual({ n: index });
+      }
+      // Schema changes are picked up by a cached statement (SQLite re-prepares).
+      const select = "SELECT * FROM items LIMIT 1";
+      expect(database.query(select).get()).toEqual({ value: "v0" });
+      database.exec("ALTER TABLE items ADD COLUMN extra TEXT DEFAULT 'x'");
+      expect(database.query(select).get()).toEqual({ value: "v0", extra: "x" });
+      expect(database.query<{ n: number }>("SELECT COUNT(*) AS n FROM items").get()).toEqual({ n: 200 });
+    } finally {
+      database.close();
+    }
+  });
+
   test("binds numbered parameters portably and preserves repeated indices", () => {
     const database = new SqliteDatabase(":memory:");
     try {
