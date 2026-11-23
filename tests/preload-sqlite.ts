@@ -12,7 +12,16 @@ if (process.platform === "darwin") {
   if (!library || !existsSync(library)) {
     throw new Error("Bun tests on macOS require standard SQLite: run `brew install sqlite` or set HARNESS_TEST_SQLITE_LIBRARY to its dylib path.");
   }
-  if (!Database.setCustomSQLite(library)) {
-    throw new Error("Cannot configure test SQLite: load tests/preload-sqlite.ts before opening any database.");
+  // `bun test --parallel` isolates each file's globals but reuses the worker
+  // process, so this preload runs again after the process-wide SQLite library
+  // is already set. The marker lives in the process environment (shared across
+  // isolated files) and is bound to this pid, so child processes that inherit
+  // it still configure their own library.
+  const marker = `${process.pid}:${library}`;
+  if (process.env.HARNESS_TEST_SQLITE_CONFIGURED !== marker) {
+    if (!Database.setCustomSQLite(library)) {
+      throw new Error("Cannot configure test SQLite: load tests/preload-sqlite.ts before opening any database.");
+    }
+    process.env.HARNESS_TEST_SQLITE_CONFIGURED = marker;
   }
 }
