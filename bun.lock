@@ -10,7 +10,7 @@
         "@zhivex-ai/azure-openai": "0.8.1",
         "@zhivex-ai/bedrock": "2.1.3",
         "@zhivex-ai/core": "1.40.1",
-        "@zhivex-ai/gemini": "0.15.1",
+        "@zhivex-ai/gemini": "0.16.0",
         "@zhivex-ai/meta": "0.4.0",
         "@zhivex-ai/openai": "0.18.2",
         "@zhivex-ai/qwen": "0.20.1",
@@ -235,7 +235,7 @@
 
     "@zhivex-ai/core": ["@zhivex-ai/core@1.40.1", "", { "dependencies": { "ws": "^8.22.1", "zod": "^4.6.7" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-3419leS2qvapbdyZDm7lpZZFqogMVOWYSLcSaUFvlKf8e8UI93J9uFYvXqhY9jEC8MBQJB7I2vWdh+6nSvOE1Q=="],
 
-    "@zhivex-ai/gemini": ["@zhivex-ai/gemini@0.15.1", "", { "dependencies": { "@zhivex-ai/core": "^1.39.1", "zod": "^4.6.7" } }, "sha512-4ZHHIpY8RAmY1UHkzELclFq8XodCyzqhKN+WNScs4lTfGPql6vMtduIMwKQt2wrXP0bxltCg8tZIN1R8AbwVBA=="],
+    "@zhivex-ai/gemini": ["@zhivex-ai/gemini@0.16.0", "", { "dependencies": { "@zhivex-ai/core": "^1.41.0", "zod": "^4.6.7" } }, "sha512-ZWtfWzpwDFZ/ijxIV/jGxXr83zFq1asrKsxaurzmQuSzHuzkuRJjdw4bUX4vu9bildw+/E3XPH7A3KJ4PMir5w=="],
 
     "@zhivex-ai/harness": ["@zhivex-ai/harness@link:.", { "bin": { "zhivex-harness": "./dist/cli.js", "zhx": "./dist/zhx.js", "zhx-acp": "./dist/acp-cli.js" } }],
 
@@ -390,6 +390,8 @@
     "@zhivex-ai/code/@types/bun": ["@types/bun@1.4.3", "", { "dependencies": { "bun-types": "1.4.3" } }, "sha512-N67Pqy8JXbAY/j0tNraS3V5mubGvc6rrrNDmDCtZLlFzccbUJPDb0tvgUBC5q4m8ybkP93Jcn1QB+RYQ6PvBhw=="],
 
     "@zhivex-ai/code/@zhivex-ai/agents": ["@zhivex-ai/agents@1.12.0", "", { "dependencies": { "@zhivex-ai/core": "^1.34.0" } }, "sha512-TeIM+oNXyClaHrzVo6/tzcE56FtgrGJRkTp1Q+YZL4DL3a+6zr94c3qMUMqwN9hPboNwDSD1GKEqqTWu6fqgWQ=="],
+
+    "@zhivex-ai/vertex/@zhivex-ai/gemini": ["@zhivex-ai/gemini@0.15.1", "", { "dependencies": { "@zhivex-ai/core": "^1.39.1", "zod": "^4.6.7" } }, "sha512-4ZHHIpY8RAmY1UHkzELclFq8XodCyzqhKN+WNScs4lTfGPql6vMtduIMwKQt2wrXP0bxltCg8tZIN1R8AbwVBA=="],
 
     "@zhivex-ai/code/@napi-rs/keyring/@napi-rs/keyring-darwin-arm64": ["@napi-rs/keyring-darwin-arm64@2.1.1", "", { "os": "darwin", "cpu": "arm64" }, "sha512-H6uxAztj6GSDwnh/1JDHCtAqWvBTr+0+FGwOOw+rY568z7vFOqrJTTboePFuAnJSO7kNvq+yuyXJ9B5Ueco4yA=="],
 

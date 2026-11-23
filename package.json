@@ -423,7 +423,7 @@
     "@zhivex-ai/azure-openai": "0.8.1",
     "@zhivex-ai/bedrock": "2.1.3",
     "@zhivex-ai/core": "1.40.1",
-    "@zhivex-ai/gemini": "0.15.1",
+    "@zhivex-ai/gemini": "0.16.0",
     "@zhivex-ai/meta": "0.4.0",
     "@zhivex-ai/openai": "0.18.2",
     "@zhivex-ai/qwen": "0.20.1",
