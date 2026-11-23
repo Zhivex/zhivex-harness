@@ -300,6 +300,87 @@ describe("durable CLI sessions", () => {
     expect(await store.list({ limit: 20 })).toHaveLength(10);
   });
 
+  test("trigger-maintained index usage matches an exact scan through every mutation", async () => {
+    const { store, stateDirectory } = await fixture({ retentionMs: 100 });
+    const usage = () => {
+      const database = new DatabaseSync(path.join(stateDirectory, HARNESS_SESSION_INDEX_FILE), { readOnly: true });
+      try {
+        const tracked = database.prepare("SELECT workspace_key, scope_key, bytes FROM zhivex_cli_session_usage ORDER BY 1, 2").all()
+          .map((row) => ({ ...row }));
+        const exact = database.prepare(`
+          SELECT workspace_key, scope_key, SUM(bytes) AS bytes FROM (
+            SELECT workspace_key, scope_key, metadata_bytes AS bytes FROM zhivex_cli_sessions
+            UNION ALL SELECT s.workspace_key, s.scope_key, r.metadata_bytes FROM zhivex_cli_session_runs r
+              JOIN zhivex_cli_sessions s USING (session_id)
+          ) GROUP BY 1, 2 ORDER BY 1, 2`).all().map((row) => ({ ...row }));
+        return { tracked: tracked.filter((row) => row.bytes !== 0), exact };
+      } finally {
+        database.close();
+      }
+    };
+    const expectConsistent = () => {
+      const { tracked, exact } = usage();
+      expect(tracked).toEqual(exact);
+    };
+
+    const source = await store.create({
+      title: "main",
+      initialRun: { runId: "run-1", provider: "openai", model: "gpt-5.6-luna", status: "running" }
+    });
+    expectConsistent();
+    await store.updateRun(source.sessionId, "run-1", { status: "completed" });
+    const twoRuns = await store.appendRun(source.sessionId, { runId: "run-2", provider: "qwen", model: "qwen3.8-max", status: "completed" });
+    expectConsistent();
+    await store.rename(source.sessionId, "a considerably longer title than before");
+    expectConsistent();
+    const fork = await store.fork(source.sessionId, { atTurnId: twoRuns.runs[0]!.turnId, title: "branch" });
+    expectConsistent();
+    const archived = await store.archive(fork.sessionId);
+    const deleted = await store.delete(fork.sessionId, { expectedRevision: archived.revision });
+    expect((await store.prune({ before: deleted.updatedAt + 1 })).deletedSessions).toBe(1);
+    expectConsistent();
+    expect(usage().exact).toHaveLength(1);
+  });
+
+  test("backfills index usage for databases written before the counter existed", async () => {
+    const first = await fixture();
+    await first.store.create({ title: "before", initialRun: { runId: "r", provider: "openai", model: "gpt-5.6-luna", status: "completed" } });
+    first.store.close();
+    const filename = path.join(first.stateDirectory, HARNESS_SESSION_INDEX_FILE);
+    const raw = new DatabaseSync(filename);
+    try {
+      for (const { name } of raw.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE '%usage%'").all() as { name: string }[]) {
+        raw.exec(`DROP TRIGGER ${name}`);
+      }
+      raw.exec("DROP TABLE zhivex_cli_session_usage");
+    } finally {
+      raw.close();
+    }
+    await fixture({ workspace: first.workspace, stateDirectory: first.stateDirectory });
+    const check = new DatabaseSync(filename, { readOnly: true });
+    try {
+      const tracked = check.prepare("SELECT SUM(bytes) AS bytes FROM zhivex_cli_session_usage").get() as { bytes: number };
+      const exact = check.prepare(`SELECT (SELECT SUM(metadata_bytes) FROM zhivex_cli_sessions) +
+        (SELECT SUM(metadata_bytes) FROM zhivex_cli_session_runs) AS bytes`).get() as { bytes: number };
+      expect(tracked.bytes).toBeGreaterThan(0);
+      expect(tracked.bytes).toBe(exact.bytes);
+    } finally {
+      check.close();
+    }
+  });
+
+  test("an overstated usage counter is repaired instead of rejecting a write", async () => {
+    const { store, stateDirectory } = await fixture({ maxIndexBytes: 1_024 });
+    await store.create({ title: "small" });
+    const raw = new DatabaseSync(path.join(stateDirectory, HARNESS_SESSION_INDEX_FILE));
+    try {
+      raw.exec("UPDATE zhivex_cli_session_usage SET bytes = 1000000");
+    } finally {
+      raw.close();
+    }
+    await expect(store.create({ title: "still fits" })).resolves.toMatchObject({ title: "still fits" });
+  });
+
   test("forks terminal history, archives safely and prunes only retained tombstones", async () => {
     const { store } = await fixture({ retentionMs: 100 });
     const source = await store.create({
