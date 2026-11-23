@@ -26,8 +26,122 @@ jobs:
           bun-version: 1.4.0
       - run: bun run release:preflight --allow-unreleased
 
-  verify:
-    name: Node 24 / ${{ matrix.os }} (Bun tooling)
+  # `bun run check` is split into parallel jobs: static checks, sharded tests
+  # and smoke/benchmarks. `verify` keeps the required status check names and
+  # passes only when every part passed on both operating systems.
+  static:
+    name: Static checks / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Prepare isolated Linux credential store
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnome-keyring dbus-x11
+
+      - name: Verify native credentials on Linux
+        if: runner.os == 'Linux'
+        run: |
+          export XDG_DATA_HOME="$(mktemp -d)"
+          trap 'rm -rf "$XDG_DATA_HOME"' EXIT
+          dbus-run-session -- sh -c 'printf "fixture-keyring-password" | gnome-keyring-daemon --unlock --components=secrets; bun run smoke:credentials'
+
+      - name: Verify native credentials on macOS
+        if: runner.os == 'macOS'
+        run: bun run smoke:credentials
+
+      - name: Audit dependencies
+        run: bun run scripts/audit-dependencies.ts
+
+      - name: Validate source, contracts, build and types
+        run: bun run check:static
+
+      - name: Inspect package contents
+        run: bun run pack:inspect
+
+      - name: Verify build produced no tracked changes
+        run: git diff --exit-code
+
+  test:
+    name: Tests ${{ matrix.shard }}/2 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+        shard: [1, 2]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Install standard SQLite for macOS Bun tests
+        if: runner.os == 'macOS'
+        run: brew list sqlite >/dev/null 2>&1 || brew install sqlite
+
+      - name: Preload OCI execution image
+        if: runner.os == 'Linux'
+        run: docker pull node:24-bookworm-slim
+
+      # Host-process fixtures import the built engine from dist/.
+      - name: Build engine for process fixtures
+        run: bun run build
+
+      - name: Run test shard in parallel workers
+        run: bun run test --shard=${{ matrix.shard }}/2 --parallel
+        env:
+          ZHIVEX_HARNESS_OCI_REQUIRED: ${{ runner.os == 'Linux' && '1' || '0' }}
+
+  smoke:
+    name: Smoke and benchmarks / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
 
@@ -62,37 +176,14 @@ jobs:
         if: runner.os == 'macOS'
         run: brew list sqlite >/dev/null 2>&1 || brew install sqlite
 
-      - name: Prepare isolated Linux credential store
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gnome-keyring dbus-x11
-
-      - name: Verify native credentials on Linux
-        if: runner.os == 'Linux'
-        run: |
-          export XDG_DATA_HOME="$(mktemp -d)"
-          trap 'rm -rf "$XDG_DATA_HOME"' EXIT
-          dbus-run-session -- sh -c 'printf "fixture-keyring-password" | gnome-keyring-daemon --unlock --components=secrets; bun run smoke:credentials'
-
-      - name: Verify native credentials on macOS
-        if: runner.os == 'macOS'
-        run: bun run smoke:credentials
-
-      - name: Audit dependencies
-        run: bun run scripts/audit-dependencies.ts
-
       - name: Preload OCI execution image
         if: runner.os == 'Linux'
         run: docker pull node:24-bookworm-slim
 
-      - name: Validate source and installed package
-        run: bun run check
+      - name: Run benchmarks and interoperability smokes
+        run: bun run check:smoke
         env:
           ZHIVEX_HARNESS_OCI_REQUIRED: ${{ runner.os == 'Linux' && '1' || '0' }}
-
-      - name: Inspect package contents
-        run: bun run pack:inspect
 
       - name: Verify interactive console with offline PTY fixtures
         run: bun run smoke:console
@@ -105,6 +196,33 @@ jobs:
 
       - name: Verify build produced no tracked changes
         run: git diff --exit-code
+
+  verify:
+    name: Node 24 / ${{ matrix.os }} (Bun tooling)
+    needs: [static, test, smoke]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+
+    steps:
+      - name: Require every check part to pass
+        env:
+          STATIC_RESULT: ${{ needs.static.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+          SMOKE_RESULT: ${{ needs.smoke.result }}
+        run: |
+          status=0
+          for part in "static:$STATIC_RESULT" "test:$TEST_RESULT" "smoke:$SMOKE_RESULT"; do
+            printf '%s\n' "$part"
+            [ "${part#*:}" = "success" ] || status=1
+          done
+          exit "$status"
 
   engine-code-consumers:
     name: Engine and Code installed consumers / Node ${{ matrix.node }}
