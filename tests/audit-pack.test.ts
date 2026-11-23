@@ -192,7 +192,8 @@ test("the 32 MiB limit includes the manifest, so an exported pack verifies", asy
     await exportPad(under, underDir);
     expect(await verifyHarnessAuditPack({ directory: underDir, signingKey: key })).toMatchObject({ subject: { kind: "task", id: taskId } });
   } finally { await rm(root, { recursive: true, force: true }); }
-});
+// Three ~32 MiB exports plus a verify; parallel workers on hosted macOS runners exceed the 5 s default.
+}, 30_000);
 
 test("verify-audit does not resolve runtime configuration", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "audit-pack-"));

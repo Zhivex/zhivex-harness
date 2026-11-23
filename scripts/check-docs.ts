@@ -23,6 +23,16 @@ const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"),
   packageManager?: string;
 };
 
+/** `check` composes `check:*` parts that CI runs as parallel jobs; expand them
+ * so a gate counts wherever it runs, as long as `check` still reaches it. */
+const expandScript = (name: string, seen = new Set<string>()): string => {
+  const body = manifest.scripts?.[name];
+  if (body === undefined || seen.has(name)) return "";
+  seen.add(name);
+  return body.replace(/bun run (check:[\w:-]+)/g, (step, part: string) => `${step} ${expandScript(part, seen)}`);
+};
+const checkPipeline = expandScript("check");
+
 const collectMarkdown = async (directory: string): Promise<string[]> => {
   const files: string[] = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -303,7 +313,7 @@ if (manifest.version.startsWith("0.4.")) {
   if (manifest.scripts?.evaluate !== "bun run scripts/evaluate.ts") {
     failures.push("package.json must expose the deterministic 0.4.x evaluation gate.");
   }
-  if (!manifest.scripts?.check?.includes("bun run evaluate")) {
+  if (!checkPipeline.includes("bun run evaluate")) {
     failures.push("package.json check must include the deterministic evaluation gate.");
   }
   if (!manifest.files?.includes("evaluations")) {
@@ -367,7 +377,7 @@ if (manifest.version.startsWith("0.5.")) {
   ) {
     failures.push("package.json must configure the 0.5.x artifact for public npm publication with provenance.");
   }
-  if (manifest.scripts?.evaluate !== "bun run scripts/evaluate.ts" || !manifest.scripts?.check?.includes("bun run evaluate")) {
+  if (manifest.scripts?.evaluate !== "bun run scripts/evaluate.ts" || !checkPipeline.includes("bun run evaluate")) {
     failures.push("package.json must retain the deterministic evaluation gate for 0.5.x.");
   }
   if (manifest.scripts?.["smoke:live:orchestration"] !== "bun --env-file=.env run scripts/live-orchestration-smoke.ts") {
@@ -375,7 +385,7 @@ if (manifest.version.startsWith("0.5.")) {
   }
   if (
     manifest.scripts?.["smoke:mcp"] !== "bun run scripts/mcp-interoperability-smoke.ts" ||
-    !manifest.scripts?.check?.includes("bun run smoke:mcp")
+    !checkPipeline.includes("bun run smoke:mcp")
   ) {
     failures.push("package.json must retain the controlled MCP interoperability gate.");
   }
@@ -479,13 +489,13 @@ if (manifest.version.startsWith("0.6.")) {
   }
   if (
     manifest.scripts?.["smoke:oci"] !== "bun run scripts/oci-execution-smoke.ts" ||
-    !manifest.scripts?.check?.includes("bun run smoke:oci")
+    !checkPipeline.includes("bun run smoke:oci")
   ) {
     failures.push("package.json must include the enforced OCI smoke in the complete check gate.");
   }
   if (
     manifest.scripts?.["smoke:mcp:official"] !== "bun run scripts/mcp-official-sdk-smoke.ts" ||
-    !manifest.scripts?.check?.includes("bun run smoke:mcp:official")
+    !checkPipeline.includes("bun run smoke:mcp:official")
   ) {
     failures.push("package.json must include the official MCP SDK interoperability gate.");
   }
@@ -625,7 +635,7 @@ if (manifest.version.startsWith("0.9.")) {
   if (
     manifest.scripts?.["benchmark:workspace:ci"] !==
       "bun run scripts/benchmark-workspace.ts --files 1000 --page-size 100" ||
-    !manifest.scripts?.check?.includes("bun run benchmark:workspace:ci")
+    !checkPipeline.includes("bun run benchmark:workspace:ci")
   ) {
     failures.push("0.9.x must execute the bounded workspace benchmark smoke in the complete check gate.");
   }
@@ -764,7 +774,7 @@ if (manifest.version.startsWith("0.10.") || manifest.version.startsWith("0.11.")
     manifest.scripts?.["benchmark:safe-fix:baseline"] !== "bun run scripts/create-time-to-safe-fix-baseline.ts" ||
     expandedTimeToSafeFixTasks.length !== 12 ||
     new Set(expandedTimeToSafeFixTasks.map((task) => task.task_id)).size !== 12 ||
-    !manifest.scripts?.check?.includes("bun run benchmark:safe-fix:ci") ||
+    !checkPipeline.includes("bun run benchmark:safe-fix:ci") ||
     !timeToSafeFix.includes("safeResolved") ||
     !timeToSafeFix.includes("not coding capability") ||
     !timeToSafeFix.includes("exactly 12 driver runs") ||

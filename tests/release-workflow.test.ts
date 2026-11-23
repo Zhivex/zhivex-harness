@@ -148,11 +148,15 @@ describe("release workflow version source", () => {
     const manifest = await Bun.file(path.join(workspace, "package.json")).json();
     expect(manifest.workspaces).toEqual(["packages/core", "packages/cli"]);
     expect(manifest.scripts.test).not.toContain("desktop");
-    expect(manifest.scripts.check.indexOf("bun run build")).toBeLessThan(manifest.scripts.check.indexOf("bun run typecheck:tooling"));
+    expect(manifest.scripts.check).toBe("bun run check:static && bun run test && bun run check:smoke");
+    expect(manifest.scripts["check:static"].indexOf("bun run build")).toBeLessThan(manifest.scripts["check:static"].indexOf("bun run typecheck:tooling"));
     expect(manifest.exports["./desktop/v1/state"]).toBeDefined();
     expect(manifest.exports["./desktop/v1/providers"]).toBeDefined();
     const workflow = await readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8");
-    expect(workflow).toContain("bun run check");
+    // CI runs every part of `bun run check` as parallel jobs behind the required gate.
+    for (const part of ["bun run check:static", "bun run check:smoke", "bun run test --shard=${{ matrix.shard }}/${{ matrix.shards }}"]) expect(workflow).toContain(part);
+    expect(workflow).toContain("needs: [static, test, smoke]");
+    expect(workflow).toContain("name: Node 24 / ${{ matrix.os }} (Bun tooling)");
     expect(workflow).toContain("bun run test:code");
     expect(workflow).toContain("bun run smoke:engine-code");
   });

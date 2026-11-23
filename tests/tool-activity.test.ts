@@ -102,18 +102,29 @@ test("repeated model steps leave one activity summary at the conversation bounda
 });
 
 
-test("waiting for the model stays visible and flush stops the heartbeat", async () => {
-  let output = "";
-  const activity = new ToolActivity(text => { output += text; }, true, () => 100);
-  activity.phase("Waiting for model response", 3);
-  expect(output).toContain("Waiting for model response");
-  expect(output).not.toContain("step 3");
-  await new Promise(resolve => setTimeout(resolve, 1050));
-  expect(output).toContain("1s");
-  activity.flush();
-  const stopped = output;
-  await new Promise(resolve => setTimeout(resolve, 1050));
-  expect(output).toBe(stopped);
+// Virtual time: under parallel test workers a real 1,050 ms wait can render
+// before the wall clock crosses one second.
+test("waiting for the model stays visible and flush stops the heartbeat", () => {
+  jest.useFakeTimers();
+  let now = 0, output = "";
+  const clock = spyOn(Date, "now").mockImplementation(() => now);
+  try {
+    const activity = new ToolActivity(text => { output += text; }, true, () => 100);
+    activity.phase("Waiting for model response", 3);
+    expect(output).toContain("Waiting for model response");
+    expect(output).not.toContain("step 3");
+    now = 1_050;
+    jest.advanceTimersByTime(1_050);
+    expect(output).toContain("1s");
+    activity.flush();
+    const stopped = output;
+    now = 2_100;
+    jest.advanceTimersByTime(1_050);
+    expect(output).toBe(stopped);
+  } finally {
+    clock.mockRestore();
+    jest.useRealTimers();
+  }
 });
 
 test("an early heartbeat still displays elapsed seconds before a short response completes", () => {

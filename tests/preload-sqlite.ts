@@ -12,7 +12,18 @@ if (process.platform === "darwin") {
   if (!library || !existsSync(library)) {
     throw new Error("Bun tests on macOS require standard SQLite: run `brew install sqlite` or set HARNESS_TEST_SQLITE_LIBRARY to its dylib path.");
   }
-  if (!Database.setCustomSQLite(library)) {
+  // `bun test --parallel` isolates each file but reuses the worker process,
+  // and the SQLite library is process-wide. This preload is the first code in
+  // every file, so the first run in a worker sets the library; a later run
+  // sees "already loaded" for that same library and has nothing to do.
+  let configured: boolean;
+  try {
+    configured = Database.setCustomSQLite(library);
+  } catch (error) {
+    if (!/already loaded/i.test(String((error as Error)?.message ?? error))) throw error;
+    configured = true;
+  }
+  if (!configured) {
     throw new Error("Cannot configure test SQLite: load tests/preload-sqlite.ts before opening any database.");
   }
 }
