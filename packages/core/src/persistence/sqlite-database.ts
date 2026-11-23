@@ -75,6 +75,14 @@ const numberedBindings = (indexes: readonly number[], parameters: readonly unkno
   return Object.fromEntries(indexes.map((index) => [`$__zhivex_${index}`, parameters[index - 1]]));
 };
 
+/** Upper bound on reused prepared statements per connection (LRU). */
+const STATEMENT_CACHE_LIMIT = 128;
+
+interface CachedStatement {
+  statement: ReturnType<NodeDatabaseSync["prepare"]>;
+  indexes: readonly number[];
+}
+
 /**
  * Small compatibility surface over Node's built-in SQLite implementation.
  *
@@ -87,6 +95,7 @@ export class SqliteDatabase {
   readonly #ownedAccess: boolean;
   readonly #releaseBorrowed: (() => void) | undefined;
   readonly #databasePath: string;
+  readonly #statements = new Map<string, CachedStatement>();
 
   constructor(databasePath: string, options: SqliteDatabaseOptions = {}) {
     // Callers create and validate writable database files before opening them.
@@ -122,15 +131,31 @@ export class SqliteDatabase {
     // positional binder rejects it with SQLITE_RANGE. Normalizing only those
     // placeholders to prefixed named bindings preserves repeated indices and
     // keeps anonymous `?` plus caller-supplied named parameters unchanged.
-    assertNoPersistenceSecret(sql);
-    if (this.#access) validateSqliteAccess(this.#access, this.#databasePath);
-    const normalized = normalizeNumberedParameters(sql);
-    const statement = this.#database.prepare(normalized.sql);
+    // Preparing is the expensive part of a call; statements are reused by SQL
+    // text. Access and secret checks still run on every execution below, so a
+    // cached statement is never executed against a replaced lock or a newly
+    // protected secret.
+    let prepared = this.#statements.get(sql);
+    if (prepared) {
+      // Refresh recency for the bounded LRU.
+      this.#statements.delete(sql);
+      this.#statements.set(sql, prepared);
+    } else {
+      assertNoPersistenceSecret(sql);
+      if (this.#access) validateSqliteAccess(this.#access, this.#databasePath);
+      const normalized = normalizeNumberedParameters(sql);
+      prepared = { statement: this.#database.prepare(normalized.sql), indexes: normalized.indexes };
+      this.#statements.set(sql, prepared);
+      if (this.#statements.size > STATEMENT_CACHE_LIMIT) {
+        this.#statements.delete(this.#statements.keys().next().value!);
+      }
+    }
+    const { statement, indexes } = prepared;
     const invoke = <T>(method: (...parameters: never[]) => T, parameters: readonly unknown[]) => {
       if (this.#access) validateSqliteAccess(this.#access, this.#databasePath);
       assertNoPersistenceSecret(sql);
       assertNoPersistenceSecret(parameters);
-      const bindings = numberedBindings(normalized.indexes, parameters);
+      const bindings = numberedBindings(indexes, parameters);
       return bindings
         ? method(bindings as never)
         : method(...parameters as unknown as never[]);
@@ -143,6 +168,7 @@ export class SqliteDatabase {
   }
 
   close(throwOnError = true): void {
+    this.#statements.clear();
     try {
       this.#database.close();
       if (this.#ownedAccess) this.#access?.close();

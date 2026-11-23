@@ -186,6 +186,96 @@ interface SizeRow {
   size: number;
 }
 
+/**
+ * Per workspace/scope metadata byte counter, maintained by SQLite triggers so
+ * every writer (this store, state restore, older engines sharing the file)
+ * keeps it current. Additive: older engines ignore the table and the schema
+ * version is unchanged. A run deleted by the session cascade is already
+ * covered by the session's BEFORE DELETE trigger; its own AFTER DELETE trigger
+ * then finds no parent and is a no-op.
+ */
+const SESSION_USAGE_SQL = `
+  CREATE TABLE IF NOT EXISTS zhivex_cli_session_usage (
+    workspace_key TEXT NOT NULL,
+    scope_key TEXT NOT NULL,
+    bytes INTEGER NOT NULL,
+    PRIMARY KEY (workspace_key, scope_key)
+  );
+  CREATE TRIGGER IF NOT EXISTS zhivex_cli_sessions_usage_insert
+  AFTER INSERT ON zhivex_cli_sessions BEGIN
+    INSERT INTO zhivex_cli_session_usage (workspace_key, scope_key, bytes)
+    VALUES (NEW.workspace_key, NEW.scope_key, NEW.metadata_bytes)
+    ON CONFLICT (workspace_key, scope_key) DO UPDATE SET bytes = bytes + excluded.bytes;
+  END;
+  CREATE TRIGGER IF NOT EXISTS zhivex_cli_sessions_usage_update
+  AFTER UPDATE OF metadata_bytes, workspace_key, scope_key ON zhivex_cli_sessions BEGIN
+    UPDATE zhivex_cli_session_usage
+      SET bytes = bytes - OLD.metadata_bytes - CASE
+        WHEN OLD.workspace_key IS NEW.workspace_key AND OLD.scope_key IS NEW.scope_key THEN 0
+        ELSE COALESCE((SELECT SUM(metadata_bytes) FROM zhivex_cli_session_runs WHERE session_id = NEW.session_id), 0) END
+      WHERE workspace_key = OLD.workspace_key AND scope_key = OLD.scope_key;
+    INSERT INTO zhivex_cli_session_usage (workspace_key, scope_key, bytes)
+    VALUES (NEW.workspace_key, NEW.scope_key, NEW.metadata_bytes + CASE
+        WHEN OLD.workspace_key IS NEW.workspace_key AND OLD.scope_key IS NEW.scope_key THEN 0
+        ELSE COALESCE((SELECT SUM(metadata_bytes) FROM zhivex_cli_session_runs WHERE session_id = NEW.session_id), 0) END)
+    ON CONFLICT (workspace_key, scope_key) DO UPDATE SET bytes = bytes + excluded.bytes;
+  END;
+  CREATE TRIGGER IF NOT EXISTS zhivex_cli_sessions_usage_delete
+  BEFORE DELETE ON zhivex_cli_sessions BEGIN
+    UPDATE zhivex_cli_session_usage
+      SET bytes = bytes - OLD.metadata_bytes
+        - COALESCE((SELECT SUM(metadata_bytes) FROM zhivex_cli_session_runs WHERE session_id = OLD.session_id), 0)
+      WHERE workspace_key = OLD.workspace_key AND scope_key = OLD.scope_key;
+  END;
+  CREATE TRIGGER IF NOT EXISTS zhivex_cli_session_runs_usage_insert
+  AFTER INSERT ON zhivex_cli_session_runs BEGIN
+    UPDATE zhivex_cli_session_usage SET bytes = bytes + NEW.metadata_bytes
+      WHERE (workspace_key, scope_key) =
+        (SELECT workspace_key, scope_key FROM zhivex_cli_sessions WHERE session_id = NEW.session_id);
+  END;
+  CREATE TRIGGER IF NOT EXISTS zhivex_cli_session_runs_usage_update
+  AFTER UPDATE OF metadata_bytes, session_id ON zhivex_cli_session_runs BEGIN
+    UPDATE zhivex_cli_session_usage SET bytes = bytes - OLD.metadata_bytes
+      WHERE (workspace_key, scope_key) =
+        (SELECT workspace_key, scope_key FROM zhivex_cli_sessions WHERE session_id = OLD.session_id);
+    UPDATE zhivex_cli_session_usage SET bytes = bytes + NEW.metadata_bytes
+      WHERE (workspace_key, scope_key) =
+        (SELECT workspace_key, scope_key FROM zhivex_cli_sessions WHERE session_id = NEW.session_id);
+  END;
+  CREATE TRIGGER IF NOT EXISTS zhivex_cli_session_runs_usage_delete
+  AFTER DELETE ON zhivex_cli_session_runs BEGIN
+    UPDATE zhivex_cli_session_usage SET bytes = bytes - OLD.metadata_bytes
+      WHERE (workspace_key, scope_key) =
+        (SELECT workspace_key, scope_key FROM zhivex_cli_sessions WHERE session_id = OLD.session_id);
+  END;
+`;
+
+/** Creates the counter and, the first time only, backfills it in the same write transaction. */
+const ensureSessionUsageCounter = (database: SqliteDatabase) => {
+  database.exec("BEGIN IMMEDIATE");
+  try {
+    const existed = database.query<{ name: string }, []>(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'zhivex_cli_session_usage'"
+    ).get() !== undefined;
+    database.exec(SESSION_USAGE_SQL);
+    if (!existed) {
+      database.exec(`
+        INSERT INTO zhivex_cli_session_usage (workspace_key, scope_key, bytes)
+        SELECT workspace_key, scope_key, SUM(bytes) FROM (
+          SELECT workspace_key, scope_key, metadata_bytes AS bytes FROM zhivex_cli_sessions
+          UNION ALL
+          SELECT s.workspace_key, s.scope_key, r.metadata_bytes FROM zhivex_cli_session_runs r
+            JOIN zhivex_cli_sessions s ON s.session_id = r.session_id
+        ) GROUP BY workspace_key, scope_key;
+      `);
+    }
+    database.exec("COMMIT");
+  } catch (error) {
+    try { database.exec("ROLLBACK"); } catch { /* Preserve the original error. */ }
+    throw error;
+  }
+};
+
 const DEFAULT_RETENTION_MS = 90 * 24 * 60 * 60 * 1_000;
 const DEFAULT_MAX_SESSIONS = 200;
 const DEFAULT_MAX_RUNS = 1_000;
@@ -362,19 +452,35 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
     }
   };
 
+  const exactIndexBytes = (workspace: string, scope: string) => database.query<SizeRow, [string, string]>(`
+    SELECT
+      COALESCE((SELECT SUM(metadata_bytes) FROM zhivex_cli_sessions WHERE workspace_key = ?1 AND scope_key = ?2), 0) +
+      COALESCE((SELECT SUM(r.metadata_bytes) FROM zhivex_cli_session_runs r JOIN zhivex_cli_sessions s ON s.session_id = r.session_id WHERE s.workspace_key = ?1 AND s.scope_key = ?2), 0)
+      AS size
+  `).get(workspace, scope)?.size ?? 0;
+
+  const setIndexBytes = (workspace: string, scope: string, bytes: number) => database.query(`
+    INSERT INTO zhivex_cli_session_usage (workspace_key, scope_key, bytes) VALUES (?1, ?2, ?3)
+    ON CONFLICT (workspace_key, scope_key) DO UPDATE SET bytes = excluded.bytes
+  `).run(workspace, scope, bytes);
+
   const transaction = <T>(operation: () => T): T => {
     assertOpen();
     database.exec("BEGIN IMMEDIATE");
     try {
       const result = operation();
-      const size = database.query<SizeRow, [string, string]>(`
-        SELECT
-          COALESCE((SELECT SUM(metadata_bytes) FROM zhivex_cli_sessions WHERE workspace_key = ?1 AND scope_key = ?2), 0) +
-          COALESCE((SELECT SUM(r.metadata_bytes) FROM zhivex_cli_session_runs r JOIN zhivex_cli_sessions s ON s.session_id = r.session_id WHERE s.workspace_key = ?1 AND s.scope_key = ?2), 0)
-          AS size
-      `).get(workspaceKey, scopeKey)?.size ?? 0;
-      if (size > maxIndexBytes) {
-        throw new HarnessStateConflictError(`Session index metadata exceeds the ${maxIndexBytes}-byte limit.`);
+      // O(1): triggers keep zhivex_cli_session_usage in step with both tables.
+      // Only a write that appears to exceed the limit pays for an exact scan,
+      // which also repairs the counter if it ever drifted.
+      const tracked = database.query<SizeRow, [string, string]>(
+        "SELECT bytes AS size FROM zhivex_cli_session_usage WHERE workspace_key = ?1 AND scope_key = ?2"
+      ).get(workspaceKey, scopeKey)?.size ?? 0;
+      if (tracked > maxIndexBytes) {
+        const size = exactIndexBytes(workspaceKey, scopeKey);
+        if (size !== tracked) setIndexBytes(workspaceKey, scopeKey, size);
+        if (size > maxIndexBytes) {
+          throw new HarnessStateConflictError(`Session index metadata exceeds the ${maxIndexBytes}-byte limit.`);
+        }
       }
       database.exec("COMMIT");
       return result;
@@ -572,6 +678,7 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
     if (schemaVersion !== HARNESS_SESSION_SCHEMA_VERSION) {
       throw new HarnessStateConflictError(`Unsupported CLI session schema version: ${String(schemaVersion)}.`);
     }
+    ensureSessionUsageCounter(database);
     await chmod(databasePath, 0o600);
   } catch (error) {
     database.close(false);
