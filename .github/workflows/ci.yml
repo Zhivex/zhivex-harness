@@ -91,17 +91,23 @@ jobs:
         run: git diff --exit-code
 
   test:
-    name: Tests ${{ matrix.shard }}/2 / ${{ matrix.os }}
+    name: Tests ${{ matrix.shard }}/${{ matrix.shards }} / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
 
+    # Linux runners (4 vCPU) run 2 shards with parallel workers. Hosted macOS
+    # runners (3 cores) time out process-heavy tests under parallel workers,
+    # so they run 4 shards serially.
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-        shard: [1, 2]
+        include:
+          - { os: ubuntu-latest, shard: 1, shards: 2, workers: "--parallel" }
+          - { os: ubuntu-latest, shard: 2, shards: 2, workers: "--parallel" }
+          - { os: macos-latest, shard: 1, shards: 4, workers: "" }
+          - { os: macos-latest, shard: 2, shards: 4, workers: "" }
+          - { os: macos-latest, shard: 3, shards: 4, workers: "" }
+          - { os: macos-latest, shard: 4, shards: 4, workers: "" }
 
     steps:
       - name: Checkout
@@ -135,8 +141,8 @@ jobs:
       - name: Build engine for process fixtures
         run: bun run build
 
-      - name: Run test shard in parallel workers
-        run: bun run test --shard=${{ matrix.shard }}/2 --parallel
+      - name: Run test shard
+        run: bun run test --shard=${{ matrix.shard }}/${{ matrix.shards }} ${{ matrix.workers }}
         env:
           ZHIVEX_HARNESS_OCI_REQUIRED: ${{ runner.os == 'Linux' && '1' || '0' }}
 

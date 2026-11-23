@@ -154,7 +154,7 @@ describe("release workflow version source", () => {
     expect(manifest.exports["./desktop/v1/providers"]).toBeDefined();
     const workflow = await readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8");
     // CI runs every part of `bun run check` as parallel jobs behind the required gate.
-    for (const part of ["bun run check:static", "bun run check:smoke", "bun run test --shard="]) expect(workflow).toContain(part);
+    for (const part of ["bun run check:static", "bun run check:smoke", "bun run test --shard=${{ matrix.shard }}/${{ matrix.shards }}"]) expect(workflow).toContain(part);
     expect(workflow).toContain("needs: [static, test, smoke]");
     expect(workflow).toContain("name: Node 24 / ${{ matrix.os }} (Bun tooling)");
     expect(workflow).toContain("bun run test:code");

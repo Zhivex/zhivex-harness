@@ -449,6 +449,17 @@ const externalDriver = async (
   let discardProgress = false;
   // A dedicated bounded channel: stdout remains the result and stderr is never evidence.
   const progressPipe = child.stdio[3];
+  // Bun can emit the child's "close" before the extra fd 3 pipe has delivered
+  // its last chunk, so a driver that checkpoints and exits at once would lose
+  // it. Settle on the pipe's own end, bounded so a leaked descriptor held by a
+  // grandchild cannot stall supervision.
+  const progressDrained = new Promise<void>((settle) => {
+    if (!progressPipe || !("on" in progressPipe)) return settle();
+    progressPipe.once("end", () => settle());
+    progressPipe.once("close", () => settle());
+    progressPipe.once("error", () => settle());
+  });
+  const drainProgress = () => Promise.race([progressDrained, new Promise<void>((settle) => setTimeout(settle, 1_000).unref())]);
   if (progressPipe && "on" in progressPipe) progressPipe.on("data", (chunk: Buffer) => {
     for (const byte of chunk) {
       if (byte === 10) {
@@ -501,8 +512,9 @@ const externalDriver = async (
     clearTimeout(timer);
     reject(timedOut ? timeoutError() : diagnosticError(error));
   });
-  child.on("close", (code, signal) => {
+  child.on("close", async (code, signal) => {
     clearTimeout(timer);
+    await drainProgress();
     if (exceeded) return reject(diagnosticError(new Error(`Driver output exceeded ${MAX_DRIVER_OUTPUT_BYTES} bytes.`)));
     if (timedOut) return reject(timeoutError());
     if (signal) return reject(diagnosticError(new Error(`Driver terminated by ${signal}.`)));
